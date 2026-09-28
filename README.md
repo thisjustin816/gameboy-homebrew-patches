@@ -3,6 +3,10 @@
 Patches for Game Boy and Game Boy Color homebrew games: save systems the games
 shipped without, and fixes for bugs that never got patched.
 
+> **Claude-assisted.** The patches, tools and documentation in this repo were
+> made with the help of Claude, Anthropic's AI assistant. Each patch's README
+> says how it was tested.
+
 Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **There are no ROMs here.** Bring your own copy of the
 game, and check its md5 against the patch's README first. Each patch is made
