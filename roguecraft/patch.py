@@ -15,9 +15,11 @@ that write, and fixes three bugs along the way:
      re-enter its room (apply_chest_fixes).
   4. Mini-map: put back the enemies the map hid even when the close falls
      inside the game's post-attack animation lock (apply_map_fix).
-  5. Title screen: redraw the version, v1.0000, as v1.000+ to mark the
-     patched build (apply_title_version).
-  6. Repair the global checksum. The header is untouched: the cartridge
+  5. Title screen: redraw the version, v1.0000, as v1.000b to mark the
+     patched build and its revision (apply_title_version).
+  6. Resume menu: hide the title's own menu and the chicken while the
+     RESUME GAME / NEW GAME menu is up (apply_resume_menu).
+  7. Repair the global checksum. The header is untouched: the cartridge
      already declares 32 KB of battery-backed RAM.
 
 It refuses any ROM it has no profile for, and checks every byte it replaces
@@ -74,6 +76,10 @@ ROM_PROFILES = {
             "ACTOR_ANIMS": 0x12,        # the actor's current animation set
             "MAX_ENTITIES": 19,         # the length of the entity tables
             "MAP_HIDDEN": 0xDD37,       # 19 bytes of WRAM nothing else uses
+            # the resume menu (bank 22 $6723, from the title's START GAME)
+            "TITLE_MENU_ACTOR": 2,      # START GAME ... CREDITS, one 18-sprite actor
+            "TITLE_CHICKEN": 4,         # under the box; the torches and the title art are above it
+            "MENU_BOX_Y": 14,           # in tiles: WY 112, where the stock script puts the box
         },
         "hook_bank": 27,                # empty in the stock ROM
         "hook_org": 0x4000,
@@ -101,17 +107,32 @@ ROM_PROFILES = {
         "title_map": (0x5E1B1, 0x5E035, 20, 19),
         # The version, drawn into the title background at row 17, columns
         # 16-19, in palette 3: 1 is the text, 3 the background, 2 dither.
-        # Only the last tile changes: its last 0 becomes a +.
+        # Only the last tile changes: its last 0 becomes the patch's revision
+        # letter, b.
         # (ROM offset, row, column, stock rows, new rows)
         "version_tiles": [
-            (0x2E978, 17, 19,                  # bank 11 $6978: the end of a 0, then 0 -> +; the art on the right stays
+            (0x2E978, 17, 19,                  # bank 11 $6978: the end of a 0, then 0 -> b; the art on the right stays
              ["33333331", "11311131", "31313131", "31313131",
               "31313132", "11311133", "33333333", "33333312"],
-             ["33333331", "11333331", "31331331", "31311131",
-              "31331332", "11333333", "33333333", "33333312"]),
+             ["33333331", "11313331", "31311131", "31313131",
+              "31313132", "11311133", "33333333", "33333312"]),
         ],
+        # The resume menu's script (bank 22 $67B4-$67F7): its text, the box,
+        # and the two choices, checked whole before its box move changes.
+        "resume_menu_script": (0x5A7B4, bytes.fromhex(
+            "4000" "0101" "030302" "0201" "726573756d652067616d65" "0a" "0201"
+            "6e65772067616d65" "5353" "00"         # VM_LOAD_TEXT
+            "47030104140000"                        # VM_OVERLAY_CLEAR: x 0, y 0, 20 x 4, color 1, frame
+            "45ff0e00"                              # VM_OVERLAY_MOVE_TO: x 0, y 14 (WY 112), at once
+            "41ff00" "440301"                       # VM_DISPLAY_TEXT, VM_OVERLAY_WAIT
+            "4802020023"                            # VM_CHOICE: 2 items, B cancels, into variable $23
+            "010101020002" "010201020100")),        # the items: cursor x, y, then left/right/up/down
+        # its box move (bank 22 $67DD), which becomes a VM_CALL_FAR to resume_menu_hide
+        "resume_menu_move": 0x5A7DD,
     },
 }
+OP_VM_CALL_FAR = 0x0A           # address high, address low, bank
+OP_VM_OVERLAY_MOVE_TO = 0x45    # speed, y, x
 
 OFF_HDR_SUM = 0x14D
 OFF_GLOBAL_SUM = 0x14E
@@ -167,7 +188,7 @@ def load_profile(rom):
     md5 = hashlib.md5(rom).hexdigest()
     if md5 not in ROM_PROFILES:
         raise SystemExit(
-            f"unrecognised ROM (md5 {md5}); this patch only knows "
+            f"unrecognized ROM (md5 {md5}); this patch only knows "
             + ", ".join(p["name"] for p in ROM_PROFILES.values()))
     return ROM_PROFILES[md5]
 
@@ -234,7 +255,7 @@ def apply_map_fix(rom, original, profile, labels, say):
 
 
 def tile_bytes(rows):
-    """8 rows of colour indexes -> a 2bpp tile, leftmost pixel in bit 7"""
+    """8 rows of color indexes -> a 2bpp tile, leftmost pixel in bit 7"""
     out = bytearray()
     for row in rows:
         lo = hi = 0
@@ -259,6 +280,22 @@ def apply_title_version(rom, original, profile, say):
             raise SystemExit(f"title tile {index:#04x} (VRAM bank {vbank}) is not the version text's alone")
         rom[off:off + 16] = tile_bytes(new)
         say(f"title version tile at {off:#07x} (row {row}, column {col}) redrawn")
+
+
+def apply_resume_menu(rom, original, profile, labels, say):
+    c = profile["consts"]
+    start, expect = profile["resume_menu_script"]
+    if original[start:start + len(expect)] != expect or original.count(expect) != 1:
+        raise SystemExit(f"the resume menu's script is not at {start:#07x}")
+    # the box move the call replaces, and that resume_menu_hide makes in its place
+    off = profile["resume_menu_move"]
+    move = bytes([OP_VM_OVERLAY_MOVE_TO, 0xFF, c["MENU_BOX_Y"], 0])
+    if not start <= off <= start + len(expect) - len(move) or original[off:off + len(move)] != move:
+        raise SystemExit(f"the resume menu's box move is not at {off:#07x}")
+    a = labels["resume_menu_hide"]
+    rom[off:off + len(move)] = bytes([OP_VM_CALL_FAR, a >> 8, a & 0xFF, profile["hook_bank"]])
+    say(f"resume menu's box move at {off:#07x} -> resume_menu_hide (${a:04X}), "
+        f"which hides the title menu and the chicken first")
 
 
 def patch(rom_bytes, verbose=True):
@@ -303,7 +340,7 @@ def patch(rom_bytes, verbose=True):
     loose = rom_bytes.count(bytes([OP_VM_CALL_NATIVE]) + old_operands)
     if loose != len(found):
         raise SystemExit(f"{loose} native calls to the setup, but only {len(found)} "
-                         f"in recognisable floor scripts")
+                         f"in recognizable floor scripts")
     # Each floor script shows its name on a card a few hundred bytes after
     # the call; the first floor's must be the one named in the profile, and
     # no other site's may be.
@@ -323,6 +360,7 @@ def patch(rom_bytes, verbose=True):
     apply_chest_fixes(rom, rom_bytes, profile, labels, say)
     apply_map_fix(rom, rom_bytes, profile, labels, say)
     apply_title_version(rom, rom_bytes, profile, say)
+    apply_resume_menu(rom, rom_bytes, profile, labels, say)
 
     if header_checksum(rom) != rom[OFF_HDR_SUM]:
         raise SystemExit("header checksum no longer matches - the header was touched")

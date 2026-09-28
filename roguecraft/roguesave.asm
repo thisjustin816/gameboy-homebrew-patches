@@ -317,4 +317,43 @@ entity_actor:
         ld de,ACTORS
         add hl,de
         ret
+
+; =====================================================================
+; Resume menu
+;
+; With a run saved, START GAME on the title opens a RESUME GAME / NEW
+; GAME menu in a box along the bottom of the screen, but the title's own
+; menu stays up around it: START GAME to CREDITS - one 18-sprite actor -
+; above and under the box, and the chicken under it. The three entries
+; above it read as a second menu, and the box's BG priority bit is all
+; that keeps the rest from showing through it. The menu script's move of
+; the box into place becomes a call to this script, which hides those two
+; actors and then makes that move itself. Every way out of the menu loads
+; another scene - B reloads the title - so nothing needs unhiding.
+;
+; This is GBVM script, not LR35902 code: the menu script calls it with
+; VM_CALL_FAR, and it runs on the calling script's context. Operands are
+; as the opcode table at ROM $0324 sizes them and the handlers read them:
+; 16-bit values high byte first, and a negative index refers to the VM
+; stack, so $FFFF is the value on top. The actor number goes on the
+; stack rather than into a script local, which the menu script keeps
+; for itself.
+; =====================================================================
+VM_PUSH_CONST       = $01       ; value (2)
+VM_POP              = $02       ; count (1)
+VM_RET_FAR          = $0B       ; extra stack entries to drop (1)
+VM_SET_CONST        = $14       ; value (2), index (2)
+VM_ACTOR_SET_FLAGS  = $3F       ; mask (1), flags (1), actor index (2)
+VM_OVERLAY_MOVE_TO  = $45       ; speed (1), y in tiles (1), x in tiles (1)
+ACTOR_FLAG_HIDDEN   = $02       ; VM flag bit 1: the actor struct's hidden bit
+STACK_TOP           = $FF       ; both bytes of index -1, the top of the VM stack
+
+resume_menu_hide:
+        db VM_PUSH_CONST, 0, TITLE_MENU_ACTOR               ; the title menu's text
+        db VM_ACTOR_SET_FLAGS, ACTOR_FLAG_HIDDEN, ACTOR_FLAG_HIDDEN, STACK_TOP, STACK_TOP
+        db VM_SET_CONST, 0, TITLE_CHICKEN, STACK_TOP, STACK_TOP
+        db VM_ACTOR_SET_FLAGS, ACTOR_FLAG_HIDDEN, ACTOR_FLAG_HIDDEN, STACK_TOP, STACK_TOP
+        db VM_POP, 1
+        db VM_OVERLAY_MOVE_TO, $FF, MENU_BOX_Y, 0           ; the move this call replaced, as it was
+        db VM_RET_FAR, 0
 code_end:

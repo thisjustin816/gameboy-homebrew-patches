@@ -1,9 +1,9 @@
-# Roguecraft GB — resume a run, honest chest counts, no vanishing enemies
+# Roguecraft GB: resume a run, honest chest counts, no vanishing enemies
 
 A patch that lets you stop a Roguecraft GB run and pick it up later. It also
 fixes two bugs in how the game counts chests, and one that makes enemies go
-invisible after you look at the mini-map. The title screen shows `v1.000+` to
-mark the patched build.
+invisible after you look at the mini-map. The title screen shows `v1.000b` to
+mark the patched build and its revision.
 
 The stock cartridge already has battery-backed save RAM, and the game already
 has almost everything a run save needs: a run slot, a `RESUME GAME` option on
@@ -25,8 +25,9 @@ power cycle is the achievements. This patch adds the missing write.
   run: the floor you just reached, with your hero as you arrived on it,
   hearts included.
 - **To resume**, pick START GAME. When a run is saved it shows
-  `RESUME GAME` / `NEW GAME` (the game's own menu). Resume puts you at the
-  start of the saved floor, with a freshly generated layout.
+  `RESUME GAME` / `NEW GAME` (the game's own menu, with the title's menu
+  cleared away while it's up). Resume puts you at the start of the saved
+  floor, with a freshly generated layout.
 - **Switching off or quitting mid-floor** (START ×2) sends you back to the start
   of that floor next time. Anything picked up on that floor is lost with it.
   That's deliberate, because it means quitting can't re-roll a floor and keep
@@ -56,7 +57,7 @@ exit left them.
 The patch repoints those eleven native calls at new code in ROM bank 27, which
 is empty in the stock ROM:
 
-- **`floor_start`** (floors 2–11) runs the stock setup exactly as the VM would
+- **`floor_start`** (floors 2-11) runs the stock setup exactly as the VM would
   have, then calls the game's own `data_save` for slot 0.
 - **`run_start`** (floor 1, *The Wilderness*) first zeroes the floor counter,
   then runs the stock setup and saves nothing. The floors come in a fixed order
@@ -69,17 +70,18 @@ is empty in the stock ROM:
 
 | ROM range | Bytes | What |
 |---|---|---|
-| `$014E`–`$014F` | 2 | global checksum |
+| `$014E`-`$014F` | 2 | global checksum |
 | 11 floor scripts | 2 each | native-call target: bank 2 `$401B` → bank 27 |
-| bank 27 `$4000`–`$4134` | 309 | `run_start`, `floor_start`, `count_chest`, `chest_opened`, `chest_spawn`, `map_open`, `map_hide`, `map_close` |
-| bank 4 `$56CE`–`$56DA` | 13 | generator's `chests_total += 1` → call to `count_chest` |
-| bank 2 `$644A`–`$6456` | 13 | open-chest `chests_found += 1` → call to `chest_opened` |
-| bank 2 `$44F5`–`$4507` | 19 | room entry's `if chest bit: chest hp = 2` → call to `chest_spawn` |
+| bank 27 `$4000`-`$414E` | 335 | `run_start`, `floor_start`, `count_chest`, `chest_opened`, `chest_spawn`, `map_open`, `map_hide`, `map_close`, and the GBVM script `resume_menu_hide` |
+| bank 4 `$56CE`-`$56DA` | 13 | generator's `chests_total += 1` → call to `count_chest` |
+| bank 2 `$644A`-`$6456` | 13 | open-chest `chests_found += 1` → call to `chest_opened` |
+| bank 2 `$44F5`-`$4507` | 19 | room entry's `if chest bit: chest hp = 2` → call to `chest_spawn` |
 | bank 25 `$6037`, `$609D` | 3 each | the map script's native calls: map-open → `map_open`, map-close → `map_close` |
-| bank 2 `$58D6`–`$58DD` | 8 | the map-open's call to hide one entity → `map_hide` |
-| bank 11 `$6978`–`$6987` | 16 | title background tile, row 17 column 19: the version's last `0` → `+` |
+| bank 2 `$58D6`-`$58DD` | 8 | the map-open's call to hide one entity → `map_hide` |
+| bank 11 `$6978`-`$6987` | 16 | title background tile, row 17 column 19: the version's last `0` → `b` |
+| bank 22 `$67DD`-`$67E0` | 4 | the resume menu's box move → a VM call to `resume_menu_hide` |
 
-The fixes also use 23 bytes of work RAM, `$DD37`–`$DD4D`: a byte per entity
+The fixes also use 23 bytes of work RAM, `$DD37`-`$DD4D`: a byte per entity
 for the mini-map, then a bit per room for the chests. That's past the end of the
 game's own variables, no instruction in the ROM refers to it, it isn't part of
 any save, and in testing the stack never got closer than 106 bytes to it.
@@ -115,13 +117,19 @@ the stock game always spawned the chest shut. If you walked away without the
 gold, the chest stood there shut again next time in, and opening it counted a
 second time and paid out again.
 
-Now the patch notes, for each room of the floor, whether its chest has been
-opened. Coming back to a room whose chest you opened, you find **its gold still
+The patch notes, for each room of the floor, whether its chest has been opened.
+Coming back to a room whose chest you opened, you find **its gold still
 waiting** instead of a shut chest. Pick it up whenever you like, and the chest
-counts once. The game re-places a room's items each time you enter, so the gold
-may not be exactly where the chest stood. It's shown as the gold on its own,
-without the open chest, because the open chest is drawn on the floor when the
-chest opens, not saved with the room.
+counts once. It's shown as the gold on its own, without the open chest, because
+the open chest is drawn on the floor when the chest opens, not saved with the
+room.
+
+Each time you enter a room, the game lays its items out again on a fixed set of
+spots, in a fixed order, so the gold usually comes back where the chest stood.
+If you've taken one of the room's other items, such as its heart, the gold can
+move up to an earlier spot, and coming in from a neighboring room can now and
+then push it one spot along. That's the game's own rule for every item, and the
+gold lands wherever the stock game would put the chest.
 
 ## Mini-map fix
 
@@ -156,19 +164,31 @@ seconds, the patched game plays exactly as stock, frame for frame.
 
 ## Title screen
 
-The title screen's version reads `v1.000+` instead of `v1.0000`, so you can
-tell the patched build from stock at a glance. The version isn't text: it's
-drawn into the title's background image, in the bottom-right corner. The patch
-redraws the one tile that holds the last digit, keeping the artwork around it.
-GB Studio shares identical tiles across an image, so `patch.py` checks that no
-other cell of the title uses that tile. Nothing outside the title screen uses
-it.
+The title screen's version reads `v1.000b` instead of `v1.0000`, so you can
+tell the patched build from stock at a glance. The letter is the patch's
+revision, and each new revision takes the next one.
 
-## Something you might notice in the ROM
+The version isn't text: it's drawn into the title's background image, in the
+bottom-right corner. The patch redraws the one tile that holds the last digit,
+keeping the artwork around it. GB Studio shares identical tiles across an
+image, so `patch.py` checks that no other cell of the title uses that tile.
+Nothing outside the title screen uses it.
 
-The game also contains code for saving to the cartridge's own flash chip (with
-the command bytes a D0/D1-swapped flash cart uses). Nothing in this build ever
-calls it, and this patch doesn't either.
+## Resume menu
+
+With a run saved, START GAME opens a `RESUME GAME` / `NEW GAME` menu in a box
+along the bottom of the screen. On stock, the title's own menu stays up around
+it: `START GAME`, `ACHIEVEMENTS` and `INSTRUCTIONS` above the box, and `HIGH
+SCORES`, `CREDITS` and the chicken under it. The stock game never saves a run
+to resume, so it never shows this menu.
+
+The patch hides the title's menu (one sprite actor for all five entries) and
+the chicken while the menu is up. Hidden, they can't show through the box on
+any device. The box, its text and its cursor are as stock, and so are the
+torches and the title art above it. The menu script's move of the box into
+place becomes a call to a short GBVM script in bank 27, which hides the two
+actors and then makes that move itself. Every way out of the menu loads another
+scene, and B reloads the title with its menu back.
 
 ## Building and checking
 
@@ -188,7 +208,7 @@ python3 verify.py Roguecraft_GB.gbc Roguecraft_GB-save.gbc
    first floor, and the older run is still offered after a power cycle;
 5. dying on a resumed run clears it, and after a power cycle START GAME goes
    straight to hero select;
-6. every one of floors 2–11 runs `floor_start` and saves its own number;
+6. every one of floors 2-11 runs `floor_start` and saves its own number;
 7. the last floor adds nothing to the chest total (stock adds its hidden
    layout's chests), and an ordinary floor adds exactly what stock does;
 8. a chest opened and left with its gold on the floor: coming back, the gold is
@@ -202,18 +222,27 @@ python3 verify.py Roguecraft_GB.gbc Roguecraft_GB-save.gbc
     under the map, and toggles the map twice. With no recent attack, patched
     and stock match frame for frame. With the post-attack lock running, stock
     leaves the monster invisible (the bug) and the patch doesn't, and the lock
-    keeps running for everything else.
-
+    keeps running for everything else;
 11. a save file made by the stock game loads exactly as on stock: the same game
     variables at the title, the same START GAME screen, and the cartridge left
     alone;
-12. the title screen's corner reads `v1.000+`, drawn pixel by pixel in the
-    version's own colour on its own background, and every other pixel of the
-    title matches stock.
+12. the title screen's corner reads `v1.000b`, drawn pixel by pixel in the
+    version's own color on its own background, and every other pixel of the
+    title matches stock;
+13. with a run saved, START GAME's menu box is as stock's, with the cursor on
+    each choice in turn; none of the title menu's or the chicken's sprites is
+    in OAM while it's up, and no sprite reaches the box; the other sprites and
+    the screen above the box match stock with those two actors hidden by hand;
+    and B goes back to the full title menu, as on stock.
 
-Checks 7–10 run against the stock ROM too, as a control: each one shows the
+Checks 7-10 run against the stock ROM too, as a control: each one shows the
 bug on stock and its absence on the patched ROM. Check 12 reads `v1.0000` from
 the stock title the same way, to show it reads the corner correctly.
+
+No scripted player gets through a floor. Runs on later floors come from the
+game's own `data_save` called mid-run, and each floor is entered through the
+game's own resume path. That exercises every floor script, but not the walk
+from one floor into the next.
 
 For check 10, the lock is set the way an attack sets it, which avoids scripting
 a fight. Separately, random play with lots of map toggles in five rooms, one of
@@ -225,20 +254,4 @@ patched ROM.
 
 If an enemy under the map attacks while the map is up, its attack animation
 replaces the empty set, and it draws over the map until the attack finishes.
-This is stock behaviour, left alone.
-
-### What is not tested here
-
-No scripted player got through a floor. Runs on later floors come from the
-game's own `data_save` called mid-run, and each floor is entered through the
-game's own resume path. That exercises every floor script, but not the moment
-of walking out of one floor into the next.
-
-The one assumption this leaves is that the game advances the floor counter
-before the next floor's setup runs, as it has on resume. If that were wrong,
-the symptom would be resuming one floor early. A playtest settles it:
-
-1. Reach floor 2 (*The Cave of Mild Unease*) and note your hearts.
-2. Switch off, switch on, START GAME: `RESUME GAME` should be there.
-3. Resume: it should open on *The Cave of Mild Unease*, with those hearts.
-4. Die on any later floor, switch off and on: `RESUME GAME` should be gone.
+This is stock behavior, left alone.

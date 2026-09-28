@@ -149,6 +149,7 @@ def footprint(stock, patched):
     allowed |= set(range(prof["map_hide_call"], prof["map_hide_call"] + 8))
     for off, *_ in prof["version_tiles"]:
         allowed |= set(range(off, off + 16))
+    allowed |= set(range(prof["resume_menu_move"], prof["resume_menu_move"] + 4))
     diff = [i for i in range(len(a)) if a[i] != b[i]]
     check(len(a) == len(b), "same size as stock")
     check(all(i in allowed for i in diff), f"{len(diff)} bytes differ, all inside the patch's footprint")
@@ -493,7 +494,7 @@ def old_save(stock, patched):
 
 GLYPHS = {"v": ["...", "#.#", "#.#", "#.#", ".#."], "1": ["##.", ".#.", ".#.", ".#.", "###"],
           ".": [".", ".", ".", ".", "#"], "0": ["###", "#.#", "#.#", "#.#", "###"],
-          "+": ["...", ".#.", "###", ".#.", "..."]}
+          "b": ["#..", "###", "#.#", "#.#", "###"]}
 TEXT_X, TEXT_Y, TEXT_W = 133, 136, 25     # the version's box on the title: x 133-157, y 136-142
 
 
@@ -506,7 +507,7 @@ def picture(text):
 
 
 def title_version(stock, patched):
-    print("12. the title screen reads v1.000+, and is otherwise stock")
+    print("12. the title screen reads v1.000b, and is otherwise stock")
     shots = {}
     for tag, rom in (("stock", stock), ("patched", patched)):
         g = Game(rom)
@@ -522,11 +523,113 @@ def title_version(stock, patched):
                         for x in range(TEXT_X, TEXT_X + TEXT_W)) for y in range(TEXT_Y, TEXT_Y + 7)]
     check(reads(s) == picture("v1.0000"), "stock reads v1.0000 in the corner (the picture this check expects)")
     got = reads(p)
-    check(got == picture("v1.000+"), "patched reads v1.000+, text on the stock background:\n" +
+    check(got == picture("v1.000b"), "patched reads v1.000b, text on the stock background:\n" +
           "\n".join(f"          {r}" for r in got))
     same = all(s.getpixel((x, y)) == p.getpixel((x, y))
                for y in range(144) for x in range(160) if not in_box(x, y))
     check(same, "every other pixel of the title matches stock")
+
+
+MENU_TOP = 112                          # the resume menu's box: y 112 to the bottom, as stock draws it
+TITLE_MENU, CHICKEN = C["TITLE_MENU_ACTOR"], C["TITLE_CHICKEN"]
+MENU_BOX_MOVE = (0x16, 0x67DD)          # the menu script's box move: where both ROMs' actors hide
+
+
+def actor_tiles(m, slot):
+    """The OBJ tiles an actor's sheet was loaded to: from its base tile up to
+    the next actor's (GB Studio loads each scene actor's sheet in turn)."""
+    bases = sorted({m[C["ACTORS"] + 52 * s + 0x0A] for s in range(20) if m[C["ACTORS"] + 52 * s] & 1})
+    base = m[C["ACTORS"] + 52 * slot + 0x0A]
+    top = next((b for b in bases if b > base), 0x100)
+    return range(base, top)
+
+
+def sprite_pixels(m):
+    """The visible sprites (y, x, tile, attr) and the screen rows their opaque pixels reach."""
+    tall = m[0xFF40] & 4
+    out = []
+    for i in range(40):
+        y, x, t, a = (m[0xFE00 + 4 * i + k] for k in range(4))
+        if not (0 < y < 160 and 0 < x < 168):
+            continue
+        h = 16 if tall else 8
+        rows = []
+        for yy in range(h):
+            ty = h - 1 - yy if a & 0x40 else yy
+            addr = 0x8000 + 16 * ((t & 0xFE) if tall else t) + 2 * ty
+            if m[a >> 3 & 1, addr] | m[a >> 3 & 1, addr + 1]:
+                rows.append(y - 16 + yy)
+        out.append(((y, x, t, a), rows))
+    return out
+
+
+def menu_run(rom, battery, hide=False):
+    """START on the title with a run saved; the menu with each choice
+    selected, the sprites while it waits, and the title again after B."""
+    g = Game(rom, battery)
+    m = g.pb.memory
+    if hide:
+        # hide the two actors by hand, as the menu script reaches its box move
+        def at_op(_):
+            rf = g.pb.register_file
+            if (m[0xFF90], rf.HL) == MENU_BOX_MOVE:
+                for s in (TITLE_MENU, CHICKEN):
+                    m[C["ACTORS"] + 52 * s] |= 0x04
+        g.pb.hook_register(0, 0x3978, at_op, None)
+    g.to_title()
+    r = {"title_tiles": {s: actor_tiles(m, s) for s in (TITLE_MENU, CHICKEN)}}
+    g.start_game()
+    img = lambda: g.pb.screen.image.convert("RGB")
+    r["resume"], r["sprites"] = img(), []
+    for _ in range(60):
+        g.tick(1)
+        r["sprites"].append(sprite_pixels(m))
+    g.tap("down")
+    r["new"] = img()
+    r["sprites"].append(sprite_pixels(m))
+    g.tap("up")
+    r["sprites"].append(sprite_pixels(m))
+    g.tap("b", after=240)
+    r["after_b"], r["after_b_sprites"] = img(), sprite_pixels(m)
+    g.power_off()
+    return r
+
+
+def resume_menu(stock, patched):
+    print("13. the resume menu hides the title menu")
+    g = Game(stock)                     # a run on floor 2, as the stock game's own data_save writes it
+    g.to_title(); g.start_game(); g.new_game(); g.tick(120)
+    g.stand_in_save(floor=1, hearts=3)
+    battery = g.power_off()
+    s, p = menu_run(stock, battery), menu_run(patched, battery)
+    # stock with the two actors hidden by hand at the same point: the plain
+    # title art they covered, and everything else as stock draws it
+    e = menu_run(stock, battery, hide=True)
+    box = lambda img: [img.getpixel((x, y)) for y in range(MENU_TOP, 144) for x in range(160)]
+    above = lambda img: [img.getpixel((x, y)) for y in range(MENU_TOP) for x in range(160)]
+    check(box(p["resume"]) == box(s["resume"]) and box(p["new"]) == box(s["new"]),
+          "the box as stock, with the cursor on RESUME GAME, then on NEW GAME")
+    menu_tiles = [t for sl in (TITLE_MENU, CHICKEN) for t in p["title_tiles"][sl]]
+    shown = [spr for frame in p["sprites"] for spr, rows in frame if spr[2] in menu_tiles]
+    low = [(spr, rows) for frame in p["sprites"] for spr, rows in frame if any(y >= MENU_TOP for y in rows)]
+    stock_shown = sum(1 for spr, _ in s["sprites"][0] if spr[2] in menu_tiles)
+    check(not shown and not low and stock_shown == 19,
+          f"no sprite of the title menu or the chicken in OAM (stock has {stock_shown} up), and none "
+          f"reaching y {MENU_TOP}+, over {len(p['sprites'])} frames of the menu, a down and an up")
+    kept = [sorted(spr for spr, _ in f) for f in p["sprites"]] == [sorted(spr for spr, _ in f) for f in e["sprites"]]
+    check(kept, "the other sprites - the torches and the title art - are as stock's, frame for frame")
+    diff = sum(1 for a, b in zip(above(p["resume"]), above(e["resume"])) if a != b)
+    plain = sum(1 for a, b in zip(above(s["resume"]), above(e["resume"])) if a != b)
+    check(diff == 0 and above(p["new"]) == above(e["new"]),
+          f"above the box, the title art as stock shows it with those actors hidden "
+          f"({diff} px differ; the hidden menu uncovered {plain} px)")
+    title_n = sum(1 for spr, _ in s["after_b_sprites"] if spr[2] in menu_tiles)
+    back_n = sum(1 for spr, _ in p["after_b_sprites"] if spr[2] in menu_tiles)
+    version = lambda x, y: TEXT_X <= x < TEXT_X + TEXT_W and TEXT_Y <= y < TEXT_Y + 7    # check 12's
+    same = all(p["after_b"].getpixel((x, y)) == s["after_b"].getpixel((x, y))
+               for y in range(144) for x in range(160) if not version(x, y))
+    check(same and back_n == title_n == 19,
+          f"B goes back to the full title menu, as on stock but for the version ({back_n} of its sprites up again)")
 
 
 def main():
@@ -545,6 +648,7 @@ def main():
     mini_map(stock, patched)
     old_save(stock, patched)
     title_version(stock, patched)
+    resume_menu(stock, patched)
     print()
     if failures:
         for f in failures:
