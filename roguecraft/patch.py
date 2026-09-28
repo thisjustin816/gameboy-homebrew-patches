@@ -15,7 +15,9 @@ that write, and fixes three bugs along the way:
      re-enter its room (apply_chest_fixes).
   4. Mini-map: put back the enemies the map hid even when the close falls
      inside the game's post-attack animation lock (apply_map_fix).
-  5. Repair the global checksum. The header is untouched: the cartridge
+  5. Title screen: redraw the version, v1.0000, as v1.000+ to mark the
+     patched build (apply_title_version).
+  6. Repair the global checksum. The header is untouched: the cartridge
      already declares 32 KB of battery-backed RAM.
 
 It refuses any ROM it has no profile for, and checks every byte it replaces
@@ -94,6 +96,20 @@ ROM_PROFILES = {
                         (0x6609C, "MAP_CLOSE_FN", "map_close")],
         # the stock map-open's banked call to MAP_HIDE_FN (bank 2 $58D6)
         "map_hide_call": 0x098D6,
+        # The title background's tilemap and attribute map (bank 23 $61B1,
+        # $6035), 20 x 19 cells
+        "title_map": (0x5E1B1, 0x5E035, 20, 19),
+        # The version, drawn into the title background at row 17, columns
+        # 16-19, in palette 3: 1 is the text, 3 the background, 2 dither.
+        # Only the last tile changes: its last 0 becomes a +.
+        # (ROM offset, row, column, stock rows, new rows)
+        "version_tiles": [
+            (0x2E978, 17, 19,                  # bank 11 $6978: the end of a 0, then 0 -> +; the art on the right stays
+             ["33333331", "11311131", "31313131", "31313131",
+              "31313132", "11311133", "33333333", "33333312"],
+             ["33333331", "11333331", "31331331", "31311131",
+              "31331332", "11333333", "33333333", "33333312"]),
+        ],
     },
 }
 
@@ -217,6 +233,34 @@ def apply_map_fix(rom, original, profile, labels, say):
             raise SystemExit(f"ROM offset {i:#07x} refers to the fix's WRAM")
 
 
+def tile_bytes(rows):
+    """8 rows of colour indexes -> a 2bpp tile, leftmost pixel in bit 7"""
+    out = bytearray()
+    for row in rows:
+        lo = hi = 0
+        for ch in row:
+            lo, hi = lo << 1 | int(ch) & 1, hi << 1 | int(ch) >> 1
+        out += bytes([lo, hi])
+    return bytes(out)
+
+
+def apply_title_version(rom, original, profile, say):
+    tilemap, attrs, width, height = profile["title_map"]
+    # each cell as (tile index, VRAM bank)
+    cells = [(original[tilemap + i], original[attrs + i] >> 3 & 1) for i in range(width * height)]
+    for off, row, col, old, new in profile["version_tiles"]:
+        expect = tile_bytes(old)
+        if original[off:off + 16] != expect or original.count(expect) != 1:
+            raise SystemExit(f"the title's version tile is not at {off:#07x}")
+        # GB Studio shares identical tiles across an image: redrawing one
+        # that another cell also uses would change that cell too.
+        index, vbank = cells[row * width + col]
+        if cells.count((index, vbank)) != 1:
+            raise SystemExit(f"title tile {index:#04x} (VRAM bank {vbank}) is not the version text's alone")
+        rom[off:off + 16] = tile_bytes(new)
+        say(f"title version tile at {off:#07x} (row {row}, column {col}) redrawn")
+
+
 def patch(rom_bytes, verbose=True):
     rom = bytearray(rom_bytes)
     profile = load_profile(rom_bytes)
@@ -278,6 +322,7 @@ def patch(rom_bytes, verbose=True):
 
     apply_chest_fixes(rom, rom_bytes, profile, labels, say)
     apply_map_fix(rom, rom_bytes, profile, labels, say)
+    apply_title_version(rom, rom_bytes, profile, say)
 
     if header_checksum(rom) != rom[OFF_HDR_SUM]:
         raise SystemExit("header checksum no longer matches - the header was touched")

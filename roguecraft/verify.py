@@ -147,6 +147,8 @@ def footprint(stock, patched):
     for off, _, _ in prof["map_natives"]:
         allowed |= {off + 1, off + 2, off + 3}
     allowed |= set(range(prof["map_hide_call"], prof["map_hide_call"] + 8))
+    for off, *_ in prof["version_tiles"]:
+        allowed |= set(range(off, off + 16))
     diff = [i for i in range(len(a)) if a[i] != b[i]]
     check(len(a) == len(b), "same size as stock")
     check(all(i in allowed for i in diff), f"{len(diff)} bytes differ, all inside the patch's footprint")
@@ -489,6 +491,44 @@ def old_save(stock, patched):
     check(seen["patched"][2] == battery, "and nothing on the cartridge changes until there's a run to save")
 
 
+GLYPHS = {"v": ["...", "#.#", "#.#", "#.#", ".#."], "1": ["##.", ".#.", ".#.", ".#.", "###"],
+          ".": [".", ".", ".", ".", "#"], "0": ["###", "#.#", "#.#", "#.#", "###"],
+          "+": ["...", ".#.", "###", ".#.", "..."]}
+TEXT_X, TEXT_Y, TEXT_W = 133, 136, 25     # the version's box on the title: x 133-157, y 136-142
+
+
+def picture(text):
+    """The version as the title draws it: 3x5 glyphs a pixel apart, with an
+    empty row above and below, padded to the box's width."""
+    rows = [" ".join(g) for g in zip(*(GLYPHS[ch] for ch in text))]
+    rows = [r.replace(" ", ".").ljust(TEXT_W, ".") for r in rows]
+    return ["." * TEXT_W] + rows + ["." * TEXT_W]
+
+
+def title_version(stock, patched):
+    print("12. the title screen reads v1.000+, and is otherwise stock")
+    shots = {}
+    for tag, rom in (("stock", stock), ("patched", patched)):
+        g = Game(rom)
+        g.to_title()
+        shots[tag] = g.pb.screen.image.convert("RGB")
+        g.power_off()
+    s, p = shots["stock"], shots["patched"]
+    text, back = s.getpixel((137, 141)), s.getpixel((136, 139))   # the 1's foot, and the gap before it
+    in_box = lambda x, y: TEXT_X <= x < TEXT_X + TEXT_W and TEXT_Y <= y < TEXT_Y + 7
+
+    def reads(img):
+        return ["".join("#" if img.getpixel((x, y)) == text else "." if img.getpixel((x, y)) == back else "?"
+                        for x in range(TEXT_X, TEXT_X + TEXT_W)) for y in range(TEXT_Y, TEXT_Y + 7)]
+    check(reads(s) == picture("v1.0000"), "stock reads v1.0000 in the corner (the picture this check expects)")
+    got = reads(p)
+    check(got == picture("v1.000+"), "patched reads v1.000+, text on the stock background:\n" +
+          "\n".join(f"          {r}" for r in got))
+    same = all(s.getpixel((x, y)) == p.getpixel((x, y))
+               for y in range(144) for x in range(160) if not in_box(x, y))
+    check(same, "every other pixel of the title matches stock")
+
+
 def main():
     stock, patched = sys.argv[1], sys.argv[2]
     print(f"stock   {hashlib.md5(open(stock, 'rb').read()).hexdigest()}")
@@ -504,6 +544,7 @@ def main():
     gold_pickup(stock, patched)
     mini_map(stock, patched)
     old_save(stock, patched)
+    title_version(stock, patched)
     print()
     if failures:
         for f in failures:

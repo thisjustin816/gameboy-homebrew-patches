@@ -15,7 +15,7 @@ for one exact release, and the build script refuses any other.
 | Game | Folder | What the patch does |
 |---|---|---|
 | Hermano / Hermano World | [`hermano/`](hermano/) | Adds a battery save. The game autosaves as you play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
-| Roguecraft GB | [`roguecraft/`](roguecraft/) | Lets you resume a run: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after you look at the mini-map. |
+| Roguecraft GB | [`roguecraft/`](roguecraft/) | Lets you resume a run: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after you look at the mini-map. The title screen reads `v1.000+`. |
 
 ## Applying a patch
 

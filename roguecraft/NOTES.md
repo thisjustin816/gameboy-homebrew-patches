@@ -166,6 +166,31 @@ normal hidden layout for it.
 - **Enemy turns:** they happen while the map is open. An enemy that attacks
   under the map gets its attack set, so it's drawn over the map.
 
+## Title screen
+
+- **Registers:** LCDC is `$C7`, so the BG uses map `$9800` with `$8800`
+  signed tile data, and the window is off. The title is up about 1500 frames
+  after a cold boot. Only sprites move on it, and none reach the bottom-right
+  corner.
+- **The background struct** is at `1A:$405F`: 20×19 cells (row 18 is
+  off-screen), then the DMG tileset `0A:$5804`, CGB tileset `0B:$5E56`,
+  tilemap `17:$61B1` and attribute map `17:$6035`. The title scene at
+  `19:$5420` points to it.
+- **Tilesets** are a 16-bit tile count and then uncompressed 2bpp tiles.
+  - The VRAM bank 0 set holds 181 tiles, the bank 1 set 180. Entries up to
+    `$7F` are the tile index.
+  - The rest are loaded to end at index `$BF`, so for the bank 0 set,
+    entry = index − 11 for `$8B`–`$BF`; for bank 1, index − 12 for
+    `$8C`–`$BF`.
+- **The version** is drawn into the image at row 17, columns 16–19, in
+  palette 3 (colour 1 is the text), over dithered artwork.
+  - The glyphs are 3×5 with a 1-pixel gap, at x 133–157, y 137–141.
+  - The cells alternate VRAM banks: tile `$BC` in bank 0, then `$BD` in bank
+    1, `$BD` in bank 0 and `$BE` in bank 1. Each is used by that one cell
+    only, and no later screen loads them.
+  - Almost no tile in the image is shared: only the plain colour-3 tile `$09`
+    in bank 1 is.
+
 ## Leads not followed up
 
 - **The chicken that vanished at a MISS with the map shut** (user video A,
@@ -173,9 +198,6 @@ normal hidden layout for it.
   own attack both left it visible in testing. One guess: its animation table
   was still the map's empty set from a toggle about a second earlier. Walking
   keeps the current set, so a later `actor_set_dir`-style change would blank it.
-- **The title screen's `v1.0000`** is baked into the background image, in the
-  bottom-right corner (about row 17, columns 16–19), using tiles from both VRAM
-  banks. It isn't text. Changing it means redrawing tiles.
 - **Useful test techniques:**
   - Hook `$144E` to see what each actor actually drew.
   - Hook `$3978` to trace VM opcodes.

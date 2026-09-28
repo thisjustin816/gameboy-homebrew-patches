@@ -2,7 +2,8 @@
 
 A patch that lets you stop a Roguecraft GB run and pick it up later. It also
 fixes two bugs in how the game counts chests, and one that makes enemies go
-invisible after you look at the mini-map.
+invisible after you look at the mini-map. The title screen shows `v1.000+` to
+mark the patched build.
 
 The stock cartridge already has battery-backed save RAM, and the game already
 has almost everything a run save needs: a run slot, a `RESUME GAME` option on
@@ -76,6 +77,7 @@ is empty in the stock ROM:
 | bank 2 `$44F5`–`$4507` | 19 | room entry's `if chest bit: chest hp = 2` → call to `chest_spawn` |
 | bank 25 `$6037`, `$609D` | 3 each | the map script's native calls: map-open → `map_open`, map-close → `map_close` |
 | bank 2 `$58D6`–`$58DD` | 8 | the map-open's call to hide one entity → `map_hide` |
+| bank 11 `$6978`–`$6987` | 16 | title background tile, row 17 column 19: the version's last `0` → `+` |
 
 The fixes also use 23 bytes of work RAM, `$DD37`–`$DD4D`: a byte per entity
 for the mini-map, then a bit per room for the chests. That's past the end of the
@@ -152,6 +154,16 @@ map was up, for example by attacking, is left as it is. So is everything
 the map didn't hide. When there's been no attack in the last couple of
 seconds, the patched game plays exactly as stock, frame for frame.
 
+## Title screen
+
+The title screen's version reads `v1.000+` instead of `v1.0000`, so you can
+tell the patched build from stock at a glance. The version isn't text: it's
+drawn into the title's background image, in the bottom-right corner. The patch
+redraws the one tile that holds the last digit, keeping the artwork around it.
+GB Studio shares identical tiles across an image, so `patch.py` checks that no
+other cell of the title uses that tile. Nothing outside the title screen uses
+it.
+
 ## Something you might notice in the ROM
 
 The game also contains code for saving to the cartridge's own flash chip (with
@@ -194,10 +206,14 @@ python3 verify.py Roguecraft_GB.gbc Roguecraft_GB-save.gbc
 
 11. a save file made by the stock game loads exactly as on stock: the same game
     variables at the title, the same START GAME screen, and the cartridge left
-    alone.
+    alone;
+12. the title screen's corner reads `v1.000+`, drawn pixel by pixel in the
+    version's own colour on its own background, and every other pixel of the
+    title matches stock.
 
 Checks 7–10 run against the stock ROM too, as a control: each one shows the
-bug on stock and its absence on the patched ROM.
+bug on stock and its absence on the patched ROM. Check 12 reads `v1.0000` from
+the stock title the same way, to show it reads the corner correctly.
 
 For check 10, the lock is set the way an attack sets it, which avoids scripting
 a fight. Separately, random play with lots of map toggles in five rooms, one of
