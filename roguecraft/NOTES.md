@@ -1,0 +1,184 @@
+# Roguecraft GB internals
+
+Research notes from building the patch, for the release with md5
+`6de80f13b9ab562de2227ea5dd818275`. Addresses are `bank:$addr` (bank 0 omitted),
+and ROM offset = bank × `$4000` + (addr − `$4000`). These notes also record
+findings the patch doesn't use. Where a fact is less certain, it says so.
+
+## Engine
+
+The game is built with GB Studio 3 (GBVM scripts, C natives in bank 2).
+
+- **Banked calls:** `ld e,bank / ld hl,fn / call $3E01`. The trampoline saves
+  the current bank (HRAM `$90`), switches, calls, and restores the bank,
+  preserving A and HL. At the callee: SP+0 = `$3E0B`, SP+2 = the saved bank,
+  SP+4 = the caller's return address, SP+6 = the first stack argument. One-byte
+  arguments are pushed as `push af / inc sp`.
+- **GBVM:** the opcode table is at ROM `$0324`, one 4-byte entry per opcode
+  (fn lo, fn hi, bank, argument bytes). The dispatch is in bank 0 around `$3967`;
+  at `$3978`, HL = the script PC and HRAM `$90` = the script's bank, which
+  makes a good trace hook. `VM_CALL_NATIVE` is `$2D` (operands: addr hi, addr lo,
+  bank); its handler at `$3954` pushes THIS and calls through `$3E01`. Actor ops
+  are `$30`–`$3F` (bank 4) and overlay/text ops `$40`–`$4F` (bank 18).
+- **Actors:** 52-byte structs at `$C0D1 + 52·slot`. The fields:
+  - `+$00` flags: bit 0 active, 1 pinned, 2 hidden, 3 disabled, 4 anim_noloop,
+    5 collision, 6 movement_interrupt, 7 persistent.
+  - `+$01` x and `+$03` y, both 16-bit in 1/16 px. `+$05` direction.
+  - `+$0A` base tile. `+$0B` frame. `+$0C` frame_start and `+$0D` frame_end
+    (end exclusive).
+  - `+$0E` anim_tick mask (`$FF` = paused). `+$10` animation index.
+  - `+$12`–`+$21` `animations[8]`, (start, end) pairs, end inclusive.
+  - `+$22` sprite-sheet bank, `+$23` sheet pointer.
+  - `+$30` next, `+$32` prev.
+
+  The active list's tail is at `$C517`. `actors_update` (`$10F7`) walks from
+  the tail by prev, calling `move_metasprite` (`$1028`) at `$144A`. At
+  `$144E`, A = the number of sprites that actor used, `$C528` = the actor and
+  `$C527` = its first OAM index. The game often doesn't redraw every frame when busy, so
+  track each actor's latest count rather than a per-frame one.
+- **The engine's hiding of actors under the window is off** in this game (the
+  flag `$C52E` comes out 0 in play). The game hides actors under the mini-map
+  itself; see below.
+- **OAM:** double-buffered in pages `$C000` and `$DF00`. The page to DMA is in
+  HRAM `$92`, and the next one is in `$DD35`.
+- **VBlank:** the handler at `$1AF4` copies the WY shadow `$C93B` to WY. WX is
+  `$C939 + 7` when WY < 144; otherwise the window is off.
+- **STAT:** the handler at `$19D3` adds 3 to SCY every 13 lines, squashing
+  16-px tile rows to 13 px. That's why room rows are 13 px apart.
+- **RNG:** `$3B7E`, with the seed at `$DB7E`–`$DB7F`. Poke the seed to vary
+  outcomes in tests.
+- **Memory:** the stack starts at `$DF00`. In testing it never went deeper
+  than `$DDB8`. The game's own data ends at `$DD36`, and nothing in the stock
+  ROM names `$DD37`+. The patch uses `$DD37`–`$DD4D`.
+
+## Saves (bank 20)
+
+- `data_save(slot)` `20:$44E7`, peek/load `20:$471A` (slot, word offset,
+  count, destination), `data_clear` `20:$46ED`.
+- The save table at `20:$440F` lists 23 WRAM regions, 5166 bytes in all. Slot
+  0 (the run) is at SRAM bank 0 `$A000`, and slot 1 (achievements) at SRAM
+  bank 1 `$A000`. Each slot starts with the signature `07 41 FE 2B`, the bytes
+  at ROM `$0560`.
+- The stock game only writes slot 0 at game over, with the floor set to 0.
+  START GAME peeks the saved floor to decide between RESUME / NEW GAME and hero
+  select.
+- The ROM also has unused code for saving to a flash cart's chip (D0/D1-swapped
+  command bytes). Nothing calls it.
+
+## Game variables
+
+GB Studio variable `vN` is at `$CBB7 + 2N` (16-bit):
+
+| var | address | meaning |
+|---|---|---|
+| v5 | `$CBC1` | gold (HUD counter) |
+| v11 / v12 | `$CBCD` / `$CBCF` | current room column / row |
+| v75 | `$CC4D` | floor index 0–10 |
+| v76 | `$CC4F` | hearts carried into a floor |
+| v135 | `$CCC5` | 1 on the last floor |
+| v151 / v152 | `$CCE5` / `$CCE7` | chests total / found (end screen) |
+
+The floors come in a fixed order:
+
+| index | floor |
+|---|---|
+| 0 | The Wilderness |
+| 1 | Cave of Mild Unease |
+| 2 | Get the Gold! |
+| 3 | Spectral Shenanigans |
+| 4 | Clucking Hell! |
+| 5 | Snarky Slime Pit |
+| 6 | Gauntlet of Pain |
+| 7 | Yung and Beautiful |
+| 8 | Hail and Kill |
+| 9 | It Just Gets Darker |
+| 10 | It Waits Dreaming |
+
+Floor 10 is a single boss arena with no mini-map. The generator still builds a
+normal hidden layout for it.
+
+## Floors, rooms, entities
+
+- **Floor start:** every floor script's first instruction is a native call to
+  the floor setup at `2:$401B`, which loads the hero from the variables. The
+  generator runs after that. It lives in bank 4, and its `chests_total += 1`
+  is at `4:$56CE`.
+- **Rooms:** each floor is a 5×5 grid of rooms, with room index = 5·row + col.
+  - `$D9BD` holds the item words (25 × 16 bits; bit 1 = the chest) and `$DA08`
+    the monster words. `$DA3A` is the room grid, column-major (5·col + row).
+  - Taking an item clears its bit. The stock clearer at `2:$4236` subtracts the
+    bit. The slot→bit table is `$DC7D`, with a ROM copy at `$3F14`.
+  - `2:$4E40` onwards adds an entity's bit back into a room's item word (a
+    drop?). Not investigated.
+- **Cells in a room:** 10·row + col, where x = 16·col and y = 12 + 13·row.
+  The mini-map covers cells 77–79, 87–89 and 97–99, the bottom-right 3×3.
+- **Entity tables:** up to 19 entities per room, with the count at `$DCC9`.
+  Entity 0 is the hero and entity 6 is the chest.
+  - `$DC44+e` hp. 0 = absent; the chest uses 2 = shut, 1 = its gold.
+  - `$DC57+2e` state word (the chest is 9).
+  - `$DCA3+e` actor slot.
+  - `$DCCA+e` cell.
+- **Room entry:** around `2:$4300`, the game reads the room's monster and item
+  words and sets each entity's hp. The chest is at `2:$44F5`–`$4507`: if bit 1
+  is set, hp = 2. Item positions are worked out fresh on every entry, so they
+  move depending on what's left.
+- **Opening a chest:** around `2:$6380`–`$646F`. The game loads animation set
+  `$21` (gold), calls `6:$6FAC` with tile `$19` (the open-chest graphic),
+  adds 50 to v5, and adds 1 to chests found (`2:$644A`). Picking the gold up
+  later adds another 50.
+
+## Animation and the mini-map
+
+- **Loading animation sets:** `$179B` (A = sheet bank, DE = sheet, stack: set
+  index, destination) copies a sheet's set into `actor+$12`.
+  `7:$45F8(actor, start, end+1)` sets the frames.
+- **Sprite sheets** are structs:
+  - n_metasprites (2 bytes), 1 byte;
+  - pointers to the metasprites, animations and animation lookup;
+  - bounds (4 bytes);
+  - far pointers to the tileset and the CGB tileset.
+
+  On the entity sheets checked, set 1 (usually also sets 2 and 5) is a single
+  empty frame. Known sheets:
+  - `15:65E8` the hero;
+  - `14:7FEB` the tentacle monster (Gluthulhu);
+  - `15:5D3D` the small-monster sheet (chickens and others);
+  - `17:7CE3` the chest;
+  - `15:71BC` the attack effect.
+- **The refresh:** `2:$5972(entity, flag)` picks and loads an entity's set from
+  its state and hp. It runs for every entity every other frame, and from the
+  map close. With flag 0 it skips an entity when any of these holds:
+  - its hp is 0;
+  - the map is open (`$DD1C` = 1);
+  - the attack lock `$DD1D` is running (enemies only, not the hero);
+  - `$DD1E` is set (the hero only; set at `2:$53C3` in some hero state);
+  - it's entity `$12` on the last floor.
+- **The attack lock:** the attack routine around `2:$6A90` loads an animation
+  set, sets `$DD1D` = 60, and compares a random number with `$CCDB` (probably
+  the hit roll). `$DD1D` counts down once per game tick at `2:$72D0`, about
+  every 2.4 frames, so the lock lasts about 2 seconds.
+- **The mini-map** is a script in bank 25 around `$6034`–`$60A0`:
+  1. `VM_CALL_NATIVE 2:$5876` (map open). Every living entity in a map cell is
+     given the empty set via `2:$5903`.
+  2. `VM_OVERLAY_MOVE_TO` (WX 119; WY 96 open, 136 closed).
+  3. `VM_CALL_NATIVE 2:$58E3` (map close). It refreshes every entity, but the
+     attack lock blocks enemies, which was the vanishing-enemy bug.
+- **Enemy turns:** they happen while the map is open. An enemy that attacks
+  under the map gets its attack set, so it's drawn over the map.
+
+## Leads not followed up
+
+- **The chicken that vanished at a MISS with the map shut** (user video A,
+  about 1.8 s in). Not reproduced. A hero miss on the chicken and the chicken's
+  own attack both left it visible in testing. One guess: its animation table
+  was still the map's empty set from a toggle about a second earlier. Walking
+  keeps the current set, so a later `actor_set_dir`-style change would blank it.
+- **The title screen's `v1.0000`** is baked into the background image, in the
+  bottom-right corner (about row 17, columns 16–19), using tiles from both VRAM
+  banks. It isn't text. Changing it means redrawing tiles.
+- **Useful test techniques:**
+  - Hook `$144E` to see what each actor actually drew.
+  - Hook `$3978` to trace VM opcodes.
+  - Walk a fixed d-pad route: press 10 frames and wait 26; add 60 frames after
+    going through a door. Replays are deterministic from a cold boot.
+  - `verify.py` has examples of all of these.
