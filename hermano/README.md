@@ -19,7 +19,7 @@ uses it.
 | Release | md5 | Payload |
 |---------|-----|---------|
 | Hermano (original) | `89465cae204767aba57c342c67624bee` | 19 bytes |
-| Hermano World (ModRetro Chromatic, SGB enhanced) | `631a7113e6fb5fd0c876a2f19030007c` | 16 bytes |
+| Hermano (ModRetro, SGB enhanced) | `631a7113e6fb5fd0c876a2f19030007c` | 16 bytes |
 
 Both come off the same ZGB build and draw the same title screen, so the
 injected code is identical; what differs is where the engine globals and the

@@ -70,7 +70,7 @@ ROM_PROFILES = {
                   (0x6F6E, 0x6F71, 0x7FFC, "hook_game_update")],
     },
     "631a7113e6fb5fd0c876a2f19030007c": {
-        "name": "Hermano World (ModRetro Chromatic, SGB enhanced)",
+        "name": "Hermano (ModRetro, SGB enhanced)",
         "consts": {
             "KEYS": 0xCCC7, "PREV_KEYS": 0xCCC6, "TUTORIAL": 0xCC0D,
             "FRAME_TICK": 0xC0A3,
