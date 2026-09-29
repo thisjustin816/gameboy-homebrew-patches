@@ -9,7 +9,7 @@ started, offering its password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `60e82d9051e908b8bceebf18e197e7d5` |
+| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `2c4c0b9cc0c106051fb195e4ed3365d9` |
 
 ## What was wrong
 
@@ -31,6 +31,7 @@ frame, measured in an emulator.
 | Walking off a ledge: fall / drift | 0.5 / 1.0 | 1.25 / 0.5 | 1.25 / 0.5 |
 | Walking | 1.0 | 1.0 | 1.0, as stock |
 | Landing on a bubble: span that bounces | 13 px | 23 px | 23 px |
+| Landing on a bubble: how far into Bub's feet it can be and still bounce him | 16 px, at any point in a jump and standing | 7 px, from 5 frames before the end of the top on and falling; not before, not standing | the same, from 4 frames before the end of the top |
 | Bubble shot speed | 1.5 | 3 | 3 |
 | Bubble shot reach | 40 px | about 71 px | 40 px, as stock |
 | Shortest time between shots | 28 frames | 22 frames | 22 frames |
@@ -53,6 +54,24 @@ Classic's test counts Bub as on top of a bubble once he is level with it, and
 with the faster rise and the wider test he would otherwise bounce on the way
 up and gain a second jump. A bubble jumped into from below pops, as on the
 Master System, or is pushed aside as on stock if Bub hits it off-centre.
+
+How deep Bub is in the bubble also matters on the Master System, and stock
+Classic ignored it. Stock bounces him off any bubble whose top is anywhere
+from his feet to his head, at any point in a jump and even standing, as long
+as jump is held. The Master System goes by where he is in the jump:
+
+- Rising, in the first half of the time at the top, and standing: a bubble
+  he is in pops, and one only 1-2 px into his feet is left alone, so in a
+  jump it bounces him once the next phase starts.
+- From 5 frames before the end of the top, falling, and walking off a ledge:
+  a bubble up to 5 px into his feet bounces him. At 6-7 px it bounces him and
+  he pops it rising back through it. Deeper, it pops.
+
+The patch does the same. Classic moves Bub every other frame, so its phase
+starts 4 frames before the end of the top, the nearest tick to the Master
+System's 5. A landing always meets the top 7 px of a bubble first, even at
+Classic's 6 px a tick, so landings bounce as before. What changes is a bubble
+that drifts or rises into Bub: deep inside it pops instead of bouncing him.
 
 Stock Classic also wasted a tick at take-off. The tick that sees the button
 starts the jump but skips its first step, so Bub left the ground 2 or 3
@@ -124,7 +143,7 @@ across a re-patch.
 | Jump start, bank 2 `$4A4B` | 33 steps | 26 steps |
 | Take-off, bank 2 `$4A64`, `$4A6B`, `$4A7A` | skips the jump's first step | goes through it |
 | Bounces, bank 2 `$542A`, `$5657` | start a 33-step jump | `call bounce_start`, which starts the 26-step jump with its first step taken |
-| Bounce tests, bank 2 `$5421`, `$564E` | bounce if jump is held | `call bounce_gate`: not while Bub is still rising |
+| Bounce tests, bank 2 `$5421`, `$564E` | bounce if jump is held, else pop | `jp bg_bubble`, `jp bg_enemy`: the Master System's rule by depth and phase, which can also leave the bubble, or bounce and pop it |
 | Sideways movement and gravity, bank 2 `$4AEF` to `$4BD2` | stock movement | `jp move`, which rejoins the stock landing check at `$4BD3` |
 | Shot start and speed, bank 2 `$4C7E` to `$4C96` | 1 px ahead, 3 px a tick | 4 px ahead, 6 px a tick |
 | Shot length, bank 2 `$5B29` to `$5B45` | a bubble after 14 ticks (24 with the item) | after 7 (12), sprite frames at half the counts |
@@ -135,7 +154,7 @@ across a re-patch.
 | PASSWORD screen, every frame, bank `$3C` `$4196` | `ld a,($D683)` | `call pf_step`, which draws the letters once and returns that load |
 | Header `$0147`, `$0149` | MBC5, no RAM | MBC5+RAM+BATTERY, 8 KB |
 
-The game moves Bub once every two frames. `move` (bank 2 `$7E2D`) replaces
+The game moves Bub once every two frames. `move` (bank 2 `$7E1A`) replaces
 the stock sideways movement and falling. Fractions of a pixel come from an
 8-tick pattern that decides which ticks get the extra pixel. The jump itself
 is a table of Y steps that the game already walks through, now the Master
@@ -157,7 +176,7 @@ either side counts. Its height is stock's: Bub counts as above a bubble for
 16 px, and he moves at most 6.5 px a tick relative to one, so he can't pass
 through without touching.
 
-The physics code and table (327 bytes) sit in the zero padding at the end of
+The physics code and table (388 bytes) sit in the zero padding at the end of
 bank 2, and the save routines (200 bytes) in the zero padding at the end of
 bank 0. The game never runs or reads either. `$CEC0` counts ticks for the
 fractions, `$CEC2` is the shot cooldown, and `$CEC1` holds the one flag
@@ -197,7 +216,7 @@ starts any round, with the round number set as the round loader reads it. All
 of it passes.
 
 - **Footprint.** The patched ROM is exactly what `patch.py` builds, and the IPS
-  turns stock into it when applied by a separate IPS reader. All 562 bytes that
+  turns stock into it when applied by a separate IPS reader. All 626 bytes that
   differ from stock are the patch's code and table, its hooks, the shot's constants, the two
   cartridge bytes in the header and the checksums.
 - **Filler.** Filling both paddings with `$FF` changes none of 2490 frames of
@@ -219,8 +238,11 @@ of it passes.
   held, he bounces anywhere in a 23 px span, where stock bounces in 13, and
   he is higher at the end of the tick that touches it, where stock's Bub is
   still sinking. Jumping up into one with jump held rises the usual 42 px and
-  never bounces off it.
-- **Landing.** Over 6545 frames standing in seeded play on rounds 5 to 60, Bub
+  never bounces off it. With a bubble put 1-16 px into his feet, it pops or
+  is left at the top's first half and standing, and coming down it bounces
+  him at up to 5 px, bounces and pops at 6-7 and pops deeper, as on the Master
+  System; stock bounces at every depth in all three.
+- **Landing.** Over 6889 frames standing in seeded play on rounds 5 to 60, Bub
   always stands on the tile grid, and bubble and enemy bounces still start
   jumps. In DMG mode round 1 starts and a jump reaches the ledge above.
 - **Routines.** `save_round`, `pf_init` (good and bad save) and `pf_step`

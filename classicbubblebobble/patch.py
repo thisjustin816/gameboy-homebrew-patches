@@ -69,6 +69,15 @@ ROM_PROFILES = {
             "BUBBLE_STATE": 0xD538,     # the first floating bubble's state, then one per 2 bytes
             "BUBBLE_X": 0xD509, "BUBBLE_Y": 0xD508,
             "RANGE_ITEM": 0xC048,       # set by the item that makes shots go further
+            "PAD_JUMP": 0x01,
+            # Where the bounce test goes on: the bubble loop, then the loop over enemies in bubbles
+            "BUBBLE_POP": 0x541C, "BUBBLE_NEXT": 0x544D, "BUBBLE_BURST": 0x56C0, "BUBBLE_BOUNCE": 0x542A,
+            "ENEMY_POP": 0x5649, "ENEMY_NEXT": 0x5676, "ENEMY_BURST": 0x5715, "ENEMY_BOUNCE": 0x5657,
+            # The Master System's bounce, by the bubble's Y less Bub's (0-15 here)
+            "LATE_JUMP": 13,            # JUMP from 5 frames before the end of the top on
+            "EARLY_TOP": 14,            # before then, or standing: 14-15 is left alone, less pops
+            "LATE_POP": 9,              # from then on: less than 9 pops
+            "LATE_CLEAN": 11,           # 9-10 bounces and pops, 11-15 bounces
             "RESUME": 0x4BD3,           # the stock landing check
             # 8-tick patterns of extra pixels
             "MASK_FALL": 0x55,          # 2 + 4/8
@@ -84,7 +93,7 @@ ROM_PROFILES = {
         "table_ptr": (0x4AA8, bytes.fromhex("212a68")),        # ld hl,$682A
         "jump_starts": [0x4A4B],                               # ld a,$21 -> JUMP, from the ground
         "bounce_starts": [0x542A, 0x5657],                     # the same, bouncing on a bubble or a trapped enemy
-        "bounce_gates": [0x5421, 0x564E],                      # ld a,(PAD) before the bounce's jump-held test
+        "bounce_gates": [(0x5421, "bg_bubble"), (0x564E, "bg_enemy")],   # the bounce's jump-held test
         "old_length": 0x21,
         "wram": [0xCEC0, 0xCEC1, 0xCEC2],
         # The shot: twice as fast for half as long. (address, stock bytes, new bytes)
@@ -354,13 +363,15 @@ def patch(rom_bytes, verbose=True):
         rom[f:f + 5] = bytes([OP_CALL, bs & 0xFF, bs >> 8, OP_NOP, OP_NOP])
         say(f"bounce start at ${off:04X} -> call ${bs:04X} bounce_start, with its first step taken")
 
-    bg = labels["bounce_gate"]
-    for off in profile["bounce_gates"]:
+    for off, label in profile["bounce_gates"]:
+        # ld a,(PAD) / bit 0,a / jr nz,bounce / jr pop; the code jumped to goes on at one of the three
         f = file_offset(profile, off)
-        check_bytes(rom_bytes, f, bytes([0xFA, c["PAD"] & 0xFF, c["PAD"] >> 8, 0xCB, 0x47]), "bounce test")
-        check_no_branch_into(rom_bytes, profile, off + 1, off + 3)
-        rom[f:f + 3] = bytes([OP_CALL, bg & 0xFF, bg >> 8])
-        say(f"bounce test at ${off:04X} -> call ${bg:04X} bounce_gate, no bounce while rising")
+        check_bytes(rom_bytes, f, bytes([0xFA, c["PAD"] & 0xFF, c["PAD"] >> 8, 0xCB, 0x47, 0x20, 0x02, 0x18, 0xF2]),
+                    "bounce test")
+        check_no_branch_into(rom_bytes, profile, off + 1, off + 9)
+        a = labels[label]
+        rom[f:f + 3] = bytes([OP_JP, a & 0xFF, a >> 8])
+        say(f"bounce test at ${off:04X} -> jp ${a:04X} {label}, the Master System's bounce by depth and jump phase")
 
     start, end, stock = profile["retired"]
     check_bytes(rom_bytes, file_offset(profile, start), bytes.fromhex(stock), "stock sideways movement")

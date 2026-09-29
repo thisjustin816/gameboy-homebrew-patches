@@ -222,34 +222,70 @@ bounce_start:
     ld (JUMP),a
     pop bc
     ret
-; Called in place of "ld a,(PAD)" where Bub touches the top of a bubble
-; ($5421) or of an enemy in one ($564E). The game then bounces him if bit 0,
-; jump, is held, and pops the bubble if not. It counts him as on top while he
-; is still rising up through it, and with the jump rising 6 px a tick he can
-; get there before the bubble has moved off, and bounce on the way up. On the
-; Master System only a landing bounces, and a bubble hit from below pops. So
-; while the jump is still rising this returns the pad without jump held.
-; Keeps every register but A and F; what follows sets both.
-bounce_gate:
-    push de
+; Jumped to in place of "ld a,(PAD) / bit 0,a / jr nz,bounce / jr pop" where
+; Bub touches the top of a bubble ($5421) or of an enemy in one ($564E). The
+; contact test ($67DD) sends him here with the bubble 0-15 px below his top,
+; and stock bounces him on all of it if jump is held. The Master System goes
+; by how deep his feet are and where he is in the jump. Before the last 5
+; frames at the top, and standing, it pops a bubble he is in, and leaves one
+; he is only 1-2 px into. From then on, and falling, it bounces him off one up
+; to 7 px into his feet and pops anything deeper. At 6-7 px in he rises back
+; through it, and that pops it too.
+bg_bubble:
+    call bounce_rule
+    and a
+    jp z,BUBBLE_POP
+    cp 3
+    jp z,BUBBLE_NEXT
+    cp 2
+    call z,BUBBLE_BURST
+    jp BUBBLE_BOUNCE
+bg_enemy:
+    call bounce_rule
+    and a
+    jp z,ENEMY_POP
+    cp 3
+    jp z,ENEMY_NEXT
+    cp 2
+    call z,ENEMY_BURST
+    jp ENEMY_BOUNCE
+
+; DE = the bubble's Y. Returns A: 0 pop it, 1 bounce, 2 bounce and pop it,
+; 3 leave it. Keeps BC, DE and HL.
+bounce_rule:
     push hl
+    ld hl,Y
+    ld a,(de)
+    sub (hl)
+    ld l,a                      ; how far below Bub's top the bubble's is
+    ld a,(PAD)
+    and PAD_JUMP
+    jr z,br_pop                 ; jump not held: pop it, as stock
+    ld a,(GROUND)
+    and a
+    jr nz,br_early              ; standing
     ld a,(JUMP)
     and a
-    jr z,bg_pad                 ; not jumping: falling or standing
-    ld e,a
-    ld d,0
-    ld hl,jump_table
-    add hl,de
-    ld a,(hl)                   ; the step just taken
-    and $80
-    jr z,bg_pad                 ; at the top or coming down
-    ld a,(PAD)
-    and $FE                     ; rising: as if jump weren't held
-    jr bg_done
-bg_pad:
-    ld a,(PAD)
-bg_done:
+    jr z,br_late                ; falling
+    cp LATE_JUMP+1
+    jr c,br_late                ; the end of the top, or coming down
+br_early:
+    ld a,l
+    cp EARLY_TOP
+    ld a,3
+    jr nc,br_done               ; only 1-2 px into his feet
+br_pop:
+    xor a
+    jr br_done
+br_late:
+    ld a,l
+    cp LATE_POP
+    jr c,br_pop                 ; more than 7 px into his feet
+    cp LATE_CLEAN
+    ld a,1
+    jr nc,br_done
+    inc a                       ; 6-7 px in
+br_done:
     pop hl
-    pop de
     ret
 code_end:

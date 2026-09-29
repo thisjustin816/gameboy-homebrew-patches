@@ -231,7 +231,7 @@ def footprint(stock, patched):
     allowed |= {P.file_offset(PROFILE, PROFILE["table_ptr"][0]) + k for k in range(3)}
     allowed |= {P.file_offset(PROFILE, a) + 1 for a in PROFILE["jump_starts"]}
     allowed |= {P.file_offset(PROFILE, a) + k for a in PROFILE["bounce_starts"] for k in range(5)}
-    allowed |= {P.file_offset(PROFILE, a) + k for a in PROFILE["bounce_gates"] for k in range(3)}
+    allowed |= {P.file_offset(PROFILE, a) + k for a, _ in PROFILE["bounce_gates"] for k in range(3)}
     allowed |= {P.file_offset(PROFILE, PROFILE["retired"][0]) + k for k in range(3)}
     for off, _, new in PROFILE["shot"] + PROFILE["bubbles"] + PROFILE["takeoff"]:
         allowed |= {P.file_offset(PROFILE, off) + k for k in range(len(bytes.fromhex(new)))}
@@ -587,6 +587,52 @@ def from_below(rom):
     return rise, bounces
 
 
+def depth_map(rom):
+    """How Bub, holding jump, meets a bubble held 0-15 px below his top: for a
+    bubble put there at frame 20 of a jump (the top's first half), at frame 34
+    (coming down) and while he stands. p pops it, X bounces and pops it, B
+    bounces, . leaves it."""
+    g = Game(rom)
+    g.new_game()
+    g.hold(["right"], 56)
+    g.tick(10)
+    for i in range(4):
+        g.pb.button_press("b")
+        g.tick()
+        g.pb.button_release("b")
+    g.tick(40)
+    base = g.snapshot()
+    hits = [0]
+    for a in PROFILE["bounce_starts"]:
+        g.pb.hook_register(PROFILE["bank"], a, lambda _: hits.__setitem__(0, hits[0] + 1), None)
+    def trial(d, at, stand=False):
+        g.restore(base)
+        hits[0] = 0
+        g.invincible = True
+        g.pb.button_press("a")
+        if stand:
+            g.tick(80)                  # one jump, landed, jump still held
+            at = 0
+        y = x = None
+        for i in range(at + 40):
+            if i == at:
+                y, x = (g.m[C["Y"]] + d) & 0xFF, g.m[C["X"]]
+            if i >= at:
+                if g.m[C["BUBBLE_STATE"]] != 11:
+                    break
+                g.m[C["BUBBLE_Y"]], g.m[C["BUBBLE_X"]] = y, x
+            g.tick()
+            if hits[0] and i > at + 3:
+                break
+        g.pb.button_release("a")
+        popped = g.m[C["BUBBLE_STATE"]] != 11
+        return "XB"[not popped] if hits[0] else "p." [not popped]
+    rows = ["".join(trial(d, 20) for d in range(16)), "".join(trial(d, 34) for d in range(16)),
+            "".join(trial(d, 0, stand=True) for d in range(16))]
+    g.stop()
+    return rows
+
+
 def bouncing(stock, patched):
     print("landing on bubbles")
     (s, s_turn), (p, p_turn) = bubble_window(stock), bubble_window(patched)
@@ -597,6 +643,14 @@ def bouncing(stock, patched):
           f"jumping up into a bubble with jump held never bounces off it on the way up (rise {rise} px, {n} bounces)")
     check(len(p) == 23 and p == list(range(p[0], p[0] + 23)) and len(s) == 13,
           f"Bub bounces anywhere in a {len(p)} px span over a bubble, as on the Master System (stock {len(s)} px)")
+    (s_top, s_down, s_stand), (p_top, p_down, p_stand) = depth_map(stock), depth_map(patched)
+    check(p_top == "p" * 14 + "BB" and p_stand == "p" * 14 + "..",
+          f"at the top's first half, and standing, a bubble he is in pops and one 1-2 px into his feet is left "
+          f"(in a jump, until the top's second half bounces him off it), as on the Master System: "
+          f"{p_top}, {p_stand} (stock {s_top}, {s_stand})")
+    check(p_down == "p" * 9 + "XX" + "B" * 5 and "p" not in s_down,
+          f"coming down, he bounces off a bubble up to 5 px into his feet, bounces and pops it at 6-7 and pops it "
+          f"deeper, as on the Master System: {p_down} (stock bounces at every depth: {s_down})")
 
 
 def landings(stock, patched):
