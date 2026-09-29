@@ -36,6 +36,7 @@ SRAM_SIZE = 0x2000
 GRID = ["BCDFGHJK", "LMNPQRST", "VWXZ1345"]
 PASSWORDS = {1: "BBBB", 5: "GGBB", 10: "MBMB", 20: "GFBC", 30: "TRCC", 40: "NCDK", 50: "HFCC", 60: "SBFP"}
 FLOOR_Y = 232                           # Bub standing on round 1's floor
+SMS_NEAR_TOP = [10, 12, 14, 18]         # Master System frames within 0, 1, 2 and 4 px of a jump's top
 failures = []
 
 
@@ -230,7 +231,7 @@ def footprint(stock, patched):
     allowed |= {P.file_offset(PROFILE, PROFILE["table_ptr"][0]) + k for k in range(3)}
     allowed |= {P.file_offset(PROFILE, a) + 1 for a in PROFILE["jump_starts"]}
     allowed |= {P.file_offset(PROFILE, PROFILE["retired"][0]) + k for k in range(3)}
-    for off, _, new in PROFILE["shot"]:
+    for off, _, new in PROFILE["shot"] + PROFILE["bubbles"]:
         allowed |= {P.file_offset(PROFILE, off) + k for k in range(len(bytes.fromhex(new)))}
     allowed |= {P.file_offset(PROFILE, PROFILE["fire_gate"][0]) + k for k in range(4)}
     save, _ = P.assemble_save(PROFILE)
@@ -370,6 +371,16 @@ def physics(stock, patched):
         xa = g.xy()[0]
         g.hold(["right"], 30)
         res["walk"] = round((g.xy()[0] - xa) / 30, 3)
+        r.walk_to(88)
+        arc = [y0 - y for _, y, _ in r.jump([], [])]
+        res["near_top"] = [sum(1 for h in arc if h >= max(arc) - k) for k in (0, 1, 2, 4)]
+        g.restore(r.start)                                           # onto the ledge, then jump off it
+        r.jump([], [])
+        g.hold(["right"], 10)
+        ya = g.xy()[1]
+        t = r.jump(["right"], ["right"], 80)
+        ys = [y for _, y, _ in t]
+        res["below_start"] = [ys[i + 2] - ys[i] for i in range(len(ys) - 2) if ys[i] > ya + 4 and ys[i + 2] < FLOOR_Y][:8]
         g.restore(r.start)                                           # up onto the ledge, then off its edge
         r.jump([], [])
         g.pb.button_press("right")
@@ -384,13 +395,19 @@ def physics(stock, patched):
         got[name] = res
     s, p = got["stock"], got["patched"]
     rise, apex, air, _ = p["open"]
-    check(rise == 42 and apex == 10 and 44 <= air <= 50,
+    check(rise == 42 and apex == 10 and 44 <= air <= 52,
           f"a jump rises {rise} px (stock {s['open'][0]}), stays at the top {apex} frames (stock {s['open'][1]}) "
           f"and lasts {air} frames (stock {s['open'][2]}), as on the Master System (42, 10, about 48)")
     check(p["ledge5"] == 40 and s["ledge5"] == 40 and p["ledge6"] == 0 and s["ledge6"] == 0,
           "both catch the ledge 5 tiles up and neither catches the platform 6 tiles up, "
           "so the patched jump reaches the same ledges as stock")
-    check(abs(p["hold"] - 1.125) < 0.1 and abs(p["release"] - 0.94) < 0.1 and abs(p["against"] - 0.375) < 0.1,
+    check(p["near_top"] == SMS_NEAR_TOP,
+          f"frames within 0, 1, 2 and 4 px of the top: {p['near_top']}, as the Master System's {SMS_NEAR_TOP} "
+          f"(stock {s['near_top']})")
+    fall = sum(p["below_start"]) / (2 * len(p["below_start"])) if p["below_start"] else None
+    check(fall == 1.25, f"jumping off a ledge, Bub falls {fall} px a frame once he is below where he started, "
+          f"as on the Master System")
+    check(abs(p["hold"] - 1.125) < 0.1 and abs(p["release"] - 0.75) < 0.1 and abs(p["against"] - 0.375) < 0.1,
           f"a jump locked to one side moves {p['hold']} holding that way, {p['release']} letting go and "
           f"{p['against']} pushing back (stock {s['hold']}, {s['release']}, {s['against']})")
     check(abs(p["steer"] - 0.31) < 0.1, f"a jump straight up steers at {p['steer']} (stock {s['steer']})")
@@ -482,6 +499,49 @@ def trapping(stock, patched):
     print("trapping enemies")
     s, p = captures(stock), captures(patched)
     check(p >= s * 0.7 and p > 0, f"seeded play traps {p} enemies in 18000 frames (stock {s})")
+
+
+def bubble_window(rom):
+    """The horizontal offsets at which Bub, falling with jump held, bounces on a bubble held in place."""
+    g = Game(rom)
+    g.new_game()
+    g.hold(["right"], 56)
+    g.tick(10)
+    for i in range(4):
+        g.pb.button_press("b")
+        g.tick()
+        g.pb.button_release("b")
+    g.tick(40)
+    bx, by = g.m[C["BUBBLE_X"]], g.m[C["BUBBLE_Y"]]
+    base = g.snapshot()
+    hits = [0]
+    for a in PROFILE["jump_starts"][1:]:
+        g.pb.hook_register(PROFILE["bank"], a, lambda _: hits.__setitem__(0, hits[0] + 1), None)
+    g.invincible = True
+    got = []
+    for dx in range(-24, 25):
+        g.restore(base)
+        hits[0] = 0
+        for i in range(90):
+            g.m[C["BUBBLE_Y"]] = by
+            if i == 34:                 # partway down a jump, over the bubble
+                g.m[C["X"]], g.m[C["Y"]] = (bx + dx) & 0xFF, by - 24
+            for k in ["a"]:
+                g.pb.button_press(k)
+            g.tick()
+            g.pb.button_release("a")
+            if hits[0] and i > 34:
+                got.append(dx)
+                break
+    g.stop()
+    return got
+
+
+def bouncing(stock, patched):
+    print("landing on bubbles")
+    s, p = bubble_window(stock), bubble_window(patched)
+    check(len(p) == 23 and p == list(range(p[0], p[0] + 23)) and len(s) == 13,
+          f"Bub bounces anywhere in a {len(p)} px span over a bubble, as on the Master System (stock {len(s)} px)")
 
 
 def landings(stock, patched):
@@ -576,7 +636,9 @@ def saving(stock, patched):
     check(g.sram() == bytes.fromhex("b0b10000a5") and g.m[0xA000] == 0xFF,
           f"a new game saves route 1, round 1: {g.sram().hex(' ')}, and the SRAM is left disabled")
     clear_round(g, 1)
-    check(g.m[SC["ROUND"]] == 1 and g.sram() == sram_image(0, 1)[:5], f"clearing it saves round 2: {g.sram().hex(' ')}")
+    route = g.m[SC["ROUTE"]]
+    check(g.m[SC["ROUND"]] == 1 and g.sram() == sram_image(route, 1)[:5],
+          f"clearing it saves round 2 of the route it goes on to: {g.sram().hex(' ')}")
     ram = g.stop(save=True)
     check(len(ram) == SRAM_SIZE, "the emulator writes an 8 KB battery file")
     for seed in range(2, 12):           # seeded play that happens to take round 1's door
@@ -840,6 +902,7 @@ def main():
     filler_unused(stock, tmp)
     physics(stock, patched)
     shot(stock, patched)
+    bouncing(stock, patched)
     trapping(stock, patched)
     landings(stock, patched)
     dmg_mode(patched)

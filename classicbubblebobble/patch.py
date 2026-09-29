@@ -67,13 +67,13 @@ ROM_PROFILES = {
             "COOL_TICKS": 11,           # the Master System's rate: a shot every 22 frames (stock 28)
             "SHOT": 0xD536,             # the shot's state, 0 while the slot is free
             "BUBBLE_STATE": 0xD538,     # the first floating bubble's state, then one per 2 bytes
-            "BUBBLE_X": 0xD509,
+            "BUBBLE_X": 0xD509, "BUBBLE_Y": 0xD508,
             "RANGE_ITEM": 0xC048,       # set by the item that makes shots go further
             "RESUME": 0x4BD3,           # the stock landing check
             # 8-tick patterns of extra pixels
             "MASK_FALL": 0x55,          # 2 + 4/8
             "MASK_PUSH": 0x11,          # 2 + 2/8
-            "MASK_COAST": 0x01,         # 2 - 1/8
+            "MASK_COAST": 0x55,         # 2 - 4/8
             "MASK_AGAINST": 0x77,       # 6/8
             "MASK_STEER": 0xAD,         # 5/8
         },
@@ -97,6 +97,10 @@ ROM_PROFILES = {
                  (0x5B3F, "fe10", "fe08"),
                  (0x5B44, "fe0a", "fe05")],
         "fire_gate": (0x4C4C, "2136d57e"),     # ld hl,$D536 / ld a,(hl) in the fire check
+        # Landing on a bubble: the contact test ($67DD) takes Bub and a bubble as
+        # touching within 6 px either side, 13 px in all; the Master System's is 23
+        "bubbles": [(0x6815, "fe07", "fe0c"),  # 0 to 11 px to one side
+                    (0x6819, "fefa", "fef5")], # 1 to 11 px to the other
         # The save
         "save": {
             "org": 0x3E00,
@@ -341,7 +345,7 @@ def patch(rom_bytes, verbose=True):
     rom[f:f + 3] = bytes([OP_JP, m & 0xFF, m >> 8])
     say(f"sideways movement and gravity at ${start:04X}-${end - 1:04X} -> jp ${m:04X}")
 
-    for off, old, new in profile["shot"]:
+    for off, old, new in profile["shot"] + profile["bubbles"]:
         f = file_offset(profile, off)
         check_bytes(rom_bytes, f, bytes.fromhex(old), "shot constant")
         rom[f:f + len(bytes.fromhex(new))] = bytes.fromhex(new)

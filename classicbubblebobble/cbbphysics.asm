@@ -6,10 +6,10 @@
 ; not jumping. This replaces the jump table and the per-tick sideways movement
 ; and gravity (the stock code from bank 2 $4AEF to $4BD2):
 ;
-;   jump        rises 42 px in 10 ticks, easing out; stays at the top 10
-;               frames, as on the Master System; falls back the same way and
-;               keeps falling 6 px a tick until it lands
-;   locked      2.25 px a tick holding that way, 1.875 letting go, 0.75
+;   jump        the Master System's arc, sampled every other frame: rises
+;               42 px in 10 ticks, stays at the top 10 frames, comes back
+;               down to its start in 11 ticks, then falls 2.5 px a tick
+;   locked      2.25 px a tick holding that way, 1.5 letting go, 0.75
 ;               pushing against it (it never reverses)
 ;   straight up 0.625 px a tick of steering, anywhere in the jump
 ;   walk-off    2.5 px a tick down and 1 px a tick sideways, either way
@@ -25,13 +25,15 @@
 ; ==== org PHYS_ORG ====
 
 ; Y steps, applied from the last entry to the first. Entry 0 is applied last
-; and stays 0, as stock's does: one routine starts a jump at JUMP = 1.
+; and stays 0, as stock's does: one routine starts a jump at JUMP = 1. The
+; steps are the Master System's jump sampled every other frame: up 42 px, 5
+; ticks at the top, and back down to where it started. After that Bub falls
+; at the ordinary rate, as on the Master System.
 jump_table:
     db 0
-    db 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6
-    db 6,6,6,6,5,4,3,3,2,1
+    db 3,6,6,6,5,4,4,3,2,2,1
     db 0,0,0,0
-    db -1,-2,-3,-3,-4,-5,-6,-6,-6,-6
+    db -2,-2,-3,-3,-4,-5,-5,-6,-6,-6
 jump_end:
 
 ; Jumped to in place of the stock sideways movement and gravity. Continues at
