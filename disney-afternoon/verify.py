@@ -4,20 +4,18 @@
     python3 verify.py MULTICART DUCKTALES DUCKTALES2 TALESPIN DARKWING bundleMain.mbundle
 
 1. The header is valid and says 2 MiB MBC1 with 8 KiB of RAM and no battery.
-2. Each quarter holds its game byte for byte, apart from the title patch, and in
+2. Each quarter holds its game byte for byte, apart from the combo patch, and in
    quarter 0 the boot hook and header.
 3. The splash and all four menu screens appear as built, the cursor wraps both
    ways, and B, SELECT and left/right do nothing.
-4. B on each game's title screen, and on DuckTales 2's difficulty screen,
-   brings back the menu with that game highlighted, and B on DuckTales' LAND
-   SELECT, which shares the title's menu code, does nothing.
+4. A+B+SELECT+START on each game's title screen and in the middle of play
+   brings back the menu with that game highlighted.
 5. For each game, launched from the menu, every frame of scripted play matches
    the stock ROM given the same input, on a DMG and on a Game Boy Color. So
-   does a second launch after going back with B. The multicart starts a few
-   frames later (the launcher clears WRAM and waits for line 0), so the delay is
-   found once on the attract mode, and the streams must then agree on every
-   frame. B now means something on a title screen, so the script's B presses
-   that land on one are dropped, and the stock run is repeated until none do.
+   does a second launch after going back with the combo. The multicart starts a
+   few frames later (the launcher clears WRAM and waits for line 0), so the
+   delay is found once on the attract mode, and the streams must then agree on
+   every frame. The script never presses SELECT, so it never makes the combo.
 """
 import hashlib, multiprocessing, os, queue, random, shutil, sys, tempfile
 
@@ -29,9 +27,14 @@ from pyboy import PyBoy
 PLAY_FRAMES = 11000          # about three minutes of play per game
 # Frames after a launch to reach each title screen, and presses on the way.
 TO_TITLE = [(200, []), (700, [(400, 'start')]), (500, []), (2500, [])]
+# Presses after a launch that get into play; the combo is tried 300 frames on.
+INTO_PLAY = [[(176, 'start'), (296, 'start'), (416, 'start')],
+             [(406, 'start'), (636, 'start'), (756, 'start'), (876, 'a'), (996, 'a')],
+             [(496, 'start'), (636, 'start'), (776, 'start'), (916, 'start')],
+             [(2636, 'start'), (2786, 'start'), (2936, 'start'), (3086, 'a')]]
+COMBO = ('a', 'b', 'select', 'start')
 ALIGN_WINDOW = 12            # the multicart may start up to this many frames later
 ALIGN_FRAMES = 600           # attract-mode frames used to find that delay
-DROP_ROUNDS = 8              # stock runs allowed to clear B presses off the title
 SESSION_TIMEOUT = 900        # seconds; a stuck emulator counts as a failure
 BOOT_WAIT = 300              # PyBoy's own boot logo, then our splash
 DMG_SHADES = [(255, 255, 255), (153, 153, 153), (85, 85, 85), (0, 0, 0)]
@@ -88,12 +91,12 @@ def static_checks(multi, roms):
     check(multi[0x104:0x134] == roms[0][0x104:0x134], 'Nintendo logo intact')
     boot, _, labels = build.build_code()
     changed = {0x102, 0x103} | set(range(build.HOOK, build.HOOK + len(boot))) | set(range(0x134, 0x150))
-    for at, data in build.title_patches(roms, labels, len(boot)):
+    for at, data in build.combo_patches(roms, labels, len(boot)):
         changed |= set(range(at, at + len(data)))
     for q, (g, r) in enumerate(zip(build.GAMES, roms)):
         base = q * build.QUARTER
         diff = [i for i in range(len(r)) if multi[base + i] != r[i] and base + i not in changed]
-        check(not diff, f"quarter {q} holds {g['label']} unchanged but for its patches"
+        check(not diff, f"quarter {q} holds {g['label']} unchanged but for its patch"
                         + (f' (first diff at {diff[0]:#x})' if diff else ''))
 
 
@@ -126,7 +129,7 @@ def menu_checks(multi, screens):
 def input_script(seed):
     """(frame, button, hold) presses, timed from the game's entry."""
     rng = random.Random(seed)
-    buttons = ['a', 'b', 'left', 'right', 'up', 'down']
+    buttons = ['a', 'b', 'left', 'right', 'up', 'down']        # never SELECT
     out, f = [], 30
     while f < PLAY_FRAMES:
         if f % 600 < 20:              # tap START to get through menus and pauses
@@ -152,8 +155,7 @@ def start_stock(rom, cgb):
     raise SystemExit('stock ROM never reached $0100')
 
 
-def to_title(pb, sel):
-    frames, presses = TO_TITLE[sel]
+def run_presses(pb, frames, presses):
     for f in range(frames):
         for pf, b in presses:
             if pf == f:
@@ -161,11 +163,24 @@ def to_title(pb, sel):
         pb.tick(1, True)
 
 
+def to_title(pb, sel):
+    run_presses(pb, *TO_TITLE[sel])
+
+
+def combo(pb):
+    for b in COMBO:
+        pb.button_press(b)
+    pb.tick(10, True)
+    for b in COMBO:
+        pb.button_release(b)
+    pb.tick(40, True)
+
+
 def start_multi(multi, sel, go, cgb, bounce=False):
     """Launch game sel from the menu; stop in the frame the launcher is entered.
 
-    With bounce, go on to the game's title, back to the menu with B, and launch
-    it again, stopping at that second launch.
+    With bounce, go on to the game's title, back to the menu with the combo, and
+    launch it again, stopping at that second launch.
 
     PyBoy hooks patch memory when registered, so the launch stub in HRAM and a
     game's entry in a remapped quarter can't be hooked; the menu's jump to the
@@ -188,35 +203,18 @@ def start_multi(multi, sel, go, cgb, bounce=False):
             raise SystemExit('menu never launched a game')
         if bounce and launch == 0:
             to_title(pb, sel)
-            press(pb, 'b', 40)
+            combo(pb)
             pb.button('a', 3)
     return pb
 
 
-def title_b(pb, t):
-    """Whether B is newly pressed on the title, judged where the patch judges it."""
-    m = pb.memory
-    if t['kind'] == 'loop':
-        return m[t['new']] & 2
-    if not m[0xFF00 + t['new']] & 2:
-        return False
-    hl = pb.register_file.HL
-    if t['kind'] == 'menu':
-        return hl == t['hl']
-    return any(hl == h and m[hl + 1] == mask and m[hl + 2] | m[hl + 3] << 8 == target
-               for h, mask, target in t['ops'])
-
-
-def play(pb, script, frames, offset=0, clock=None):
-    """Run frames, applying script shifted by offset; return per-frame hashes.
-    clock[0] holds the frame being run, for hooks to read."""
+def play(pb, script, frames, offset=0):
+    """Run frames, applying script shifted by offset; return per-frame hashes."""
     by_frame = {}
     for f, b, n in script:
         by_frame.setdefault(f + offset, []).append((b, n))
     hashes = []
     for f in range(frames):
-        if clock is not None:
-            clock[0] = f
         for b, n in by_frame.get(f, []):
             pb.button(b, n)
         pb.tick(1, True)
@@ -224,20 +222,12 @@ def play(pb, script, frames, offset=0, clock=None):
     return hashes
 
 
-def session(rom, sel, go, cgb, script, frames, offset=0, bounce=False, title=None):
-    """One emulator run: the stock ROM if sel is None, else game sel from the menu.
-
-    Returns the frame hashes, and for a stock run given its game's title profile,
-    the frames in which B was newly pressed on the title.
-    """
+def session(rom, sel, go, cgb, script, frames, offset=0, bounce=False):
+    """One emulator run: the stock ROM if sel is None, else game sel from the menu."""
     pb = start_stock(rom, cgb) if sel is None else start_multi(rom, sel, go, cgb, bounce)
-    clock, seen = [0], set()
-    if title:
-        bank, addr = title['site']
-        pb.hook_register(bank, addr, lambda c: title_b(pb, title) and seen.add(clock[0]), None)
-    hashes = play(pb, script, frames, offset, clock)
+    hashes = play(pb, script, frames, offset)
     done(pb)
-    return hashes, sorted(seen)
+    return hashes
 
 
 def _child(q, args):
@@ -260,16 +250,6 @@ def run(*args):
         p.join()
 
 
-def drop_title_b(script, frames):
-    """Drop the B press behind each frame in which B landed on a title."""
-    out = list(script)
-    for f in frames:
-        presses = [p for p in out if p[1] == 'b' and p[0] <= f]
-        if presses:
-            out.remove(max(presses))
-    return out
-
-
 def delay(probe, probe_want):
     """The multicart's start-up delays that fit the stock attract mode."""
     return [o for o in range(ALIGN_WINDOW) if probe[o + 10:o + ALIGN_FRAMES] == probe_want[10:]]
@@ -283,66 +263,47 @@ def play_checks(multi, roms, cgb):
         # Find the start-up delay on the attract mode, before any input. Its
         # opening screens hold still for a while, so it takes a long window to
         # leave only one delay that fits.
-        probe_want, _ = run(rom, None, go, cgb, [], ALIGN_FRAMES)
+        probe_want = run(rom, None, go, cgb, [], ALIGN_FRAMES)
         probe = run(multi, sel, go, cgb, [], ALIGN_FRAMES + ALIGN_WINDOW)
         if probe is None:
             check(False, f'{name}: the multicart hung')
             continue
-        offsets = delay(probe[0], probe_want)
+        offsets = delay(probe, probe_want)
         if len(offsets) != 1:
             check(False, f'{name}: start-up delay not pinned down (fits: {offsets})')
             continue
         off = offsets[0]
         again = run(multi, sel, go, cgb, [], ALIGN_FRAMES + ALIGN_WINDOW, 0, True)
-        check(again is not None and delay(again[0], probe_want) == [off],
-              f'{name}: launched again after B, it starts exactly as the first time')
-
-        # Drop the script's B presses that land on a title screen, until a stock
-        # run with it has none. A dropped press can change what stock does next
-        # (B may still be held when the game starts), so each round runs again.
-        script, dropped = input_script(1000 + sel), 0
-        for _ in range(DROP_ROUNDS):
-            want, landed = run(rom, None, go, cgb, script, PLAY_FRAMES, 0, False, g['title'])
-            if not landed:
-                break
-            script = drop_title_b(script, landed)
-            dropped += len(landed)
-        check(not landed, f'{name}: a script with no B on a title screen ({dropped} B presses dropped)')
-        if landed:
-            continue
+        check(again is not None and delay(again, probe_want) == [off],
+              f'{name}: launched again after the combo, it starts exactly as the first time')
+        script = input_script(1000 + sel)
+        want = run(rom, None, go, cgb, script, PLAY_FRAMES)
         got = run(multi, sel, go, cgb, script, PLAY_FRAMES + off, off)
         if got is None:
             check(False, f'{name}: the multicart hung during play')
             continue
-        got = got[0][off:]
+        got = got[off:]
         bad = [i for i in range(10, PLAY_FRAMES) if got[i] != want[i]]
         check(not bad, f'{name}: {PLAY_FRAMES - 10} frames of play match stock '
                        f'(start-up delay {off} frames)' + (f'; first mismatch at frame {bad[0]}' if bad else ''))
 
-        if sel == 0:
-            # LAND SELECT runs the title's menu code with a different HL.
-            frames, _ = TO_TITLE[0]
-            land = [(frames, 'start', 3)] + [(frames + 60 + 12 * i, 'b', 3) for i in range(8)]
-            want, landed = run(rom, None, go, cgb, land, frames + 200, 0, False, g['title'])
-            got = run(multi, sel, go, cgb, land, frames + 200 + off, off)
-            check(not landed and got is not None and got[0][off:] == want,
-                  f'{name}: B on LAND SELECT does nothing, as in stock')
 
-
-def b_checks(multi, screens):
-    """B on each title screen, and on DuckTales 2's difficulty screen, which
-    shows on its title, brings back the menu with that game highlighted."""
+def combo_checks(multi, screens):
+    """A+B+SELECT+START on each title screen and in play brings back the menu
+    with that game highlighted."""
     go = build.build_code()[2]['go']
-    cases = [(sel, []) for sel in range(4)] + [(1, [(0, 'start')])]
-    for sel, extra in cases:
+    for sel, g in enumerate(build.GAMES):
         pb = start_multi(multi, sel, go, False)
         to_title(pb, sel)
-        for _, b in extra:
-            press(pb, b, 60)
-        where = 'difficulty screen' if extra else 'title screen'
-        press(pb, 'b', 40)
+        combo(pb)
         check(screen_matches(pb, screens[1 + sel]),
-              f"B on the {build.GAMES[sel]['label']} {where} goes back to the menu on that game")
+              f"the combo on the {g['label']} title screen goes back to the menu on that game")
+        pb.button('a', 3)
+        pb.tick(2, True)
+        run_presses(pb, INTO_PLAY[sel][-1][0] + 300, INTO_PLAY[sel])
+        combo(pb)
+        check(screen_matches(pb, screens[1 + sel]),
+              f"the combo in {g['label']}'s play goes back to the menu on that game")
         done(pb)
 
 
@@ -357,7 +318,7 @@ def main():
     static_checks(multi, roms)
     screens = build.screens(roms, art)
     menu_checks(multi, screens)
-    b_checks(multi, screens)
+    combo_checks(multi, screens)
     play_checks(multi, roms, cgb=False)
     play_checks(multi, roms, cgb=True)
     print(f'\n{len(failures)} failure(s)' if failures else '\nall checks pass')

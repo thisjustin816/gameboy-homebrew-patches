@@ -5,8 +5,8 @@ Four Capcom MBC1 games go into one 2 MiB MBC1 ROM, one per 512 KiB quarter.
 DuckTales holds quarter 0, and a splash and game menu live in its unused banks.
 Picking a game switches MBC1 to mode 1 with that game's quarter in the upper
 bank bits, which puts its own bank 0 at $0000, then starts it from the state
-the boot ROM leaves. B on a game's title screen goes back to the menu: each
-game gets a small patch at the spot where its title checks for START.
+the boot ROM leaves. A+B+SELECT+START anywhere in a game goes back to the
+menu, through a small patch at the end of each game's joypad routine.
 
 Inputs are checked by md5: the four USA ROMs, and bundleMain.mbundle from the
 PC Disney Afternoon Collection for the logos. The menu font is DuckTales 2's
@@ -28,31 +28,24 @@ ROM_SIZE = 0x200000
 
 # Menu order is quarter order.
 #
-# title: where B is added to the title screen. site is (bank, address) of the
-# bytes the patch replaces with a call, and 'replaces' what must be there. new
-# is where the game keeps newly pressed buttons (B is bit 1). The check goes in
-# free padding in the game's bank 0, from pad to $0100. The kinds are:
-#   menu    the title's menu loop, shared with other menus, told apart by HL
-#   loop    a loop only the title runs
-#   script  the script interpreter's button-test op; ops lists the title's ops
-#           as (HL at the operands, mask, branch target) as the script holds them
+# combo: where A+B+SELECT+START is caught. site is the address in bank 0 of the
+# bytes the patch replaces, and 'replaces' what must be there. The kinds are:
+#   tail   the end of the joypad routine, replaced with a jump to combo.asm,
+#          which goes in free padding in bank 0 from pad to $0100
+#   reset  the game's own soft reset on the combo; its jump is retargeted
 GAMES = [
     dict(key='ducktales', md5='785441d3d75913393807b10b3194dc48', size=0x10000,
          label='DUCKTALES', art='GameLogoDuckTales.png',
-         title=dict(kind='menu', site=(2, 0x6130), replaces='F08CE609', new=0x8C,
-                    start_mask=0x09, hl=0x029C, pad=None)),   # pad: after the boot hook
+         combo=dict(kind='tail', site=0x3791, replaces='3E30E000C9', pad=None)),  # pad: after the boot hook
     dict(key='ducktales2', md5='b4e5876c5acedd12b62e25a12973a4ae', size=0x20000,
          label='DUCKTALES 2', art='GameLogoDuckTales2.png',
-         title=dict(kind='script', site=(0, 0x1651), replaces='0E922A', new=0x93,
-                    ops=[(0x4DC6, 0x08, 0x4DCF), (0x4DFC, 0x09, 0x4E05)], pad=0x0061)),
+         combo=dict(kind='tail', site=0x03C1, replaces='3E30E000C9', pad=0x0061)),
     dict(key='talespin', md5='26c65da146faa09505c554447792e493', size=0x20000,
          label='TALESPIN', art='GameLogoTaleSpin.png',
-         title=dict(kind='loop', site=(1, 0x4034), replaces='FAA2C0E608', new=0xC0A2,
-                    start_mask=0x08, pad=0x0063)),
+         combo=dict(kind='reset', site=0x032F, replaces='C35001', pad=0x0063)),
     dict(key='darkwing', md5='7d776329212fa7cc2b00c5a46f06dd92', size=0x20000,
          label='DARKWING DUCK', art='GameLogoDarkwingDuck.png',
-         title=dict(kind='script', site=(0, 0x10F5), replaces='0E922A', new=0x93,
-                    ops=[(0x78B1, 0x08, 0x78B8)], pad=0x0061)),
+         combo=dict(kind='tail', site=0x0381, replaces='3E30E000C9', pad=0x0061)),
 ]
 BUNDLE_MD5 = 'c20f738bd6e913e2b669cb15d87d697c'   # PC release, bundleMain.mbundle
 SPLASH_ART = 'LogoDisneyAfternoon.png'
@@ -256,52 +249,32 @@ def build_code():
     return boot, menu, {**menu_lab, **lab}
 
 
-def title_patches(roms, labels, boot_len):
-    """Return [(file offset, bytes)] adding B-to-menu to each game's title screen."""
+def combo_patches(roms, labels, boot_len):
+    """Return [(file offset, bytes)] sending each game to the menu on A+B+SELECT+START."""
     patches = []
     for q, (g, rom) in enumerate(zip(GAMES, roms)):
-        t = g['title']
-        bank, addr = t['site']
-        site = bank * BANK + addr - (BANK if bank else 0)
-        want = bytes.fromhex(t['replaces'])
+        c = g['combo']
+        site, want = c['site'], bytes.fromhex(c['replaces'])
         if rom[site:site + len(want)] != want:
-            sys.exit(f"{g['key']}: the title check at {bank:02X}:{addr:04X} is not the expected code")
-        pad = HOOK + boot_len if t['pad'] is None else t['pad']
+            sys.exit(f"{g['key']}: the code at ${site:04X} is not the expected joypad routine")
+        pad = HOOK + boot_len if c['pad'] is None else c['pad']
         if any(rom[pad:HOOK_END]):
             sys.exit(f"{g['key']}: ${pad:04X}-$00FF is not free padding")
         stub, _, _ = assemble(consts(MENU_BANK=MENU_BANK, GAME=q, BACK=labels['back'])
                               + src('menu_stub.asm'), 0xFF80)
-        c = consts(NEW=t['new'], MENU_STUB_LEN=len(stub))
-        if t['kind'] == 'menu':
-            c += consts(START_MASK=t['start_mask'], TITLE_HL_HI=t['hl'] >> 8, TITLE_HL_LO=t['hl'] & 0xFF)
-        elif t['kind'] == 'loop':
-            c += consts(START_MASK=t['start_mask'])
-        text = c + src(f"title_{t['kind']}.asm") + src('go_menu.asm') + db_lines('menu_stub', stub)
-        if t['kind'] == 'script':
-            ops = bytearray()
-            for hl, mask, target in t['ops']:
-                assert hl & 0xFF, 'a zero low byte would end the list'
-                assert rom[bank_of_script(rom, hl, mask, target)] == 0x11
-                ops += bytes([hl & 0xFF, hl >> 8, mask, target & 0xFF, target >> 8])
-            text += db_lines('title_ops', ops + b'\0')
+        text = consts(MENU_STUB_LEN=len(stub))
+        if c['kind'] == 'tail':
+            text += src('combo.asm')
+        text += src('go_menu.asm') + db_lines('menu_stub', stub)
         code, lab, _ = assemble(text, pad)
         if pad + len(code) > HOOK_END:
-            sys.exit(f"{g['key']}: title check is {len(code)} bytes, only {HOOK_END - pad} are free")
-        call = bytes([0xCD, lab['title_check'] & 0xFF, lab['title_check'] >> 8])
+            sys.exit(f"{g['key']}: the combo code is {len(code)} bytes, only {HOOK_END - pad} are free")
+        target = lab['combo' if c['kind'] == 'tail' else 'go_menu']
+        jump = bytes([0xC3, target & 0xFF, target >> 8])
         base = q * QUARTER
         patches.append((base + pad, code))
-        patches.append((base + site, call + bytes(len(want) - 3)))   # nop out the rest
+        patches.append((base + site, jump + bytes(len(want) - 3)))   # the rest is never reached
     return patches
-
-
-def bank_of_script(rom, hl, mask, target):
-    """File offset of the op byte for a title op; exactly one bank must hold it."""
-    found = [b * BANK + hl - BANK - 1 for b in range(1, len(rom) // BANK)
-             if rom[b * BANK + hl - BANK:b * BANK + hl - BANK + 4]
-             in (bytes([o, mask, target & 0xFF, target >> 8]) for o in (0, 1))]
-    if len(found) != 1:
-        sys.exit(f'title op at ${hl:04X} found in {len(found)} banks, expected one')
-    return found[0]
 
 
 # ---- layout -------------------------------------------------------------------
@@ -331,7 +304,7 @@ def build(roms, art):
     for q, r in enumerate(roms):
         out[q * QUARTER:q * QUARTER + len(r)] = r
     out[HOOK:HOOK + len(boot)] = boot
-    for at, data in title_patches(roms, labels, len(boot)):
+    for at, data in combo_patches(roms, labels, len(boot)):
         out[at:at + len(data)] = data
     out[0x102:0x104] = HOOK.to_bytes(2, 'little')       # entry: nop / jp HOOK
     out[MENU_BANK * BANK:MENU_BANK * BANK + len(menu)] = menu

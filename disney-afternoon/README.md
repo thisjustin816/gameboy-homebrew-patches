@@ -9,10 +9,9 @@ with the collection's logo, then a menu showing each game's logo.
 | Splash | A or START | Opens the menu |
 | Menu | Up, down | Picks a game |
 | Menu | A or START | Starts it |
-| A game's title screen | B | Back to the menu, on that game |
+| Anywhere in a game | A+B+SELECT+START | Back to the menu, on that game |
 
-B works on each game's title screen, which includes DuckTales 2's difficulty choice.
-None of the four uses B there. Anywhere else in a game, B does what it always did.
+TaleSpin already had this combo as a soft reset. It now goes to the menu as well.
 
 No ROMs or PC files are included. Bring your own:
 
@@ -58,17 +57,17 @@ Gambatte and EverDrive-class carts do. Carts that only do MBC5 banking won't run
   quarter to the `$4000` register and sets mode 1, so the game's own bank 0 appears at
   `$0000`. It clears WRAM, restores the CPU registers the boot ROM left, and jumps to
   the game's entry point.
-- For B, each game gets a call at the spot where its title screen checks for START,
-  into a check in the free padding of its bank 0:
+- For the combo, each game's joypad routine, which runs once a frame, gets a jump into
+  code in the free padding of its bank 0:
 
-  | Game | Patched at | Tells the title apart by |
+  | Game | Patched at | How |
   |---|---|---|
-  | DuckTales | `02:6130`, the title's menu loop | HL, since LAND SELECT runs the same loop |
-  | DuckTales 2 | `00:1651`, the script interpreter's button test | the op's address, mask and branch target |
-  | TaleSpin | `01:4034`, a loop only the title runs | nothing else needed |
-  | Darkwing Duck | `00:10F5`, the script interpreter's button test | the op's address, mask and branch target |
+  | DuckTales | `$3791` | the routine's last three instructions jump to a check of the held buttons |
+  | DuckTales 2 | `$03C1` | the same |
+  | TaleSpin | `$032F` | the game's own soft reset on the combo now jumps to the menu |
+  | Darkwing Duck | `$0381` | the same as DuckTales |
 
-  Each check leaves the registers and flags as the replaced instructions did. On B it
+  The check leaves A and the flags as the replaced instructions did. On the combo it
   copies a stub to HRAM that maps quarter 0 back in, and the menu takes over with that
   game highlighted, silences the sound and restores the saved registers.
 - The header keeps Capcom's licensee code, so a Game Boy Color gives every game the
@@ -83,21 +82,18 @@ python3 verify.py "Disney Afternoon Collection.gb" DuckTales.gb DuckTales2.gb Ta
 ```
 
 - The ROM is exactly what `build.py` makes, its header and checksums are valid, and each
-  quarter holds its game byte for byte, apart from the title patch, and in quarter 0
+  quarter holds its game byte for byte, apart from the combo patch, and in quarter 0
   the entry point, the hook and the header.
 - The splash and the four menu screens appear pixel for pixel as built, the cursor
   wraps both ways, and other buttons do nothing.
-- B on each title screen, and on DuckTales 2's difficulty screen, brings back the menu
-  screen for that game, pixel for pixel. The same test fails on a build without the
-  patch. B on DuckTales' LAND SELECT matches stock frame for frame.
+- The combo on each title screen and in the middle of play brings back the menu screen
+  for that game, pixel for pixel. The in-play checks fail on a build without the patch.
 - Each game, launched from the menu, is played for about three minutes of scripted
   input next to the stock ROM with the same input. Every frame must match, on both DMG
   and Game Boy Color. The multicart starts a few frames later than the stock ROM (the
   launcher clears WRAM and waits for line 0), and the test measures that delay on the
-  attract mode first. A game started again after B must match stock the same way.
-- B now means something on a title screen, so the script's B presses that land on one
-  are dropped, and the stock run is repeated until none do. Both ROMs then play that
-  script.
+  attract mode first. A game started again after the combo must match stock the same way. The script
+  never presses SELECT, so it never makes the combo.
 
 As a control, a build that launches Darkwing Duck without switching MBC1 to mode 1
 hangs, and `verify.py` reports the hang as a failure.
