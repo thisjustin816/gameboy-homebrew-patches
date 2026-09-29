@@ -3,8 +3,7 @@
 
 usage: verify.py STOCK.gb PATCHED.gb
 
-PATCHED is either build: the tearing fix alone, or the --save build, which
-also gets the checks on saving the last stage.
+PATCHED is the patched ROM: the tearing fix and the save of the last stage.
 
 Runs start from a cold boot and tap through the intro into the first level,
 then play with seeded random input. The comparisons that need the two ROMs in
@@ -131,9 +130,8 @@ def apply_ips(original, ips):
 def footprint(stock, patched):
     print("footprint")
     s, p = open(stock, "rb").read(), open(patched, "rb").read()
-    save = len(p) > len(s)
     check(hashlib.md5(s).hexdigest() in P.ROM_PROFILES, "the stock ROM is the release the patch is made for")
-    check(P.patch(s, verbose=False, save=save) == p, "the patched ROM is exactly what patch.py builds from the stock one")
+    check(P.patch(s, verbose=False) == p, "the patched ROM is exactly what patch.py builds from the stock one")
     ips = P.make_ips(s, p)
     check(apply_ips(s, ips) == p, f"the {len(ips)}-byte IPS patch turns the stock ROM into the patched one")
     code, labels = P.assemble_code(PROFILE)
@@ -146,38 +144,34 @@ def footprint(stock, patched):
     for off, *_ in PROFILE["direct_writes"]:
         allowed |= {off, off + 1}
     allowed |= {0x14E, 0x14F}
-    if not save:
-        check(len(s) == len(p) and s[0x100:0x14E] == p[0x100:0x14E],
-              "same size, and the header (through its checksum) is untouched")
-    else:
-        pieces, _ = P.assemble_save(PROFILE, PROFILE["org_body"] + len(code))
-        for org, blob in pieces:
-            at = org if org < 0x4000 else SV["bank"] * 0x4000 + org - 0x4000
-            allowed |= set(range(at, at + len(blob)))
-        base = SV["bank"] * 0x4000
-        allowed |= set(range(base, base + SV["encoder"][1]))
-        for key in ("stage_load", "pw_init", "pw_step"):
-            allowed |= {SV[key][0] + k for k in range(3)}
-        allowed |= set(SV["header"]) | {0x14D}
-        header_ok = all(p[a] == now for a, (_, now) in SV["header"].items())
-        untouched = s[0x100:0x147] == p[0x100:0x147] and s[0x14A:0x14D] == p[0x14A:0x14D]
-        sum_ok = P.header_checksum(p) == p[0x14D]
-        check(len(p) == SV["rom_size"] and header_ok and untouched and sum_ok,
-              "256 KB, MBC1+RAM+BATTERY with 8 KB of RAM in the header, and the rest of the header intact")
-        check(all(b == 0xFF for i, b in enumerate(p[len(s):], len(s)) if i not in allowed),
-              "the new banks are $FF apart from the patch's own code")
+    pieces, _ = P.assemble_save(PROFILE, PROFILE["org_body"] + len(code))
+    for org, blob in pieces:
+        at = org if org < 0x4000 else SV["bank"] * 0x4000 + org - 0x4000
+        allowed |= set(range(at, at + len(blob)))
+    base = SV["bank"] * 0x4000
+    allowed |= set(range(base, base + SV["encoder"][1]))
+    for key in ("stage_load", "pw_init", "pw_step"):
+        allowed |= {SV[key][0] + k for k in range(3)}
+    allowed |= set(SV["header"]) | {0x14D}
+    header_ok = all(p[a] == now for a, (_, now) in SV["header"].items())
+    untouched = s[0x100:0x147] == p[0x100:0x147] and s[0x14A:0x14D] == p[0x14A:0x14D]
+    sum_ok = P.header_checksum(p) == p[0x14D]
+    check(len(p) == SV["rom_size"] and header_ok and untouched and sum_ok,
+          "256 KB, MBC1+RAM+BATTERY with 8 KB of RAM in the header, and the rest of the header intact")
+    check(all(b == 0xFF for i, b in enumerate(p[len(s):], len(s)) if i not in allowed),
+          "the new banks are $FF apart from the patch's own code")
     changed = [i for i in range(len(s)) if s[i] != p[i]]
     stray = [hex(i) for i in changed if i not in allowed]
     check(not stray, f"{len(changed)} stock bytes differ, all at the patch's own sites (stray: {stray[:5]})")
 
 
-def filler_unused(stock, save=False):
+def filler_unused(stock):
     print("the filler the code goes over")
     state = level_one_state(stock)
     raw = bytearray(open(stock, "rb").read())
     tmp = tempfile.mkdtemp()
     poisoned = os.path.join(tmp, "poisoned.gb")
-    for start, end, _ in PROFILE["filler"] + (SV["filler"] if save else []):
+    for start, end, _ in PROFILE["filler"] + SV["filler"]:
         raw[start:end] = b"\xFF" * (end - start)
     open(poisoned, "wb").write(raw)
     broken = bytearray(open(stock, "rb").read())
@@ -644,7 +638,7 @@ def saving(stock, patched):
     good_low = P.ROM_PROFILES[md5]["save"]["consts"]["SLOT_LOW"]
     P.ROM_PROFILES[md5]["save"]["consts"]["SLOT_LOW"] = good_low - 6
     try:
-        broken = P.patch(open(stock, "rb").read(), verbose=False, save=True)
+        broken = P.patch(open(stock, "rb").read(), verbose=False)
     finally:
         P.ROM_PROFILES[md5]["save"]["consts"]["SLOT_LOW"] = good_low
     bad_path = os.path.join(tempfile.mkdtemp(), "broken.gb")
@@ -815,9 +809,8 @@ def main():
     stock, patched = sys.argv[1], sys.argv[2]
     print(f"stock   {hashlib.md5(open(stock, 'rb').read()).hexdigest()}")
     print(f"patched {hashlib.md5(open(patched, 'rb').read()).hexdigest()}\n")
-    save = os.path.getsize(patched) > os.path.getsize(stock)
     footprint(stock, patched)
-    filler_unused(stock, save)
+    filler_unused(stock)
     hram_untouched(stock)
     routines(stock, patched)
     tearing(stock, patched)
@@ -825,8 +818,7 @@ def main():
     no_stale_overwrite(stock, patched)
     power_on(stock, patched)
     same_game(stock, patched)
-    if save:
-        saving(stock, patched)
+    saving(stock, patched)
     print()
     if failures:
         for f in failures:

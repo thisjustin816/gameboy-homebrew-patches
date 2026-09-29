@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Fix the screen tearing in Bubble Bobble Part 2 (Game Boy), and optionally
-remember the last stage played (--save).
+"""Fix the screen tearing in Bubble Bobble Part 2 (Game Boy), and remember the
+last stage played.
 
 The game runs its logic right after each VBlank and writes the scroll
 registers wherever the logic gets to them, partway down the visible frame.
@@ -14,9 +14,8 @@ one. This makes those writes wait for VBlank:
      writes of its two scrolling transitions with those RSTs.
   4. Have the VBlank handler copy the pending values just before its OAM DMA.
   5. Clear the pending bits at boot, since HRAM starts out random on hardware.
-  6. Repair the global checksum. Without --save the header is untouched.
 
-With --save it also makes the cartridge battery-backed and adds a bank:
+It also makes the cartridge battery-backed and adds a bank:
 
   7. Grow the ROM to 256 KB, mark the header MBC1+RAM+BATTERY with 8 KB of
      RAM, and repair the header checksum.
@@ -24,6 +23,7 @@ With --save it also makes the cartridge battery-backed and adds a bank:
      routines from bb2save.asm into bank 8, with trampolines in bank 0.
   9. Save the password on every stage load, and pre-fill the PASSWORD screen
      with it.
+ 10. Repair the global checksum.
 
 It refuses any ROM it has no profile for, and checks every byte it replaces
 before replacing it.
@@ -85,7 +85,7 @@ ROM_PROFILES = {
         "vblank_dma_call": (0x023F, bytes.fromhex("cd80ff")),
         # The boot's call to the WRAM clear
         "boot_call": (0x0156, bytes.fromhex("cd7f02")),
-        # The optional save feature (--save)
+        # The save
         "save": {
             "rom_size": 0x40000,
             "header": {0x147: (0x01, 0x03),     # MBC1 -> MBC1+RAM+BATTERY
@@ -250,7 +250,7 @@ def check_no_branches_into(rom, address, span, what):
             raise SystemExit(f"{what}: {rom[i:i + 3].hex()} at {i:#07x} branches into it")
 
 
-def patch(rom_bytes, verbose=True, save=False):
+def patch(rom_bytes, verbose=True):
     rom = bytearray(rom_bytes)
     profile = load_profile(rom_bytes)
     say = print if verbose else (lambda *a, **k: None)
@@ -305,13 +305,10 @@ def patch(rom_bytes, verbose=True, save=False):
     rom[off:off + 3] = bytes([OP_CALL, a & 0xFF, a >> 8])
     say(f"boot's WRAM clear call at {off:#07x} -> call ${a:04X} boot_init")
 
-    if save:
-        add_save(rom, rom_bytes, profile, body_end, say)
-    elif header_checksum(rom) != rom[OFF_HDR_SUM]:
-        raise SystemExit("header checksum no longer matches - the header was touched")
+    add_save(rom, rom_bytes, profile, body_end, say)
     g = global_checksum(rom)
     rom[OFF_GLOBAL_SUM], rom[OFF_GLOBAL_SUM + 1] = g >> 8, g & 0xFF
-    say(f"global checksum {g:#06x}" + ("" if save else "; header unchanged"))
+    say(f"global checksum {g:#06x}")
     return bytes(rom)
 
 
@@ -371,11 +368,9 @@ def main():
     ap.add_argument("rom", help="stock Bubble Bobble Part 2 ROM")
     ap.add_argument("-o", "--output", help="patched ROM to write")
     ap.add_argument("--ips", help="IPS patch to write")
-    ap.add_argument("--save", action="store_true",
-                    help="also remember the last stage played (battery save, 256 KB ROM)")
     args = ap.parse_args()
     original = open(args.rom, "rb").read()
-    patched = patch(original, save=args.save)
+    patched = patch(original)
     if args.output:
         open(args.output, "wb").write(patched)
         print(f"wrote {args.output}  (md5 {hashlib.md5(patched).hexdigest()})")

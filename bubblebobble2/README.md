@@ -1,15 +1,14 @@
 # Bubble Bobble Part 2: tearing fix and last-stage save
 
-Two patches for Bubble Bobble Part 2 (Game Boy). One stops the screen from
-tearing while the camera scrolls. The other, on top of it, remembers the last
-stage started and offers its password on the PASSWORD screen.
+A patch for Bubble Bobble Part 2 (Game Boy) that stops the screen from tearing
+while the camera scrolls, and remembers the last stage started, offering its
+password on the PASSWORD screen.
 
 - Game: Bubble Bobble Part 2 (USA, Europe), 128 KB, MBC1
 - Stock md5: `8bbb9ba0d72548706e4e5eba1b3a9fe1`
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `BubbleBobble2-tearfix.ips` | The tearing fix only. The ROM stays 128 KB, and only the header's global checksum bytes change. | `3e09810f16fe0f962109fff0863a3bd4` |
 | `BubbleBobble2-tearfix-save.ips` | The tearing fix and the save. The ROM grows to 256 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `f2ef3b62b6859cc89bbb8494bb4057b2` |
 
 ## What was wrong
@@ -99,15 +98,14 @@ bank). The SRAM is enabled only while `save_stage` and `pf_begin` use it.
 ## Applying it
 
 Use any IPS patcher on an unmodified copy of the ROM, and save the result under
-a new name. Each patch only applies to the stock md5 above.
+a new name. The patch only applies to the stock md5 above.
 
 ## Building it
 
 Python 3 only:
 
 ```
-python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [tearfix].gb" --ips BubbleBobble2-tearfix.ips
-python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" --save -o "Bubble Bobble Part 2 (USA, Europe) [tearfix, save].gb" --ips BubbleBobble2-tearfix-save.ips
+python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [tearfix, save].gb" --ips BubbleBobble2-tearfix-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -119,12 +117,11 @@ rebuilds the same IPS. The tearing fix is `bb2scroll.asm` and the save is
 
 `python3 verify.py STOCK PATCHED` (needs `pip install pyboy pillow`) runs both
 ROMs in PyBoy headless, from a cold boot or from one saved state at the start
-of level 1. PATCHED is either build, and the save checks run on the save build.
-All of it passes on both, and the tearing checks below pass on both builds.
+of level 1. All of it passes.
 
 - **Footprint.** The patched ROM is exactly what `patch.py` builds, and the IPS
   turns stock into it when applied by a separate IPS reader. It differs from
-  stock only at the patch's own bytes. The save build's header changes only in
+  stock only at the patch's own bytes. The header changes only in
   its three cartridge bytes and both checksums, and the new banks are `$FF`
   apart from the patch's code.
 - **Filler.** Filling the RST vectors and the junk area with `$FF` changes
@@ -154,7 +151,7 @@ All of it passes on both, and the tearing checks below pass on both builds.
   the patched title never leaves scroll 0,0. Without the boot clear, one frame
   gets 255,255.
 
-The save checks, on the save build:
+The save checks:
 
 - **No usable save is stock.** A fresh cartridge, SRAM full of `$FF`, random
   SRAM, and a valid signature with a bad checksum all open the PASSWORD screen
@@ -185,5 +182,5 @@ ROMs are a frame out of step. Stock already drops frames in busy scenes
 (the logic runs long on about 0.3 to 6.6 percent of frames in the seeded runs),
 and the count is the same with the patch on the runs that stay in step.
 
-Not tested on a console or flash cart. The save build's header change, an
+Not tested on a console or flash cart. The header change, an
 MBC1 cartridge with battery RAM, is the part most worth trying on hardware.
