@@ -28,6 +28,7 @@ C = PROFILE["consts"]
 SV = PROFILE["save"]
 SC = SV["consts"]
 STATE = 0xD301                          # Bub's state: 0 while he plays, other values while he dies
+TRAPPED = 2                             # an enemy's state (STATE + 4n) once a shot has trapped it
 ROUND_LOAD = (1, 0x419B)                # the round loader reads the round here
 FRAME_END = 0x0B8B                      # runs once a frame on every screen
 INVINCIBLE = 0xC484                     # while nonzero Bub can't be hit, as after a new life
@@ -229,6 +230,9 @@ def footprint(stock, patched):
     allowed |= {P.file_offset(PROFILE, PROFILE["table_ptr"][0]) + k for k in range(3)}
     allowed |= {P.file_offset(PROFILE, a) + 1 for a in PROFILE["jump_starts"]}
     allowed |= {P.file_offset(PROFILE, PROFILE["retired"][0]) + k for k in range(3)}
+    for off, _, new in PROFILE["shot"]:
+        allowed |= {P.file_offset(PROFILE, off) + k for k in range(len(bytes.fromhex(new)))}
+    allowed |= {P.file_offset(PROFILE, PROFILE["fire_gate"][0]) + k for k in range(4)}
     save, _ = P.assemble_save(PROFILE)
     allowed |= set(range(SV["org"], SV["org"] + len(save)))
     for bank, address, _, _ in SV["hooks"]:
@@ -395,6 +399,90 @@ def physics(stock, patched):
     check(p["walk"] == s["walk"], f"walking is stock speed, {p['walk']}")
 
 
+def shot_trace(g, facing, item=False):
+    """Fire from where Bub stands; the frames the shot moves and where it becomes a bubble, relative to Bub."""
+    if item:
+        g.m[C["RANGE_ITEM"]] = 1
+    bx = g.xy()[0]
+    moving, start = 0, None
+    for i in range(100):
+        if i < 4:
+            g.pb.button_press("b")
+        g.tick()
+        if i < 4:
+            g.pb.button_release("b")
+        if g.m[C["SHOT"]]:
+            moving += 1
+        elif moving and g.m[C["BUBBLE_STATE"]]:
+            return moving, g.m[C["BUBBLE_X"]] - bx
+    return moving, None
+
+
+def shot(stock, patched):
+    print("the shot")
+    got = {}
+    for name, rom in (("stock", stock), ("patched", patched)):
+        r = Round1(rom)
+        g = r.g
+        g.invincible = False            # it would stop Bub firing
+        res = {}
+        for item in (False, True):
+            g.restore(r.start)
+            res[("right", item)] = shot_trace(g, "right", item)
+            g.restore(r.start)
+            g.hold(["right"], 40)
+            g.hold(["left"], 2)
+            g.tick(10)
+            res[("left", item)] = shot_trace(g, "left", item)
+        for gap in range(16, 40, 2):    # the soonest a second press fires a second shot
+            g.restore(r.start)
+            for i in range(gap + 40):
+                on = i < 4 or gap <= i < gap + 4
+                if on:
+                    g.pb.button_press("b")
+                g.tick()
+                if on:
+                    g.pb.button_release("b")
+            if sum(1 for j in range(14) if g.m[C["BUBBLE_STATE"] + 2 * j]) >= 2:
+                res["rate"] = gap
+                break
+        g.stop()
+        got[name] = res
+    s, p = got["stock"], got["patched"]
+    for item in (False, True):
+        what = "with the longer-range item" if item else "normally"
+        same = all(p[(d, item)][1] == s[(d, item)][1] for d in ("right", "left"))
+        half = all(abs(p[(d, item)][0] * 2 - s[(d, item)][0]) <= 2 for d in ("right", "left") if s[(d, item)][1] is not None)
+        check(same and half, f"{what}, the shot ends {p[('right', item)][1]} px right and {-p[('left', item)][1]} px left "
+              f"of Bub, as stock, after {p[('right', item)][0]} frames against stock's {s[('right', item)][0]}")
+    check(p.get("rate") == s.get("rate") is not None,
+          f"a second shot fires {p.get('rate')} frames after the first at the soonest, as stock ({s.get('rate')})")
+
+
+def captures(rom):
+    total = 0
+    for seed in range(1, 7):
+        g = Game(rom)
+        g.new_game()
+        prev = None
+
+        def rec(g):
+            nonlocal prev, total
+            st = [g.m[STATE + 4 * k] for k in range(1, 8)]
+            if prev:
+                total += sum(1 for a, b in zip(prev, st) if b == TRAPPED and a != TRAPPED)
+            prev = st
+        play(g, seed, 3000, rec)
+        g.stop()
+    return total
+
+
+def trapping(stock, patched):
+    print("trapping enemies")
+    s, p = captures(stock), captures(patched)
+    check(p >= s * 0.7 and p > 0, f"seeded play traps {p} enemies in 18000 frames (stock {s})")
+
+
 def landings(stock, patched):
     print("landing and bouncing in play")
     for name, rom in (("stock", stock), ("patched", patched)):
@@ -409,7 +497,7 @@ def landings(stock, patched):
 
                 def rec(g):
                     nonlocal grounded, off
-                    if g.m[C["GROUND"]] and g.m[STATE] == 0:
+                    if g.m[C["GROUND"]] and g.m[STATE] == 0 and g.xy() != (255, 255):   # (255, 255): dying
                         grounded += 1
                         off += g.m[C["Y"]] & 7 != 0
                 play(g, seed, 1500, rec)
@@ -490,12 +578,17 @@ def saving(stock, patched):
     check(g.m[SC["ROUND"]] == 1 and g.sram() == sram_image(0, 1)[:5], f"clearing it saves round 2: {g.sram().hex(' ')}")
     ram = g.stop(save=True)
     check(len(ram) == SRAM_SIZE, "the emulator writes an 8 KB battery file")
-    g = Game(patched)
-    g.new_game()
-    clear_round(g, 3)
-    check(g.sram() == sram_image(1, 1)[:5],
-          f"taking round 1's door to the second route saves that route's round 2: {g.sram().hex(' ')}")
-    g.stop()
+    for seed in range(2, 12):           # seeded play that happens to take round 1's door
+        g = Game(patched)
+        g.new_game()
+        clear_round(g, seed)
+        route = g.m[SC["ROUTE"]]
+        saved = g.sram()
+        g.stop()
+        if route:
+            break
+    check(route == 1 and saved == sram_image(1, 1)[:5],
+          f"taking round 1's door to the second route saves that route's round 2: {saved.hex(' ')} (seed {seed})")
 
     # a password typed, a power cycle, and the password back
     g = Game(patched)
@@ -745,6 +838,8 @@ def main():
     footprint(stock, patched)
     filler_unused(stock, tmp)
     physics(stock, patched)
+    shot(stock, patched)
+    trapping(stock, patched)
     landings(stock, patched)
     dmg_mode(patched)
     routines(patched)

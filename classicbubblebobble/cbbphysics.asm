@@ -14,6 +14,8 @@
 ;   straight up 0.625 px a tick of steering, anywhere in the jump
 ;   walk-off    2.5 px a tick down and 1 px a tick sideways, either way
 ;   walking     2 px a tick, 3 with the shoes, as stock
+;   the shot    6 px a tick for half as long, the Master System's speed over
+;               stock's distance; it still fires once every 14 ticks
 ;
 ; Fractions come from an 8-tick pattern: bit (TICK & 7) of a mask says whether
 ; this tick gets the extra pixel. The names below come from the ROM profile
@@ -39,6 +41,12 @@ move:
     push hl
     ld hl,TICK
     inc (hl)
+    ld hl,COOL                  ; the shot cooldown counts down once a tick
+    ld a,(hl)
+    and a
+    jr z,m_cool
+    dec (hl)
+m_cool:
     ld a,(WALL_L)
     and a
     jr nz,m_right
@@ -179,5 +187,20 @@ cad_loop:
     dec c
     jr nz,cad_loop
     pop bc
+    ret
+; Called in place of "ld hl,SHOT / ld a,(hl)" in the fire check, which has
+; already seen B pressed. The shot now travels twice as fast for half as
+; long, so it would free its slot, and let Bub fire again, twice as soon. This
+; keeps stock's rate: it returns A nonzero (no shot) while the last shot or
+; the cooldown is still running, and otherwise starts the cooldown and returns
+; A = 0. HL = SHOT either way, as the fire code expects.
+fire_gate:
+    ld hl,COOL
+    ld a,(SHOT)
+    or (hl)
+    jr nz,fg_done
+    ld (hl),COOL_TICKS
+fg_done:
+    ld hl,SHOT
     ret
 code_end:

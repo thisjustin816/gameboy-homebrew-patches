@@ -43,6 +43,8 @@ BANK_SIZE = 0x4000
 OP_JP = 0xC3
 OP_LD_A = 0x3E
 OP_LD_HL = 0x21
+OP_CALL = 0xCD
+OP_NOP = 0x00
 BRANCHES = (0xC3, 0xC2, 0xCA, 0xD2, 0xDA, 0xCD, 0xC4, 0xCC, 0xD4, 0xDC)
 RELATIVE = (0x18, 0x20, 0x28, 0x30, 0x38)
 
@@ -61,6 +63,12 @@ ROM_PROFILES = {
             "FACE": 0xD302, "FACE_LEFT": 0x80, "FACE_RIGHT": 0x00, "FACE_WALK": 0x01,
             "SHOES": 0xC04A,            # the speed item
             "TICK": 0xCEC0,             # WRAM the game never names or changes
+            "COOL": 0xCEC2,             # ticks until Bub may fire again, also unnamed
+            "COOL_TICKS": 14,           # stock's rate: a shot every 28 frames
+            "SHOT": 0xD536,             # the shot's state, 0 while the slot is free
+            "BUBBLE_STATE": 0xD538,     # the first floating bubble's state, then one per 2 bytes
+            "BUBBLE_X": 0xD509,
+            "RANGE_ITEM": 0xC048,       # set by the item that makes shots go further
             "RESUME": 0x4BD3,           # the stock landing check
             # 8-tick patterns of extra pixels
             "MASK_FALL": 0x55,          # 2 + 4/8
@@ -76,7 +84,19 @@ ROM_PROFILES = {
         "table_ptr": (0x4AA8, bytes.fromhex("212a68")),        # ld hl,$682A
         "jump_starts": [0x4A4B, 0x542A, 0x5657],               # ld a,$21 -> JUMP
         "old_length": 0x21,
-        "wram": [0xCEC0, 0xCEC1],
+        "wram": [0xCEC0, 0xCEC1, 0xCEC2],
+        # The shot: twice as fast for half as long. (address, stock bytes, new bytes)
+        "shot": [(0x4C7E, "c601", "c604"),     # starts 4 px ahead facing right, where stock is after its first tick
+                 (0x4C81, "3e03", "3e06"),     # 6 px a tick to the right
+                 (0x4C92, "d602", "d605"),     # 5 px ahead facing left
+                 (0x4C95, "3efd", "3efa"),     # 6 px a tick to the left
+                 (0x5B29, "fe0e", "fe07"),     # becomes a bubble after 7 ticks, not 14
+                 (0x5B2D, "fe0a", "fe05"),     # and its two sprite frames switch at half the tick counts
+                 (0x5B32, "fe08", "fe04"),
+                 (0x5B3B, "fe18", "fe0c"),     # the same with the longer-range item
+                 (0x5B3F, "fe10", "fe08"),
+                 (0x5B44, "fe0a", "fe05")],
+        "fire_gate": (0x4C4C, "2136d57e"),     # ld hl,$D536 / ld a,(hl) in the fire check
         # The save
         "save": {
             "org": 0x3E00,
@@ -263,6 +283,18 @@ def check_retired(rom, profile):
                 raise SystemExit(f"{view[i:i + 2].hex()} at ${i:04X} may branch into the retired code")
 
 
+def check_no_branch_into(rom, profile, lo, hi):
+    """Nothing in bank 0 or the profile's bank may jump or branch to lo..hi-1."""
+    view = bank_view(rom, profile["bank"])
+    for i in range(0, 0x8000 - 2):
+        if view[i] in BRANCHES and lo <= (view[i + 1] | view[i + 2] << 8) < hi:
+            raise SystemExit(f"{view[i:i + 3].hex()} at ${i:04X} branches into ${lo:04X}-${hi - 1:04X}")
+        if view[i] in RELATIVE:
+            target = i + 2 + (view[i + 1] - 256 if view[i + 1] > 127 else view[i + 1])
+            if lo <= target < hi and abs(target - i) < 130:
+                raise SystemExit(f"{view[i:i + 2].hex()} at ${i:04X} may branch into ${lo:04X}-${hi - 1:04X}")
+
+
 def patch(rom_bytes, verbose=True):
     rom = bytearray(rom_bytes)
     profile = load_profile(rom_bytes)
@@ -308,6 +340,19 @@ def patch(rom_bytes, verbose=True):
     f = file_offset(profile, start)
     rom[f:f + 3] = bytes([OP_JP, m & 0xFF, m >> 8])
     say(f"sideways movement and gravity at ${start:04X}-${end - 1:04X} -> jp ${m:04X}")
+
+    for off, old, new in profile["shot"]:
+        f = file_offset(profile, off)
+        check_bytes(rom_bytes, f, bytes.fromhex(old), "shot constant")
+        rom[f:f + len(bytes.fromhex(new))] = bytes.fromhex(new)
+    off, old = profile["fire_gate"]
+    f = file_offset(profile, off)
+    check_bytes(rom_bytes, f, bytes.fromhex(old), "fire check")
+    check_no_branch_into(rom_bytes, profile, off + 1, off + len(bytes.fromhex(old)))
+    a = labels["fire_gate"]
+    rom[f:f + 4] = bytes([OP_CALL, a & 0xFF, a >> 8, OP_NOP])
+    say(f"shot: {len(profile['shot'])} constants for twice the speed over the same distance; "
+        f"fire check at ${off:04X} -> call ${a:04X} fire_gate")
 
     add_save(rom, rom_bytes, profile, say)
     g = global_checksum(rom)

@@ -1,7 +1,7 @@
 # Classic Bubble Bobble: Master System physics and last-round save
 
-A patch for Classic Bubble Bobble (Game Boy Color) that makes Bub jump and fall
-like he does in the Master System version, and remembers the last round
+A patch for Classic Bubble Bobble (Game Boy Color) that makes Bub jump, fall and
+shoot like he does in the Master System version, and remembers the last round
 started, offering its password on the PASSWORD screen.
 
 - Game: Classic Bubble Bobble (USA), 1 MB, MBC5
@@ -9,7 +9,7 @@ started, offering its password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `c6c517f993d07a27e87c6b1b128156ea` |
+| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `57bbb625a0a6e3cd50d48d85d89e2392` |
 
 ## What was wrong
 
@@ -27,10 +27,30 @@ emulator.
 | Jump locked to one side: holding that way / letting go / pushing back | 0.5 / 0.5 / 0.5 | 1.1 / 0.9 / 0.4 | 1.125 / 0.94 / 0.375 |
 | Steering a jump straight up | 0.5, only near the top | 0.33, the whole jump | 0.31, the whole jump |
 | Walking off a ledge: fall / drift | 0.5 / 1.0 | 1.25 / 0.5 | 1.25 / 0.5 |
-| Walking | 1.0 | | 1.0, as stock |
+| Walking | 1.0 | 1.0 | 1.0, as stock |
+| Bubble shot speed | 1.5 | 3 | 3 |
+| Bubble shot reach | 40 px | about 71 px | 40 px, as stock |
+| Shortest time between shots | 28 frames | 22 frames | 28 frames, as stock |
 
 A jump locked to one side never turns around, on the Master System or here.
 The shoes still add a pixel a tick to walking.
+
+The shot now snaps out at the Master System's speed but stops where stock's
+does, and Bub fires no more often than stock. Classic's rounds are more
+cramped than the Master System's (a shot has a wall within 5 tiles from 39%
+of the places Bub can stand, against 19% in the Master System's round 1), and
+its enemies walk and fall at about half the Master System's speed, so the
+Master System's longer reach would make it an easier game rather than a
+closer one. With the longer-range item a shot still goes as far as stock's,
+70 px, in half the time.
+
+Everything else about bubbles and enemies is stock, because the levels are
+built around it: bubbles float at 0.25 px a frame (the Master System's 0.5),
+last about 35 seconds (13), pass up through the ceiling and come back from
+the floor (the Master System's wait at the ceiling), and pop after 32 px of
+pushing. Enemies walk and fall at 0.5 px a frame (0.8 and 1.0). Bouncing on a
+bubble already works as on the Master System: only with jump held, and now a
+full 42 px jump.
 
 ### The jump height
 
@@ -76,6 +96,9 @@ across a re-patch.
 | Jump table pointer, bank 2 `$4AA8` | the stock 33-step table | the new 45-step table |
 | Jump starts, bank 2 `$4A4B`, `$542A`, `$5657` | 33 steps | 45 steps |
 | Sideways movement and gravity, bank 2 `$4AEF` to `$4BD2` | stock movement | `jp move`, which rejoins the stock landing check at `$4BD3` |
+| Shot start and speed, bank 2 `$4C7E` to `$4C96` | 1 px ahead, 3 px a tick | 4 px ahead, 6 px a tick |
+| Shot length, bank 2 `$5B29` to `$5B45` | a bubble after 14 ticks (24 with the item) | after 7 (12), sprite frames at half the counts |
+| Fire check, bank 2 `$4C4C` | fires once the last shot is a bubble | `call fire_gate`, which also waits out a 14-tick cooldown |
 | Round load, bank 1 `$419B` | `ld a,($C04F)` | `call save_round`, which saves the round and returns that load |
 | PASSWORD screen setup, bank `$3C` `$4036` | `ld ($D683),a` | `call pf_init`, which does that store, then reads the save and runs the encoder |
 | PASSWORD screen, every frame, bank `$3C` `$4196` | `ld a,($D683)` | `call pf_step`, which draws the letters once and returns that load |
@@ -89,11 +112,19 @@ the top and falling faster after it. `patch.py` checks that nothing else in
 the ROM jumps into the retired code. The landing check is stock, and so are
 the bubble and enemy bounces, which start the same table.
 
-The physics code and table (271 bytes) sit in the zero padding at the end of
+The shot starts where stock's is after its first tick and moves 6 px a tick,
+so it passes through every other one of stock's positions and stops at the
+same place. Bub can only fire while the shot's slot is free, and the shorter
+shot frees it sooner, so `fire_gate` adds a cooldown of stock's 14 ticks. The
+game's hit test for a shot is 14 px wide, so a 6 px step can't jump past an
+enemy.
+
+The physics code and table (294 bytes) sit in the zero padding at the end of
 bank 2, and the save routines (200 bytes) in the zero padding at the end of
 bank 0. The game never runs or reads either. `$CEC0` counts ticks for the
-fractions and `$CEC1` holds the one flag between the two PASSWORD routines.
-The game never names or touches either byte, and `pf_init` clears the flag
+fractions, `$CEC2` is the shot cooldown, and `$CEC1` holds the one flag
+between the two PASSWORD routines. The game never names or touches any of
+them, and `pf_init` clears the flag
 when there is no save, because WRAM is random at power-on on a console.
 
 `pf_init` runs with interrupts off during the screen's setup, and puts the
@@ -128,18 +159,22 @@ starts any round, with the round number set as the round loader reads it. All
 of it passes.
 
 - **Footprint.** The patched ROM is exactly what `patch.py` builds, and the IPS
-  turns stock into it when applied by a separate IPS reader. All 477 bytes that
-  differ from stock are the patch's code and table, its hooks, the two
+  turns stock into it when applied by a separate IPS reader. All 514 bytes that
+  differ from stock are the patch's code and table, its hooks, the shot's constants, the two
   cartridge bytes in the header and the checksums.
 - **Filler.** Filling both paddings with `$FF` changes none of 2490 frames of
   password entry and play. The control, breaking the VBlank vector, changes all
-  of them. The stock game never changes `$CEC0` or `$CEC1`, whether they start
-  at 0 or at `$FF`.
+  of them. The stock game never changes `$CEC0`, `$CEC1` or `$CEC2`, whether
+  they start at 0 or at `$FF`.
 - **Physics.** From round 1, the numbers in the table above: height, time at
   the top and length of a jump, the three speeds of a locked jump, steering,
   walking off a ledge, and walking. Both stock and patched catch the ledge 5
   tiles above the start, and neither catches the platform 6 tiles up.
-- **Landing.** Over 6654 frames standing in seeded play on rounds 5 to 60, Bub
+- **The shot.** It stops 40 px right and 41 px left of Bub, as stock's does,
+  in 13 frames against stock's 27, and 70 px with the longer-range item, in
+  23 frames against 47. A second shot fires 28 frames after the first at the
+  soonest, as on stock. Seeded play traps at least as many enemies as stock does (20 against 15).
+- **Landing.** Over 6808 frames standing in seeded play on rounds 5 to 60, Bub
   always stands on the tile grid, and bubble and enemy bounces still start
   jumps. In DMG mode round 1 starts and a jump reaches the ledge above.
 - **Routines.** `save_round`, `pf_init` (good and bad save) and `pf_step`
