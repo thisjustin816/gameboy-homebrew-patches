@@ -9,7 +9,7 @@ started, offering its password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `57bbb625a0a6e3cd50d48d85d89e2392` |
+| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `53465c40a8f9f7501bebe5f92394525d` |
 
 ## What was wrong
 
@@ -30,18 +30,18 @@ emulator.
 | Walking | 1.0 | 1.0 | 1.0, as stock |
 | Bubble shot speed | 1.5 | 3 | 3 |
 | Bubble shot reach | 40 px | about 71 px | 40 px, as stock |
-| Shortest time between shots | 28 frames | 22 frames | 28 frames, as stock |
+| Shortest time between shots | 28 frames | 22 frames | 22 frames |
 
 A jump locked to one side never turns around, on the Master System or here.
 The shoes still add a pixel a tick to walking.
 
 The shot now snaps out at the Master System's speed but stops where stock's
-does, and Bub fires no more often than stock. Classic's rounds are more
-cramped than the Master System's (a shot has a wall within 5 tiles from 39%
-of the places Bub can stand, against 19% in the Master System's round 1), and
-its enemies walk and fall at about half the Master System's speed, so the
-Master System's longer reach would make it an easier game rather than a
-closer one. With the longer-range item a shot still goes as far as stock's,
+does. Bub can fire every 22 frames, as on the Master System, where stock
+waits 28. Classic's rounds are more cramped than the Master System's (a shot
+has a wall within 5 tiles from 39% of the places Bub can stand, against 19% in
+the Master System's round 1), and its enemies walk and fall at about half the
+Master System's speed, so the Master System's longer reach would make it an
+easier game rather than a closer one. With the longer-range item a shot still goes as far as stock's,
 70 px, in half the time.
 
 Everything else about bubbles and enemies is stock, because the levels are
@@ -98,7 +98,7 @@ across a re-patch.
 | Sideways movement and gravity, bank 2 `$4AEF` to `$4BD2` | stock movement | `jp move`, which rejoins the stock landing check at `$4BD3` |
 | Shot start and speed, bank 2 `$4C7E` to `$4C96` | 1 px ahead, 3 px a tick | 4 px ahead, 6 px a tick |
 | Shot length, bank 2 `$5B29` to `$5B45` | a bubble after 14 ticks (24 with the item) | after 7 (12), sprite frames at half the counts |
-| Fire check, bank 2 `$4C4C` | fires once the last shot is a bubble | `call fire_gate`, which also waits out a 14-tick cooldown |
+| Fire check, bank 2 `$4C4C` | fires once the last shot is a bubble | `call fire_gate`, which also waits out an 11-tick cooldown |
 | Round load, bank 1 `$419B` | `ld a,($C04F)` | `call save_round`, which saves the round and returns that load |
 | PASSWORD screen setup, bank `$3C` `$4036` | `ld ($D683),a` | `call pf_init`, which does that store, then reads the save and runs the encoder |
 | PASSWORD screen, every frame, bank `$3C` `$4196` | `ld a,($D683)` | `call pf_step`, which draws the letters once and returns that load |
@@ -115,7 +115,8 @@ the bubble and enemy bounces, which start the same table.
 The shot starts where stock's is after its first tick and moves 6 px a tick,
 so it passes through every other one of stock's positions and stops at the
 same place. Bub can only fire while the shot's slot is free, and the shorter
-shot frees it sooner, so `fire_gate` adds a cooldown of stock's 14 ticks. The
+shot frees it sooner, so `fire_gate` adds a cooldown of 11 ticks, the Master
+System's 22 frames (stock waits 14 ticks). The
 game's hit test for a shot is 14 px wide, so a 6 px step can't jump past an
 enemy.
 
@@ -172,9 +173,10 @@ of it passes.
   tiles above the start, and neither catches the platform 6 tiles up.
 - **The shot.** It stops 40 px right and 41 px left of Bub, as stock's does,
   in 13 frames against stock's 27, and 70 px with the longer-range item, in
-  23 frames against 47. A second shot fires 28 frames after the first at the
-  soonest, as on stock. Seeded play traps at least as many enemies as stock does (20 against 15).
-- **Landing.** Over 6808 frames standing in seeded play on rounds 5 to 60, Bub
+  23 frames against 47. A second shot fires 22 frames after the first at the
+  soonest, as on the Master System (stock 28). Seeded play traps at least as
+  many enemies as stock does.
+- **Landing.** Over 6476 frames standing in seeded play on rounds 5 to 60, Bub
   always stands on the tile grid, and bubble and enemy bounces still start
   jumps. In DMG mode round 1 starts and a jump reaches the ledge above.
 - **Routines.** `save_round`, `pf_init` (good and bad save) and `pf_step`

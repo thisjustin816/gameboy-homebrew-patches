@@ -64,7 +64,7 @@ ROM_PROFILES = {
             "SHOES": 0xC04A,            # the speed item
             "TICK": 0xCEC0,             # WRAM the game never names or changes
             "COOL": 0xCEC2,             # ticks until Bub may fire again, also unnamed
-            "COOL_TICKS": 14,           # stock's rate: a shot every 28 frames
+            "COOL_TICKS": 11,           # the Master System's rate: a shot every 22 frames (stock 28)
             "SHOT": 0xD536,             # the shot's state, 0 while the slot is free
             "BUBBLE_STATE": 0xD538,     # the first floating bubble's state, then one per 2 bytes
             "BUBBLE_X": 0xD509,

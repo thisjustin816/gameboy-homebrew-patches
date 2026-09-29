@@ -455,8 +455,9 @@ def shot(stock, patched):
         half = all(abs(p[(d, item)][0] * 2 - s[(d, item)][0]) <= 2 for d in ("right", "left") if s[(d, item)][1] is not None)
         check(same and half, f"{what}, the shot ends {p[('right', item)][1]} px right and {-p[('left', item)][1]} px left "
               f"of Bub, as stock, after {p[('right', item)][0]} frames against stock's {s[('right', item)][0]}")
-    check(p.get("rate") == s.get("rate") is not None,
-          f"a second shot fires {p.get('rate')} frames after the first at the soonest, as stock ({s.get('rate')})")
+    check(p.get("rate") == 2 * C["COOL_TICKS"] == 22 and s.get("rate") == 28,
+          f"a second shot fires {p.get('rate')} frames after the first at the soonest, as on the Master System "
+          f"(stock {s.get('rate')})")
 
 
 def captures(rom):
