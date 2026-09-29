@@ -84,6 +84,7 @@ ROM_PROFILES = {
         "table_ptr": (0x4AA8, bytes.fromhex("212a68")),        # ld hl,$682A
         "jump_starts": [0x4A4B],                               # ld a,$21 -> JUMP, from the ground
         "bounce_starts": [0x542A, 0x5657],                     # the same, bouncing on a bubble or a trapped enemy
+        "bounce_gates": [0x5421, 0x564E],                      # ld a,(PAD) before the bounce's jump-held test
         "old_length": 0x21,
         "wram": [0xCEC0, 0xCEC1, 0xCEC2],
         # The shot: twice as fast for half as long. (address, stock bytes, new bytes)
@@ -352,6 +353,14 @@ def patch(rom_bytes, verbose=True):
         check_no_branch_into(rom_bytes, profile, off + 1, off + 5)
         rom[f:f + 5] = bytes([OP_CALL, bs & 0xFF, bs >> 8, OP_NOP, OP_NOP])
         say(f"bounce start at ${off:04X} -> call ${bs:04X} bounce_start, with its first step taken")
+
+    bg = labels["bounce_gate"]
+    for off in profile["bounce_gates"]:
+        f = file_offset(profile, off)
+        check_bytes(rom_bytes, f, bytes([0xFA, c["PAD"] & 0xFF, c["PAD"] >> 8, 0xCB, 0x47]), "bounce test")
+        check_no_branch_into(rom_bytes, profile, off + 1, off + 3)
+        rom[f:f + 3] = bytes([OP_CALL, bg & 0xFF, bg >> 8])
+        say(f"bounce test at ${off:04X} -> call ${bg:04X} bounce_gate, no bounce while rising")
 
     start, end, stock = profile["retired"]
     check_bytes(rom_bytes, file_offset(profile, start), bytes.fromhex(stock), "stock sideways movement")

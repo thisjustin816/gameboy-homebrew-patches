@@ -222,4 +222,34 @@ bounce_start:
     ld (JUMP),a
     pop bc
     ret
+; Called in place of "ld a,(PAD)" where Bub touches the top of a bubble
+; ($5421) or of an enemy in one ($564E). The game then bounces him if bit 0,
+; jump, is held, and pops the bubble if not. It counts him as on top while he
+; is still rising up through it, and with the jump rising 6 px a tick he can
+; get there before the bubble has moved off, and bounce on the way up. On the
+; Master System only a landing bounces, and a bubble hit from below pops. So
+; while the jump is still rising this returns the pad without jump held.
+; Keeps every register but A and F; what follows sets both.
+bounce_gate:
+    push de
+    push hl
+    ld a,(JUMP)
+    and a
+    jr z,bg_pad                 ; not jumping: falling or standing
+    ld e,a
+    ld d,0
+    ld hl,jump_table
+    add hl,de
+    ld a,(hl)                   ; the step just taken
+    and $80
+    jr z,bg_pad                 ; at the top or coming down
+    ld a,(PAD)
+    and $FE                     ; rising: as if jump weren't held
+    jr bg_done
+bg_pad:
+    ld a,(PAD)
+bg_done:
+    pop hl
+    pop de
+    ret
 code_end:

@@ -231,6 +231,7 @@ def footprint(stock, patched):
     allowed |= {P.file_offset(PROFILE, PROFILE["table_ptr"][0]) + k for k in range(3)}
     allowed |= {P.file_offset(PROFILE, a) + 1 for a in PROFILE["jump_starts"]}
     allowed |= {P.file_offset(PROFILE, a) + k for a in PROFILE["bounce_starts"] for k in range(5)}
+    allowed |= {P.file_offset(PROFILE, a) + k for a in PROFILE["bounce_gates"] for k in range(3)}
     allowed |= {P.file_offset(PROFILE, PROFILE["retired"][0]) + k for k in range(3)}
     for off, _, new in PROFILE["shot"] + PROFILE["bubbles"] + PROFILE["takeoff"]:
         allowed |= {P.file_offset(PROFILE, off) + k for k in range(len(bytes.fromhex(new)))}
@@ -549,11 +550,51 @@ def bubble_window(rom):
     return got, turn
 
 
+def from_below(rom):
+    """Bub jumps up into a bubble held 30 px above him, holding jump: (highest rise, bounces)."""
+    g = Game(rom)
+    g.new_game()
+    g.hold(["right"], 56)
+    g.tick(10)
+    for i in range(4):
+        g.pb.button_press("b")
+        g.tick()
+        g.pb.button_release("b")
+    g.tick(40)
+    bx, by = g.m[C["BUBBLE_X"]], g.m[C["BUBBLE_Y"]]
+    base = g.snapshot()
+    hits = [0]
+    for a in PROFILE["bounce_starts"]:
+        g.pb.hook_register(PROFILE["bank"], a, lambda _: hits.__setitem__(0, hits[0] + 1), None)
+    rise, bounces = 0, 0
+    for dx in (-8, 0, 8):
+        g.restore(base)
+        hits[0] = 0
+        g.m[C["X"]] = (bx + dx) & 0xFF
+        g.tick(2)
+        g.invincible = True
+        y0, top = g.xy()[1], g.xy()[1]
+        for i in range(70):
+            if g.m[C["BUBBLE_STATE"]] == 11:
+                g.m[C["BUBBLE_Y"]] = by - 30
+            g.pb.button_press("a")
+            g.tick()
+            g.pb.button_release("a")
+            top = min(top, g.xy()[1])
+        rise, bounces = max(rise, y0 - top), bounces + hits[0]
+        g.invincible = False
+    g.stop()
+    return rise, bounces
+
+
 def bouncing(stock, patched):
     print("landing on bubbles")
     (s, s_turn), (p, p_turn) = bubble_window(stock), bubble_window(patched)
     check(all(p_turn) and not any(s_turn),
           "a bounce carries Bub upwards on the tick he touches the bubble, where stock sinks for one more")
+    rise, n = from_below(patched)
+    check(rise == 42 and n == 0,
+          f"jumping up into a bubble with jump held never bounces off it on the way up (rise {rise} px, {n} bounces)")
     check(len(p) == 23 and p == list(range(p[0], p[0] + 23)) and len(s) == 13,
           f"Bub bounces anywhere in a {len(p)} px span over a bubble, as on the Master System (stock {len(s)} px)")
 
