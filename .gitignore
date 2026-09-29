@@ -7,3 +7,6 @@
 *.sav
 *.state
 __pycache__/
+# PC Disney Afternoon Collection data files
+*.mbundle
+*.pie

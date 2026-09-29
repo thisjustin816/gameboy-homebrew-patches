@@ -10,13 +10,16 @@ shipped without, and fixes for bugs that never got patched.
 Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **There are no ROMs here.** Bring your own copy of the
 game, and check its md5 against the patch's README first. Each patch is made
-for one exact release, and the build script refuses any other.
+for one exact release, and the build script refuses any other. The Disney
+Afternoon Collection is the exception: it combines four ROMs into one, so it
+comes as a build script instead of an IPS file.
 
 | Game | Folder | What the patch does |
 |---|---|---|
 | Hermano / Hermano (ModRetro) | [`hermano/`](hermano/) | Adds a battery save. The game autosaves as you play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
 | Roguecraft GB | [`roguecraft/`](roguecraft/) | Lets you resume a run: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after you look at the mini-map. The title screen reads `v1.000b`, and the RESUME GAME menu clears the title's menu away while it's up. |
 | Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. A second patch adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
+| Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. B on a game's title screen goes back to the menu. Otherwise each game runs exactly as on its own cart. |
 
 ## Applying a patch
 
