@@ -1,0 +1,183 @@
+; Bub's movement in the air, retuned to match the Master System version.
+;
+; The game moves Bub once per logic tick, and a tick is two frames. It jumps
+; along a table of Y steps indexed by a countdown (JUMP), locks the direction
+; held at take-off (LOCK), and applies one pixel of gravity every tick it is
+; not jumping. This replaces the jump table and the per-tick sideways movement
+; and gravity (the stock code from bank 2 $4AEF to $4BD2):
+;
+;   jump        rises 42 px in 10 ticks, easing out; stays at the top 10
+;               frames, as on the Master System; falls back the same way and
+;               keeps falling 6 px a tick until it lands
+;   locked      2.25 px a tick holding that way, 1.875 letting go, 0.75
+;               pushing against it (it never reverses)
+;   straight up 0.625 px a tick of steering, anywhere in the jump
+;   walk-off    2.5 px a tick down and 1 px a tick sideways, either way
+;   walking     2 px a tick, 3 with the shoes, as stock
+;
+; Fractions come from an 8-tick pattern: bit (TICK & 7) of a mask says whether
+; this tick gets the extra pixel. The names below come from the ROM profile
+; in patch.py.
+
+; ==== org PHYS_ORG ====
+
+; Y steps, applied from the last entry to the first. Entry 0 is applied last
+; and stays 0, as stock's does: one routine starts a jump at JUMP = 1.
+jump_table:
+    db 0
+    db 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6
+    db 6,6,6,6,5,4,3,3,2,1
+    db 0,0,0,0
+    db -1,-2,-3,-3,-4,-5,-6,-6,-6,-6
+jump_end:
+
+; Jumped to in place of the stock sideways movement and gravity. Continues at
+; RESUME, the landing check, which sets every register it uses.
+move:
+    push bc
+    push de
+    push hl
+    ld hl,TICK
+    inc (hl)
+    ld a,(WALL_L)
+    and a
+    jr nz,m_right
+    ld b,LOCK_LEFT
+    ld c,PAD_LEFT
+    ld d,PAD_RIGHT
+    ld e,FACE_LEFT
+    call speed
+    and a
+    jr z,m_right
+    ld b,a
+    ld a,(X)
+    sub b
+    ld (X),a
+    jr gravity
+m_right:
+    ld a,(WALL_R)
+    and a
+    jr nz,gravity
+    ld b,LOCK_RIGHT
+    ld c,PAD_RIGHT
+    ld d,PAD_LEFT
+    ld e,FACE_RIGHT
+    call speed
+    and a
+    jr z,gravity
+    ld b,a
+    ld a,(X)
+    add a,b
+    ld (X),a
+gravity:
+    ld a,(JUMP)
+    and a
+    jr nz,m_done
+    ld a,(GROUND)
+    and a
+    ld b,1                      ; standing: stock's one pixel, which the landing check takes back
+    jr nz,g_add
+    ld a,MASK_FALL
+    call cadence
+    ld b,2
+    jr nc,g_add
+    inc b
+g_add:
+    ld a,(Y)
+    add a,b
+    ld (Y),a
+m_done:
+    pop hl
+    pop de
+    pop bc
+    jp RESUME
+
+; Pixels to move one way this tick. B = that way's LOCK value, C its pad bit,
+; D the other way's pad bit, E its facing bit. Returns A. Sets the facing where
+; the stock code did.
+speed:
+    ld a,(LOCK)
+    and a
+    jr z,sp_free
+    cp b
+    jr nz,sp_zero               ; locked the other way
+    ld a,(PAD)
+    and c
+    jr nz,sp_push
+    ld a,(PAD)
+    and d
+    jr nz,sp_against
+    ld a,MASK_COAST
+    call cadence
+    ld a,2
+    ret nc
+    dec a
+    ret
+sp_push:
+    ld a,MASK_PUSH
+    call cadence
+    ld a,2
+    ret nc
+    inc a
+    ret
+sp_against:
+    ld a,MASK_AGAINST
+    call cadence
+    ld a,0
+    ret nc
+    inc a
+    ret
+sp_zero:
+    xor a
+    ret
+sp_free:
+    ld a,(PAD)
+    and c
+    jr z,sp_zero
+    ld a,(JUMP)
+    and a
+    jr nz,sp_steer
+    ld a,e                      ; walking or falling: stock sets the whole state byte
+    or FACE_WALK
+    ld (FACE),a
+    ld a,(GROUND)
+    and a
+    ld a,1
+    jr z,sp_shoes
+    inc a
+sp_shoes:
+    ld b,a
+    ld a,(SHOES)
+    and a
+    ld a,b
+    ret z
+    inc a
+    ret
+sp_steer:
+    ld a,(FACE)
+    and $7F
+    or e
+    ld (FACE),a
+    ld a,MASK_STEER
+    call cadence
+    ld a,0
+    ret nc
+    inc a
+    ret
+
+; Carry = bit (TICK & 7) of the mask in A. Keeps every register but A.
+cadence:
+    push bc
+    ld b,a
+    ld a,(TICK)
+    and 7
+    inc a
+    ld c,a
+    ld a,b
+cad_loop:
+    rrca
+    dec c
+    jr nz,cad_loop
+    pop bc
+    ret
+code_end:
