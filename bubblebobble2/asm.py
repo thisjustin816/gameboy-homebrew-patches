@@ -116,8 +116,8 @@ class Assembler:
             if final and (v & ~0x38):
                 raise AsmError(f'bad rst vector: {v:#x}')
             return [0xC7 | (v & 0x38)]
-        if mnem == 'xor' and parts[0] in R8:
-            return [0xA8 | R8[parts[0]]]
+        if mnem == 'xor':
+            return [0xA8 | R8[parts[0]]] if parts[0] in R8 else [0xEE] + n8(parts[0])
         if mnem == 'or':
             return [0xB0 | R8[parts[0]]] if parts[0] in R8 else [0xF6] + n8(parts[0])
         if mnem == 'and':

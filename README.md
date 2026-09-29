@@ -16,7 +16,7 @@ for one exact release, and the build script refuses any other.
 |---|---|---|
 | Hermano / Hermano (ModRetro) | [`hermano/`](hermano/) | Adds a battery save. The game autosaves as you play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
 | Roguecraft GB | [`roguecraft/`](roguecraft/) | Lets you resume a run: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after you look at the mini-map. The title screen reads `v1.000b`, and the RESUME GAME menu clears the title's menu away while it's up. |
-| Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. |
+| Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. A second patch adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
 
 ## Applying a patch
 
