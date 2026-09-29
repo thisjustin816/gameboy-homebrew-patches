@@ -144,7 +144,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Classic Bubble Bobble (USA).gbc" -o "Classic Bubble Bobble (USA) [physics, save].gbc" --ips ClassicBubbleBobble-physics-save.ips
+python3 patch.py "Classic Bubble Bobble (USA).gbc" -o "Classic Bubble Bobble (USA) [SMS physics & save patch by thisJUSTin816 v1.0].gbc" --ips ClassicBubbleBobble-physics-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
