@@ -11,6 +11,11 @@ password on the PASSWORD screen.
 |---|---|---|
 | `BubbleBobble2-tearfix-save.ips` | The tearing fix and the save. The ROM grows to 256 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `f2ef3b62b6859cc89bbb8494bb4057b2` |
 
+## Versions
+
+- **v1.1:** one patch, `BubbleBobble2-tearfix-save.ips`, with the tearing fix and the save. The IPS is byte for byte the one v1.0 shipped as the save patch, so a ROM made from it is unchanged. Only the tearing-only patch is gone.
+- **v1.0:** the first release, two patches: the tearing fix alone, and the tearing fix with the save.
+
 ## What was wrong
 
 The game runs its logic right after each VBlank and writes the scroll
@@ -105,7 +110,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [tearfix, save].gb" --ips BubbleBobble2-tearfix-save.ips
+python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [Tearing fix & save patch by thisJUSTin816 v1.1].gb" --ips BubbleBobble2-tearfix-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it

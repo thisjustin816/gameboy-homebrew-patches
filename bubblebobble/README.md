@@ -74,7 +74,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Bubble Bobble (USA, Europe).gb" -o "Bubble Bobble (USA, Europe) [save].gb" --ips BubbleBobble-save.ips
+python3 patch.py "Bubble Bobble (USA, Europe).gb" -o "Bubble Bobble (USA, Europe) [Password save patch by thisJUSTin816 v1.0].gb" --ips BubbleBobble-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
