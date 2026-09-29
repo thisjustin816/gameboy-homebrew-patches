@@ -206,4 +206,20 @@ fire_gate:
 fg_done:
     ld hl,SHOT
     ret
+; Called in place of "ld a,JUMP_LENGTH / ld (JUMP),a" where Bub bounces on a
+; bubble (bank 2 $542A) or on an enemy in one ($5657). Those run after this
+; tick's movement, so the stock bounce leaves Bub sinking for another tick.
+; This starts the jump with its first step already taken, as a jump from the
+; ground now is. Keeps every register but A and F; what follows sets both.
+bounce_start:
+    push bc
+    ld a,(jump_end-1)           ; the first step up
+    ld b,a
+    ld a,(Y)
+    add a,b
+    ld (Y),a
+    ld a,jump_end-jump_table-1
+    ld (JUMP),a
+    pop bc
+    ret
 code_end:

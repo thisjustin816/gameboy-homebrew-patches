@@ -82,7 +82,8 @@ ROM_PROFILES = {
         # The stock sideways movement and gravity, retired by a jp at its start
         "retired": (0x4AEF, 0x4BD3, "fa7ac4a72067fa7ec4fe01200afa27d53dea27d5c3c64b"),
         "table_ptr": (0x4AA8, bytes.fromhex("212a68")),        # ld hl,$682A
-        "jump_starts": [0x4A4B, 0x542A, 0x5657],               # ld a,$21 -> JUMP
+        "jump_starts": [0x4A4B],                               # ld a,$21 -> JUMP, from the ground
+        "bounce_starts": [0x542A, 0x5657],                     # the same, bouncing on a bubble or a trapped enemy
         "old_length": 0x21,
         "wram": [0xCEC0, 0xCEC1, 0xCEC2],
         # The shot: twice as fast for half as long. (address, stock bytes, new bytes)
@@ -101,6 +102,12 @@ ROM_PROFILES = {
         # touching within 6 px either side, 13 px in all; the Master System's is 23
         "bubbles": [(0x6815, "fe07", "fe0c"),  # 0 to 11 px to one side
                     (0x6819, "fefa", "fef5")], # 1 to 11 px to the other
+        # Starting a jump: the start branches past the table step ($4A7C) to the
+        # wall checks ($4AC3), so Bub first moves a tick later. These go through
+        # the step instead, which does the same wall checks first.
+        "takeoff": [(0x4A64, "185d", "1816"),  # locked left
+                    (0x4A6B, "2856", "280f"),  # straight up
+                    (0x4A7A, "1847", "1800")], # locked right
         # The save
         "save": {
             "org": 0x3E00,
@@ -337,6 +344,15 @@ def patch(rom_bytes, verbose=True):
         rom[f + 1] = length
         say(f"jump start at ${off:04X}: {profile['old_length']} -> {length} steps")
 
+    bs = labels["bounce_start"]
+    for off in profile["bounce_starts"]:
+        f = file_offset(profile, off)
+        check_bytes(rom_bytes, f, bytes([OP_LD_A, profile["old_length"], 0xEA, c["JUMP"] & 0xFF, c["JUMP"] >> 8]),
+                    "bounce start")
+        check_no_branch_into(rom_bytes, profile, off + 1, off + 5)
+        rom[f:f + 5] = bytes([OP_CALL, bs & 0xFF, bs >> 8, OP_NOP, OP_NOP])
+        say(f"bounce start at ${off:04X} -> call ${bs:04X} bounce_start, with its first step taken")
+
     start, end, stock = profile["retired"]
     check_bytes(rom_bytes, file_offset(profile, start), bytes.fromhex(stock), "stock sideways movement")
     check_retired(rom_bytes, profile)
@@ -345,7 +361,7 @@ def patch(rom_bytes, verbose=True):
     rom[f:f + 3] = bytes([OP_JP, m & 0xFF, m >> 8])
     say(f"sideways movement and gravity at ${start:04X}-${end - 1:04X} -> jp ${m:04X}")
 
-    for off, old, new in profile["shot"] + profile["bubbles"]:
+    for off, old, new in profile["shot"] + profile["bubbles"] + profile["takeoff"]:
         f = file_offset(profile, off)
         check_bytes(rom_bytes, f, bytes.fromhex(old), "shot constant")
         rom[f:f + len(bytes.fromhex(new))] = bytes.fromhex(new)

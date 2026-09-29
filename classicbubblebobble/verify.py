@@ -230,8 +230,9 @@ def footprint(stock, patched):
     allowed = set(range(at, at + len(code)))
     allowed |= {P.file_offset(PROFILE, PROFILE["table_ptr"][0]) + k for k in range(3)}
     allowed |= {P.file_offset(PROFILE, a) + 1 for a in PROFILE["jump_starts"]}
+    allowed |= {P.file_offset(PROFILE, a) + k for a in PROFILE["bounce_starts"] for k in range(5)}
     allowed |= {P.file_offset(PROFILE, PROFILE["retired"][0]) + k for k in range(3)}
-    for off, _, new in PROFILE["shot"] + PROFILE["bubbles"]:
+    for off, _, new in PROFILE["shot"] + PROFILE["bubbles"] + PROFILE["takeoff"]:
         allowed |= {P.file_offset(PROFILE, off) + k for k in range(len(bytes.fromhex(new)))}
     allowed |= {P.file_offset(PROFILE, PROFILE["fire_gate"][0]) + k for k in range(4)}
     save, _ = P.assemble_save(PROFILE)
@@ -371,6 +372,12 @@ def physics(stock, patched):
         xa = g.xy()[0]
         g.hold(["right"], 30)
         res["walk"] = round((g.xy()[0] - xa) / 30, 3)
+        res["takeoff"] = []
+        for phase in (0, 1):                                         # frames from the press to leaving the ground
+            r.walk_to(88)
+            g.tick(phase)
+            t = r.jump([], [], 12)
+            res["takeoff"].append(next(i for i, (_, y, _) in enumerate(t) if y < y0))
         r.walk_to(88)
         arc = [y0 - y for _, y, _ in r.jump([], [])]
         res["near_top"] = [sum(1 for h in arc if h >= max(arc) - k) for k in (0, 1, 2, 4)]
@@ -401,6 +408,9 @@ def physics(stock, patched):
     check(p["ledge5"] == 40 and s["ledge5"] == 40 and p["ledge6"] == 0 and s["ledge6"] == 0,
           "both catch the ledge 5 tiles up and neither catches the platform 6 tiles up, "
           "so the patched jump reaches the same ledges as stock")
+    check(max(p["takeoff"]) <= 1 and min(s["takeoff"]) >= 2,
+          f"a jump leaves the ground {min(p['takeoff'])} or {max(p['takeoff'])} frames after the press, "
+          f"by when the game reads it (stock {min(s['takeoff'])} or {max(s['takeoff'])}, Master System 0)")
     check(p["near_top"] == SMS_NEAR_TOP,
           f"frames within 0, 1, 2 and 4 px of the top: {p['near_top']}, as the Master System's {SMS_NEAR_TOP} "
           f"(stock {s['near_top']})")
@@ -515,10 +525,10 @@ def bubble_window(rom):
     bx, by = g.m[C["BUBBLE_X"]], g.m[C["BUBBLE_Y"]]
     base = g.snapshot()
     hits = [0]
-    for a in PROFILE["jump_starts"][1:]:
+    for a in PROFILE["bounce_starts"]:
         g.pb.hook_register(PROFILE["bank"], a, lambda _: hits.__setitem__(0, hits[0] + 1), None)
     g.invincible = True
-    got = []
+    got, turn = [], []
     for dx in range(-24, 25):
         g.restore(base)
         hits[0] = 0
@@ -532,14 +542,18 @@ def bubble_window(rom):
             g.pb.button_release("a")
             if hits[0] and i > 34:
                 got.append(dx)
+                turn.append(g.m[C["Y"]] < before)   # higher at the end of the tick that touched it
                 break
+            before = g.m[C["Y"]]
     g.stop()
-    return got
+    return got, turn
 
 
 def bouncing(stock, patched):
     print("landing on bubbles")
-    s, p = bubble_window(stock), bubble_window(patched)
+    (s, s_turn), (p, p_turn) = bubble_window(stock), bubble_window(patched)
+    check(all(p_turn) and not any(s_turn),
+          "a bounce carries Bub upwards on the tick he touches the bubble, where stock sinks for one more")
     check(len(p) == 23 and p == list(range(p[0], p[0] + 23)) and len(s) == 13,
           f"Bub bounces anywhere in a {len(p)} px span over a bubble, as on the Master System (stock {len(s)} px)")
 
@@ -552,13 +566,14 @@ def landings(stock, patched):
             for seed in (1, 2):
                 g = Game(rom)
                 count = [0]
-                for a in PROFILE["jump_starts"][1:]:
+                for a in PROFILE["bounce_starts"]:
                     g.pb.hook_register(PROFILE["bank"], a, lambda _: count.__setitem__(0, count[0] + 1), None)
                 g.new_game(force=(0, rnd - 1))
 
                 def rec(g):
                     nonlocal grounded, off
-                    if g.m[C["GROUND"]] and g.m[STATE] == 0 and g.xy() != (255, 255):   # (255, 255): dying
+                    standing = g.m[C["GROUND"]] and not g.m[C["JUMP"]]      # a jump's first tick can end mid-frame
+                    if standing and g.m[STATE] == 0 and g.xy() != (255, 255):   # (255, 255): dying
                         grounded += 1
                         off += g.m[C["Y"]] & 7 != 0
                 play(g, seed, 1500, rec)
