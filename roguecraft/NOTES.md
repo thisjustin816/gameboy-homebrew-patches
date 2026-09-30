@@ -2,7 +2,7 @@
 
 Research notes from building the patch, for the release with md5
 `6de80f13b9ab562de2227ea5dd818275`. Addresses are `bank:$addr` (bank 0 omitted),
-and ROM offset = bank × `$4000` + (addr - `$4000`). These notes also record
+and ROM offset = bank x `$4000` + (addr - `$4000`). These notes also record
 findings the patch doesn't use. Where a fact is less certain, it says so.
 
 ## Engine
@@ -20,7 +20,7 @@ The game is built with GB Studio 3 (GBVM scripts, C natives in bank 2).
   makes a good trace hook. `VM_CALL_NATIVE` is `$2D` (operands: addr hi, addr lo,
   bank); its handler at `$3954` pushes THIS and calls through `$3E01`. Actor ops
   are `$30`-`$3F` (bank 4) and overlay/text ops `$40`-`$4F` (bank 18).
-- **Actors:** 52-byte structs at `$C0D1 + 52·slot`. The fields:
+- **Actors:** 52-byte structs at `$C0D1 + 52*slot`. The fields:
   - `+$00` flags: bit 0 active, 1 pinned, 2 hidden, 3 disabled, 4 anim_noloop,
     5 collision, 6 movement_interrupt, 7 persistent.
   - `+$01` x and `+$03` y, both 16-bit in 1/16 px. `+$05` direction.
@@ -105,15 +105,15 @@ normal hidden layout for it.
   the floor setup at `2:$401B`, which loads the hero from the variables. The
   generator runs after that. It lives in bank 4, and its `chests_total += 1`
   is at `4:$56CE`.
-- **Rooms:** each floor is a 5×5 grid of rooms, with room index = 5·row + col.
-  - `$D9BD` holds the item words (25 × 16 bits; bit 1 = the chest) and `$DA08`
-    the monster words. `$DA3A` is the room grid, column-major (5·col + row).
+- **Rooms:** each floor is a 5x5 grid of rooms, with room index = 5*row + col.
+  - `$D9BD` holds the item words (25 x 16 bits; bit 1 = the chest) and `$DA08`
+    the monster words. `$DA3A` is the room grid, column-major (5*col + row).
   - Taking an item clears its bit. The stock clearer at `2:$4236` subtracts the
-    bit. The slot→bit table is `$DC7D`, with a ROM copy at `$3F14`.
+    bit. The slot-to-bit table is `$DC7D`, with a ROM copy at `$3F14`.
   - `2:$4E40` onwards adds an entity's bit back into a room's item word (a
     drop?). Not investigated.
-- **Cells in a room:** 10·row + col, where x = 16·col and y = 12 + 13·row.
-  The mini-map covers cells 77-79, 87-89 and 97-99, the bottom-right 3×3.
+- **Cells in a room:** 10*row + col, where x = 16*col and y = 12 + 13*row.
+  The mini-map covers cells 77-79, 87-89 and 97-99, the bottom-right 3x3.
 - **Entity tables:** up to 19 entities per room, with the count at `$DCC9`.
   Entity 0 is the hero and entity 6 is the chest.
   - `$DC44+e` hp. 0 = absent; the chest uses 2 = shut, 1 = its gold.
@@ -191,7 +191,7 @@ normal hidden layout for it.
   signed tile data, and the window is off. The title is up about 1500 frames
   after a cold boot. Only sprites move on it, and none reach the bottom-right
   corner.
-- **The background struct** is at `1A:$405F`: 20×19 cells (row 18 is
+- **The background struct** is at `1A:$405F`: 20x19 cells (row 18 is
   off-screen), then the DMG tileset `0A:$5804`, CGB tileset `0B:$5E56`,
   tilemap `17:$61B1` and attribute map `17:$6035`. The title scene at
   `19:$5420` points to it.
@@ -203,7 +203,7 @@ normal hidden layout for it.
     `$8C`-`$BF`.
 - **The version** is drawn into the image at row 17, columns 16-19, in
   palette 3 (color 1 is the text), over dithered artwork.
-  - The glyphs are 3×5 with a 1-pixel gap, at x 133-157, y 137-141.
+  - The glyphs are 3x5 with a 1-pixel gap, at x 133-157, y 137-141.
   - The cells alternate VRAM banks: tile `$BC` in bank 0, then `$BD` in bank
     1, `$BD` in bank 0 and `$BE` in bank 1. Each is used by that one cell
     only, and no later screen loads them.
@@ -212,12 +212,12 @@ normal hidden layout for it.
 
 ## Room layouts
 
-- Layouts are ASCII text in bank 4, two decimal digits per cell, 10×10 cells.
+- Layouts are ASCII text in bank 4, two decimal digits per cell, 10x10 cells.
   Ids 0-49 are in ten blocks of five (the block table is at `$DD21`, starting
   `4:$56EE`); ids `$62` and up start at `4:$7CC4`. `4:$7E68` parses one into
   `$DAE9`, and the room's column-major grid at `$DA85` is filled from that, at
   times transposed or mirrored. `$DA53` holds each room's layout id.
-- **A stock slip in layout 7** (`4:$5CB1`): a 3×3 shrine picture in its corner
+- **A stock slip in layout 7** (`4:$5CB1`): a 3x3 shrine picture in its corner
   has its top-left cell as void (`01`) and the cell next to it as floor (`10`),
   where layouts 8 and 13 have `18 40`. It turns up on floor 1 in most seeds,
   drawn identically by stock and the patch. Not changed.
@@ -231,13 +231,13 @@ normal hidden layout for it.
   OBJ palette 4, and the selected entry's sprites take their tiles from VRAM
   bank 1 (yellow) instead of bank 0 (white). Each entry has a 16-frame
   animation: a shimmer (frames 2-7), then rest. Its 81 metasprites are one
-  blank frame and 5 × 16. The tiles load at `$22`: 48 in bank 0, 46 in bank 1.
+  blank frame and 5 x 16. The tiles load at `$22`: 48 in bank 0, 46 in bank 1.
 - **Input** runs a short script per press: down is `17:$7A71`, which moves
   variable `$23` (the selected entry) and sets actor 2's animation. A runs
   `16:$6723`, which switches on `$23`.
 - **The resume menu** (`16:$67A9`-`$67F7`, after START GAME peeks the saved
   floor): a palette load, `VM_LOAD_TEXT` (`16:$67B4`), `VM_OVERLAY_CLEAR`
-  (20 × 4 tiles, `$67D6`), `VM_OVERLAY_MOVE_TO` y 14 = WY 112 (`$67DD`),
+  (20 x 4 tiles, `$67D6`), `VM_OVERLAY_MOVE_TO` y 14 = WY 112 (`$67DD`),
   display, wait, then `VM_CHOICE` (`$67E7`) into `$23` with B allowed. After
   it, the box moves out (`$67F8`) and a `VM_SWITCH` on `$23` goes to `$6813`
   (B: fade, reload the title), `$6849` (RESUME GAME) or `$6850` (NEW GAME).
@@ -252,16 +252,18 @@ normal hidden layout for it.
   actor. A negative index is on the VM stack, `$FFFF` its top. VM flag `$02`
   sets the actor struct's hidden bit (checked in emulation).
 
-## Leads not followed up
+## Open questions
 
 - **The chicken that vanished at a MISS with the map shut**, seen once in play.
   Not reproduced. A hero miss on the chicken and the chicken's
   own attack both left it visible in testing. One guess: its animation table
   was still the map's empty set from a toggle about a second earlier. Walking
   keeps the current set, so a later `actor_set_dir`-style change would blank it.
-- **Useful test techniques:**
-  - Hook `$144E` to see what each actor actually drew.
-  - Hook `$3978` to trace VM opcodes.
-  - Walk a fixed d-pad route: press 10 frames and wait 26; add 60 frames after
-    going through a door. Replays are deterministic from a cold boot.
-  - `verify.py` has examples of all of these.
+
+## Test techniques
+
+- Hook `$144E` to see what each actor actually drew.
+- Hook `$3978` to trace VM opcodes.
+- Walk a fixed d-pad route: press 10 frames and wait 26; add 60 frames after
+  going through a door. Replays are deterministic from a cold boot.
+- `verify.py` has examples of all of these.

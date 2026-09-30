@@ -53,7 +53,7 @@ bounces: jumping up into a bubble doesn't, even with jump held, because
 Classic's test counts Bub as on top of a bubble once he is level with it, and
 with the faster rise and the wider test he would otherwise bounce on the way
 up and gain a second jump. A bubble jumped into from below pops, as on the
-Master System, or is pushed aside as on stock if Bub hits it off-centre.
+Master System, or is pushed aside as on stock if Bub hits it off-center.
 
 How deep Bub is in the bubble also matters on the Master System, and stock
 Classic ignored it. Stock bounces him off any bubble whose top is anywhere

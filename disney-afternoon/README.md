@@ -70,8 +70,7 @@ That cart only does MBC5 banking, but its CPLD can reset the console into any of
   first picks a bank that saved bank is 0. A trace of the stock game over three runs
   of the test's scripted play, 17,067 writes of bank 0 in all, found no read from
   `$4000`-`$7FFF` between a write of 0 and the next bank switch, so bank 0 there is
-  never used and TaleSpin needs no patch. A patch that turned 0 into 1 made it drift
-  from stock on timing alone.
+  never used and TaleSpin needs no patch.
 - Picking a game copies a stub to HRAM that writes `$40` to `$4000`, the slot to
   `$B000` and 1 to `$A000`, then writes `$4000` again. The cart then resets the
   console into that slot, and the game boots cold, exactly like its own cart. This

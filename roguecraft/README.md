@@ -1,13 +1,13 @@
-# Roguecraft GB: resume a run, honest chest counts, no vanishing enemies
+# Roguecraft GB: resume a run, correct chest counts, no vanishing enemies
 
-A patch that lets you stop a Roguecraft GB run and pick it up later. It also
+A patch that saves a Roguecraft GB run so it can be picked up later. It also
 fixes two bugs in how the game counts chests, and one that makes enemies go
-invisible after you look at the mini-map. The title screen shows `v1.000b` to
+invisible after the mini-map closes. The title screen shows `v1.000b` to
 mark the patched build and its revision.
 
 The stock cartridge already has battery-backed save RAM, and the game already
 has almost everything a run save needs: a run slot, a `RESUME GAME` option on
-the START GAME menu, and a resume that restarts the saved floor with your hero
+the START GAME menu, and a resume that restarts the saved floor with the hero
 carried over. It just never writes that slot, so the only thing that survives a
 power cycle is the achievements. This patch adds the missing write.
 
@@ -21,29 +21,28 @@ power cycle is the achievements. This patch adds the missing write.
 
 ## How it plays
 
-- **You don't have to do anything to save.** Arriving on a new floor saves the
-  run: the floor you just reached, with your hero as you arrived on it,
-  hearts included.
+- **Saving is automatic.** Arriving on a new floor saves the run: that floor,
+  and the hero as they arrived on it, hearts included.
 - **To resume**, pick START GAME. When a run is saved it shows
   `RESUME GAME` / `NEW GAME` (the game's own menu, with the title's menu
-  cleared away while it's up). Resume puts you at the start of the saved
-  floor, with a freshly generated layout.
-- **Switching off or quitting mid-floor** (START ×2) sends you back to the start
-  of that floor next time. Anything picked up on that floor is lost with it.
+  cleared away while it's up). Resume starts the saved floor from the
+  beginning, with a freshly generated layout.
+- **Switching off or quitting mid-floor** (START twice) means the next resume starts
+  that floor over. Anything picked up on that floor is lost with it.
   That's deliberate, because it means quitting can't re-roll a floor and keep
   the loot.
 - **Dying ends the run.** The game-over screen already clears the run slot,
   and `RESUME GAME` disappears. The patch adds nothing here.
 - **Nothing is saved on the first floor**, because there is nothing to resume
   there. Restarting The Wilderness is just a new game.
-- **Your existing save file keeps working.** The patch doesn't change the save
-  format, so achievements carry over, and there's no run to resume until you
-  reach floor two. Most emulators and flash carts look for a save named after
+- **Existing save files keep working.** The patch doesn't change the save
+  format, so achievements carry over, and there's no run to resume until a run
+  reaches floor two. Most emulators and flash carts look for a save named after
   the ROM, so rename your old `.sav` to match the patched ROM's filename.
 - **Starting a NEW GAME over a saved run** keeps the old run until the new one
-  reaches floor two, and then replaces it. If you quit the new run on its first
-  floor, the old run is still offered. If you die there, the game-over screen
-  clears it, as it would any run.
+  reaches floor two, and then replaces it. Quitting the new run on its first
+  floor leaves the old run offered. Dying there clears it at the game-over
+  screen, as with any run.
 
 ## What the patch changes
 
@@ -71,15 +70,15 @@ is empty in the stock ROM:
 | ROM range | Bytes | What |
 |---|---|---|
 | `$014E`-`$014F` | 2 | global checksum |
-| 11 floor scripts | 2 each | native-call target: bank 2 `$401B` → bank 27 |
+| 11 floor scripts | 2 each | native-call target: bank 2 `$401B` to bank 27 |
 | bank 27 `$4000`-`$414E` | 335 | `run_start`, `floor_start`, `count_chest`, `chest_opened`, `chest_spawn`, `map_open`, `map_hide`, `map_close`, and the GBVM script `resume_menu_hide` |
-| bank 4 `$56CE`-`$56DA` | 13 | generator's `chests_total += 1` → call to `count_chest` |
-| bank 2 `$644A`-`$6456` | 13 | open-chest `chests_found += 1` → call to `chest_opened` |
-| bank 2 `$44F5`-`$4507` | 19 | room entry's `if chest bit: chest hp = 2` → call to `chest_spawn` |
-| bank 25 `$6037`, `$609D` | 3 each | the map script's native calls: map-open → `map_open`, map-close → `map_close` |
-| bank 2 `$58D6`-`$58DD` | 8 | the map-open's call to hide one entity → `map_hide` |
-| bank 11 `$6978`-`$6987` | 16 | title background tile, row 17 column 19: the version's last `0` → `b` |
-| bank 22 `$67DD`-`$67E0` | 4 | the resume menu's box move → a VM call to `resume_menu_hide` |
+| bank 4 `$56CE`-`$56DA` | 13 | generator's `chests_total += 1` becomes a call to `count_chest` |
+| bank 2 `$644A`-`$6456` | 13 | open-chest `chests_found += 1` becomes a call to `chest_opened` |
+| bank 2 `$44F5`-`$4507` | 19 | room entry's `if chest bit: chest hp = 2` becomes a call to `chest_spawn` |
+| bank 25 `$6037`, `$609D` | 3 each | the map script's native calls: map-open to `map_open`, map-close to `map_close` |
+| bank 2 `$58D6`-`$58DD` | 8 | the map-open's call to hide one entity, now `map_hide` |
+| bank 11 `$6978`-`$6987` | 16 | title background tile, row 17 column 19: the version's last `0` becomes `b` |
+| bank 22 `$67DD`-`$67E0` | 4 | the resume menu's box move, now a VM call to `resume_menu_hide` |
 
 The fixes also use 23 bytes of work RAM, `$DD37`-`$DD4D`: a byte per entity
 for the mini-map, then a bit per room for the chests. That's past the end of the
@@ -94,9 +93,9 @@ Saving costs 2 frames, during the fade into each floor's title card.
 
 ## Chest fixes
 
-Each floor is a 5×5 grid of rooms, and each room has a word of item bits saying
+Each floor is a 5x5 grid of rooms, and each room has a word of item bits saying
 what is still in it. Bit 1 is its chest. Taking an item clears its bit, so it
-stays gone when you come back. The chest **total** is counted as each floor is
+stays gone on a later visit. The chest **total** is counted as each floor is
 generated, one for every room whose chest bit is set; chests **found** goes up
 as each one opens. The end screen shows `CHESTS: found-total`.
 
@@ -108,26 +107,25 @@ every run's total came up short by however many chests that hidden layout had.
 In testing, entering the last floor added 7. That fits a clean run reading
 79 of 87, and a run with one secret room missed reading 84 of 94, since secret
 rooms carry chests. The patch doesn't count chests while the last floor is
-generated, so a run where you find everything reads found = total.
+generated, so a run that finds everything reads found = total.
 
 **Chests that could be opened twice.** An opened chest turns into its gold, in
 the same entity slot, and the room's chest bit stays set until that gold is
 picked up. But entering a room spawns everything whose bit is set afresh, and
-the stock game always spawned the chest shut. If you walked away without the
+the stock game always spawned the chest shut. When the player left without the
 gold, the chest stood there shut again next time in, and opening it counted a
 second time and paid out again.
 
 The patch notes, for each room of the floor, whether its chest has been opened.
-Coming back to a room whose chest you opened, you find **its gold still
-waiting** instead of a shut chest. Pick it up whenever you like, and the chest
-counts once. It's shown as the gold on its own, without the open chest, because
+A room whose chest was opened now keeps **its gold waiting** in place of a
+shut chest. The gold can be picked up at any time, and the chest counts once. It's shown as the gold on its own, without the open chest, because
 the open chest is drawn on the floor when the chest opens, not saved with the
 room.
 
-Each time you enter a room, the game lays its items out again on a fixed set of
+Each time the player enters a room, the game lays its items out again on a fixed set of
 spots, in a fixed order, so the gold usually comes back where the chest stood.
-If you've taken one of the room's other items, such as its heart, the gold can
-move up to an earlier spot, and coming in from a neighboring room can now and
+If one of the room's other items, such as its heart, has been taken, the gold
+can move up to an earlier spot, and coming in from a neighboring room can now and
 then push it one spot along. That's the game's own rule for every item, and the
 gold lands wherever the stock game would put the chest.
 
@@ -135,20 +133,20 @@ gold lands wherever the stock game would put the chest.
 
 **The bug.** Hold B for the mini-map, let go, and an enemy that was under the
 map can stay invisible for a second or two. It's still there, and it can still
-hit you. It comes back by itself, or on its next attack.
+hit the hero. It comes back by itself, or on its next attack.
 
 **Why.** The engine's own hiding of sprites under the window is switched off
 in this game, so the game hides them itself. Opening the map gives every
-living enemy, item and hero in the room cells it covers (the bottom-right 3×3)
+living enemy, item and hero in the room cells it covers (the bottom-right 3x3)
 an animation set whose only frame is empty. Closing the map asks the game's
 animation refresh to give each one its normal set back.
 
-That refresh skips every enemy for 60 game ticks after any attack, yours or
+That refresh skips every enemy for 60 game ticks after any attack, the hero's or
 theirs, so that attack and hurt animations get to finish. That's about two
 seconds, because the game is often too busy to run every frame. Close the map
 inside that window and the enemies it covered keep the empty set until the
-window runs out. The hero isn't held back like that, which is why you
-reappear and the enemy next to you doesn't. The enemy can even walk out from
+window runs out. The hero isn't held back like that, which is why the
+hero reappears and the enemy next to it doesn't. The enemy can even walk out from
 under the map while it's still invisible, because walking reuses its current
 set.
 
@@ -164,8 +162,8 @@ seconds, the patched game plays exactly as stock, frame for frame.
 
 ## Title screen
 
-The title screen's version reads `v1.000b` instead of `v1.0000`, so you can
-tell the patched build from stock at a glance. The letter is the patch's
+The title screen's version reads `v1.000b` where stock has `v1.0000`, which
+marks the patched build at a glance. The letter is the patch's
 revision, and each new revision takes the next one.
 
 The version isn't text: it's drawn into the title's background image, in the

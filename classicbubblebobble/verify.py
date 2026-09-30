@@ -357,7 +357,7 @@ def physics(stock, patched):
         x0, y0 = g.xy()
         res = {"start": (x0, y0)}
         res["ledge5"] = arc_stats(r.jump([], []), y0)[3]            # the 5-tile ledge above the start
-        r.walk_to(128)                                               # under the centre platform, 6 tiles up
+        r.walk_to(128)                                               # under the center platform, 6 tiles up
         res["ledge6"] = arc_stats(r.jump([], []), y0)[3]
         r.walk_to(88)                                                # nothing above for 11 tiles
         res["open"] = arc_stats(r.jump([], []), y0)

@@ -15,10 +15,10 @@
 ;
 ; Each wrapper calls the stock function first - the dispatcher has
 ; already paged in that state's bank, so a plain call reaches it - and
-; then adds its own behaviour.
+; then adds its own behavior.
 ;
 ; The gameplay hook sits on the update dispatch rather than the state
-; START dispatch, deliberately. The update loop is vblank-synchronised,
+; START dispatch, deliberately. The update loop is vblank-synchronized,
 ; so extra work there is absorbed; the START path runs with the display
 ; off and ends in DISPLAY_ON, where even a bare call/ret shifts the
 ; raster phase and moves the game's mid-frame sprite toggle by a
@@ -163,7 +163,7 @@ hook_menu_update:
         call MENU_UPDATE        ; stock Update_StateMenu (bank $07, already paged in)
         call sram_on
         call save_valid
-        jr nz,hmu_done          ; no save: stock behaviour in full
+        jr nz,hmu_done          ; no save: stock behavior in full
         call sram_off
         ld a,(TUTORIAL)
         or a
@@ -436,11 +436,11 @@ magic:
 ; ---- three wide because the stock D is built the same way and is three.
 ; ---- O and U are four, since cutting both corners of a 3px row would
 ; ---- leave a single pixel, and N is four so its diagonal has room. Two bytes per row, low bitplane then high: the high
-; ---- plane is all ones throughout, so blank pixels read as colour 2 (the
-; ---- line's background) and text pixels as colour 3 (black), exactly as
+; ---- plane is all ones throughout, so blank pixels read as color 2 (the
+; ---- line's background) and text pixels as color 3 (black), exactly as
 ; ---- the stock tiles are drawn.
 line_tiles:
-; text width 40px, centred at x+12 within the 64px credits block
+; text width 40px, centered at x+12 within the 64px credits block
         db $00,$FF,$00,$FF,$00,$FF,$00,$FF,$00,$FF,$00,$FF,$00,$FF,$00,$FF   ; tile 0
         db $00,$FF,$00,$FF,$0C,$FF,$0A,$FF,$0C,$FF,$0A,$FF,$0C,$FF,$00,$FF   ; tile 1
         db $00,$FF,$00,$FF,$0C,$FF,$91,$FF,$11,$FF,$91,$FF,$0C,$FF,$00,$FF   ; tile 2

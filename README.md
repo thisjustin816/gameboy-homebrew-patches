@@ -16,8 +16,8 @@ comes as a build script instead of an IPS file.
 
 | Game | Folder | What the patch does |
 |---|---|---|
-| Hermano / Hermano (ModRetro) | [`hermano/`](hermano/) | Adds a battery save. The game autosaves as you play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
-| Roguecraft GB | [`roguecraft/`](roguecraft/) | Lets you resume a run: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after you look at the mini-map. The title screen reads `v1.000b`, and the RESUME GAME menu clears the title's menu away while it's up. |
+| Hermano / Hermano (ModRetro) | [`hermano/`](hermano/) | Adds a battery save. The game saves during play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
+| Roguecraft GB | [`roguecraft/`](roguecraft/) | Saves a run to resume later: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after the mini-map closes. The title screen reads `v1.000b`, and the RESUME GAME menu clears the title's menu away while it's up. |
 | Bubble Bobble | [`bubblebobble/`](bubblebobble/) | Adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Classic Bubble Bobble | [`classicbubblebobble/`](classicbubblebobble/) | Makes Bub jump, fall and shoot like the Master System version: a faster, higher-arcing jump with more control in the air, quicker falls off ledges, and a shot that snaps out twice as fast over the same distance. Also adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
@@ -35,7 +35,7 @@ To keep an existing save, rename your `.sav` to match the patched ROM's
 filename. Most emulators and flash carts look for a save with the same name as
 the ROM.
 
-## Building a patch yourself
+## Building a patch
 
 Each folder has the assembly source, a small assembler, the patch script and a
 test script. Only Python 3 is needed to build:

@@ -39,7 +39,7 @@ ROM_SIZE = 512 * 1024
 #
 #   consts   assembly constants emitted ahead of savepatch.asm
 #   vars     the progress block, as {address, length} runs. This is the set
-#            StateMenu's START initialises for a new game, minus the music
+#            StateMenu's START initializes for a new game, minus the music
 #            fade counter (an engine global that shares the region) and minus
 #            the checkpoint coordinates, which are left out so a restored run
 #            always starts its stage from the beginning.
@@ -210,7 +210,7 @@ def patch(rom_bytes, verbose=True):
     if profile is None:
         known = "\n".join(f"  {m}  {p['name']}" for m, p in ROM_PROFILES.items())
         raise SystemExit(
-            f"unrecognised ROM (md5 {md5}).\n"
+            f"unrecognized ROM (md5 {md5}).\n"
             f"Every address this patch uses was recovered from a specific "
             f"build, so it cannot be applied blind. Known ROMs:\n{known}")
     if verbose:

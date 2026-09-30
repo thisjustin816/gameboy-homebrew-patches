@@ -5,7 +5,7 @@ Runs seven checks against a stock ROM and its patched counterpart:
 
   1. Rendering fidelity - with no save present the patched ROM must render
      essentially as the stock ROM does over a long run of identical input.
-     The gameplay hooks sit on the vblank-synchronised update dispatch and
+     The gameplay hooks sit on the vblank-synchronized update dispatch and
      cost nothing observable; hook_menu_start is the one hook on the state
      START path, where the display-off window is needed to touch VRAM, and
      it shifts the raster phase for single isolated frames when entering
@@ -217,7 +217,7 @@ def main():
     if longest > 1:
         failures.append(
             f"divergence sustained over {longest} consecutive frames - "
-            f"that is a behaviour change, not raster phase")
+            f"that is a behavior change, not raster phase")
     if len(diff) > MAX_ISOLATED_DIFFS:
         failures.append(
             f"{len(diff)} differing frames exceeds the expected "

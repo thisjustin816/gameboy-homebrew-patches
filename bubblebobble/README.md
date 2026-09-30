@@ -10,10 +10,6 @@ offers its password on the PASSWORD screen.
 |---|---|---|
 | `BubbleBobble-save.ips` | The save. The ROM stays 128 KB, and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `b093fd9aa903453c1b30703738159a49` |
 
-The game has no screen tearing to fix. It writes the scroll registers from
-HRAM copies at the start of its VBlank handler (`$0C6F`), before the picture
-starts.
-
 ## Remembering the last round
 
 Every time a round loads, its number and the flags the game's password
