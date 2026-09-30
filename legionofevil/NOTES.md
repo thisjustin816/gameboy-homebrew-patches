@@ -93,5 +93,5 @@ game's OAM DMA wait counts CPU cycles, so it has to double when the CPU does.
 - HRAM: `$FF94`-`$FF98` shadows for SCX, SCY, BGP, OBP0 and OBP1; `$FF99` onward
   is the VBlank hook. The game uses `$FF80`-`$FF8B` (DMA routine) and `$FF90`-`$FF92`.
 - WRAM: everything from `$D000` up is free (a run never touches it). The patch
-  keeps its variables at `$D000`-`$D018`, the window-map backup at `$D100`, the
+  keeps its variables at `$D000`-`$D01A`, the window-map backup at `$D100`, the
   palette buffer at `$D200` and the sprite table the DMA reads at `$DA00`.

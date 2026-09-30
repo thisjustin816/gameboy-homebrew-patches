@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `c7eb7849a83e91e48883bdf9b212ca02` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `11d431f099e86222734ef5ffb0336b16` |
 
 ## What you get
 
@@ -23,15 +23,17 @@ when the camera scrolls.
   a death) and ERASE SAVE (asks first, NO is the default). B backs out. With
   nothing saved, START starts a run as before.
 - **Pause menu.** START during a run opens PAUSED: RESUME, SAVE AND QUIT, or
-  GIVE UP (asks first; it ends the run and banks its money, like dying). The
+  GIVE UP (asks first; it ends the run and banks its money, like dying, and START on
+  its game-over screen returns to the title instead of the store). The
   stock pause is replaced by this menu and the game stands still behind it.
 - **Save and quit, then continue.** SAVE AND QUIT writes the whole run (enemies,
   weapons, position, level, time) and returns to the title. CONTINUE puts you
   back on the same frame. Continuing uses the saved run up, so a saved run
   can't be reloaded after you die in it.
-- **Color themes.** SELECT on the title cycles eight themes (green, gray, pocket,
-  amber, ice, blood, purple, sepia). The choice is saved and survives ERASE SAVE.
-  Color hardware only.
+- **Color themes.** SELECT cycles eight themes (green, gray, pocket, amber, ice,
+  blood, purple, sepia) on any screen: the title, menus, the store and during a
+  run. The pause menu shows "SELECT:" and the theme's name. The choice is saved
+  and survives ERASE SAVE. Color hardware only.
 - **The player stays on screen.** The hardware draws the first ten sprites on a
   scanline, in table order. The game puts the player last, so a crowd hid part of
   the player. Now the player and weapon sprites come first and the enemies
@@ -50,7 +52,7 @@ when the camera scrolls.
 | Where | Button | Does |
 |---|---|---|
 | Title | START | Starts a run, or opens the menu if something is saved |
-| Title | SELECT | Next color theme (color hardware) |
+| Anywhere | SELECT | Next color theme (color hardware) |
 | Menus | UP, DOWN | Move the cursor |
 | Menus | A or START | Choose |
 | Menus | B | Back out (RESUME in the pause menu) |
@@ -86,8 +88,8 @@ checks:
   store purchase is written at once;
 - the title menu, NO and YES on the erase page, and that the color theme
   survives an erase;
-- the pause menu stops the game, RESUME carries on, GIVE UP ends the run and
-  banks its money;
+- the pause menu stops the game, RESUME carries on, GIVE UP ends the run, banks
+  its money and returns to the title after the game-over screen;
 - SAVE AND QUIT, a power cycle and CONTINUE give a run identical to one that was
   never interrupted: the same screens and the same game memory for 900 frames;
 - a snapshot with a damaged byte is not offered;
@@ -97,7 +99,8 @@ checks:
   game's registers never change between VBlanks;
 - the color palettes in palette RAM are the theme's colors through the game's own
   shades, the game-over, store and difficulty screens have the same shades in
-  color and in gray, SELECT changes and saves the theme, and an original Game
+  color and in gray, SELECT changes and saves the theme in a run, in the pause menu (which names it)
+  and in the store, and an original Game
   Boy (the header's color flag cleared) stays at single speed with the game's
   palettes.
 

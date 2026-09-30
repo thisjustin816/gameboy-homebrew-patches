@@ -274,6 +274,9 @@ def check_pause(rom):
     g.press("a", after=300)                             # YES
     check("GIVE UP ends the run and banks the money",
           g.m[0xC5DB] == 1 and g.m[0xC5DF] | g.m[0xC5E0] << 8 == money + 100)
+    g.press("start", after=300)
+    check("START on a given-up run's game-over screen returns to the title, not the store",
+          g.m[0xFF40] == 0xC1 and g.m[0xC5DC] == 0 and g.m[0xD002] & 1)
 
 
 def check_continue(rom, tick_count=900):
@@ -519,6 +522,30 @@ def check_color(stock, rom):
     g3.tick(200)
     check("SELECT on the title changes the theme, and the choice is saved",
           first != second and ram[0x14] == 2 and ram[0x14] ^ 0x5A == ram[0x15] and g3.m[0xD012] == 2)
+
+    # the theme can be changed anywhere: in a run, in the pause menu (which names it), in the store
+    g4 = Game(rom, "theme2")
+    start_run(g4)
+    a = palette(g4.m, 0xFF68, 0xFF69, 8)[0]
+    g4.press("select", after=10)
+    b = palette(g4.m, 0xFF68, 0xFF69, 8)[0]
+    until_live(g4)
+    g4.press("start", after=40)
+    name = lambda: bytes(g4.m[0x9C00 + 15 * 32 + 10 + k] for k in range(6))
+    before = name()
+    g4.press("select", after=10)
+    c = palette(g4.m, 0xFF68, 0xFF69, 8)[0]
+    line = bytes(g4.m[0x9C00 + 15 * 32 + 2 + k] for k in range(8))
+    check("SELECT changes the theme during a run and in the pause menu, which names the theme",
+          a != b and b != c and name() != before and line == bytes([0x67, 0x59, 0x60, 0x59, 0x57, 0x68, 0x79, 0x7F]),
+          "SELECT: <name>")
+    g4.press("b", after=30)
+    g4.m[0xC5DB] = 1
+    g4.tick(300)
+    g4.press("start", after=60)
+    d = palette(g4.m, 0xFF68, 0xFF69, 8)[0]
+    g4.press("select", after=10)
+    check("SELECT changes the theme in the store", g4.m[0xC5DC] == 1 and d != palette(g4.m, 0xFF68, 0xFF69, 8)[0])
 
 
 def frame_budget(control, rom, frames=12000):

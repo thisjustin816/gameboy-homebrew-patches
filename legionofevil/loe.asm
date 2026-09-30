@@ -46,6 +46,8 @@ V_LCDC      = $D00B
 V_WY        = $D00C
 V_WX        = $D00D
 V_SAVESP    = $D00E             ; two bytes
+V_MHINT     = $D019             ; 1 while the menu shows the theme line
+V_MREDRAW   = $D01A             ; the theme changed: redraw its name
 WINBAK      = $D100             ; 1 KB copy of the window map
 OAMBUF      = $DA00             ; the sprite table the VBlank DMA copies from
 V_ROT       = $D010             ; which enemy pair leads this frame
@@ -70,6 +72,7 @@ F_SAVE      = $01               ; an upgrade save exists
 F_RUN       = $02               ; a run snapshot exists
 F_PEND_STORE = $04              ; open the store when the run loop starts
 F_PEND_CONT  = $08              ; restore the snapshot when the run loop starts
+F_GIVEUP     = $10              ; the run was given up: START on its game-over screen resets
 
 LCDC        = $40
 LY          = $44
@@ -439,11 +442,66 @@ es_clr:     ld (hl+),a
             ld de,upg_def
             jp upg_xfer
 
+; ---------------------------------------------------------------- theme
+; SELECT anywhere cycles the color theme (color hardware only) and saves it.
+theme_next: ld a,(V_CGB)
+            or a
+            ret z
+            ld a,(V_PAL)
+            inc a
+            and 7
+            ld (V_PAL),a
+            jp pal_save
+
+; Six letters, one theme each.
+theme_names: db "GREEN GRAY  POCKETAMBER ICE   BLOOD PURPLESEPIA "
+
+; The current theme's name at column 10, row 15 of the window map.
+theme_name_draw:
+            ld b,10
+            ld c,15
+            call win_addr
+            ld d,h
+            ld e,l
+            ld a,(V_PAL)
+            and 7
+            ld l,a
+            add a,a
+            add a,l
+            add a,a                 ; theme * 6
+            ld c,a
+            ld b,0
+            ld hl,theme_names
+            add hl,bc
+            ld b,6
+tn_loop:    ld a,(hl+)
+            push hl
+            call tile_of
+            ld (de),a
+            inc de
+            pop hl
+            dec b
+            jr nz,tn_loop
+            ret
+
+; Redraw the name if SELECT changed it (called right after a VBlank).
+mr_theme:   ld a,(V_MREDRAW)
+            or a
+            ret z
+            xor a
+            ld (V_MREDRAW),a
+            ld a,(V_MHINT)
+            or a
+            ret z
+            jp theme_name_draw
+
 ; ---------------------------------------------------------------- overlay
 ; A full-screen window over whatever is showing. ov_open backs up the window's
 ; tile map and leaves the LCD off; draw the screen, then ov_show. ov_reset
 ; starts another screen the same way. ov_close puts the window map back.
 ov_open:    call wait_vbl
+            xor a
+            ld (V_MHINT),a
             ldh a,(LCDC)
             ld (V_LCDC),a
             res 7,a
@@ -594,6 +652,7 @@ menu_run:   ld a,b
             ld (V_MDRAW),a
             ld (V_MPREV),a
 mr_loop:    call wait_vbl
+            call mr_theme
             call mr_cursor
             call music_tick
             call read_joy
@@ -603,7 +662,14 @@ mr_loop:    call wait_vbl
             ld b,a
             ld a,e
             ld (V_MPREV),a
-            bit 3,b
+            bit 6,b
+            jr z,mr_nosel
+            push bc
+            call theme_next
+            ld a,1
+            ld (V_MREDRAW),a
+            pop bc
+mr_nosel:   bit 3,b
             jr z,mr_up
             ld a,(V_MSEL)
             inc a
@@ -677,15 +743,8 @@ title_logic: ld a,(V_JOY)
             ld (V_PREV),a
             bit 6,c
             jr z,tl_keep
-            ld a,(V_CGB)            ; SELECT picks the next color theme
-            or a
-            jr z,tl_keep
-            ld a,(V_PAL)
-            inc a
-            and 7
-            ld (V_PAL),a
             push bc
-            call pal_save
+            call theme_next
             pop bc
 tl_keep:    ld a,(V_FLAGS)
             and F_SAVE + F_RUN
@@ -783,6 +842,7 @@ str_resume: db 4,7,"RESUME",0
 str_squit:  db 4,9,"SAVE AND QUIT",0
 str_giveup: db 4,11,"GIVE UP",0
 str_gu:     db 4,6,"GIVE UP",0
+str_theme:  db 2,15,"SELECT: ",0
 
 ; START during a live run. The stock game pauses on START; this replaces that
 ; with a menu, so V_JOY loses the START bit.
@@ -794,7 +854,12 @@ run_logic:  ld a,(V_JOY)
             ld c,a                  ; C = pressed this frame
             ld a,b
             ld (V_PREV),a
-            bit 7,c
+            bit 6,c
+            jr z,rl_nosel
+            push bc
+            call theme_next
+            pop bc
+rl_nosel:   bit 7,c
             ret z
             ld a,b
             and $7F
@@ -822,7 +887,14 @@ pm_draw:    ld hl,str_paused
             call ov_text
             ld hl,str_giveup
             call ov_text
-            call ov_show
+            ld a,(V_CGB)
+            ld (V_MHINT),a          ; the theme line only means something on color hardware
+            or a
+            jr z,pm_nohint
+            ld hl,str_theme
+            call ov_text
+            call theme_name_draw
+pm_nohint:  call ov_show
             ld b,3
             ld c,7
             ld d,2
@@ -833,6 +905,8 @@ pm_draw:    ld hl,str_paused
             jr z,pm_giveup
             jp ov_close
 pm_giveup:  call ov_reset
+            xor a
+            ld (V_MHINT),a
             ld hl,str_gu
             call ov_text
             ld hl,str_sure2
@@ -851,6 +925,9 @@ pm_giveup:  call ov_reset
             call ov_reset
             jr pm_draw
 pm_dead:    call ov_close
+            ld a,(V_FLAGS)
+            or F_GIVEUP
+            ld (V_FLAGS),a
             ld a,1
             ld ($C5DB),a            ; what a fatal hit sets: the game-over screen
             ret
@@ -1246,6 +1323,13 @@ wait_hook:  call ready
             cp $B8
             ret nz
             ld a,(V_FLAGS)
+            bit 4,a
+            jr z,wh_nogu
+            ld a,($C5DC)            ; START on the game-over screen opened the store:
+            or a                    ; after a given-up run, go back to the title instead
+            jr z,wh_nogu
+            jp reset_game
+wh_nogu:    ld a,(V_FLAGS)
             bit 2,a
             jr z,wh_cont
             res 2,a
