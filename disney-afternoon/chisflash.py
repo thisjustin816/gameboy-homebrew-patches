@@ -25,24 +25,6 @@ MENU_SIZE = 0x40000          # the menu ROM: 16 banks, 256 KiB
 IMAGE_SIZE = 8 * MIB         # through the end of slot 3; later slots are left alone
 MBC5 = 0x19                  # cartridge type: MBC5, no RAM
 
-# TaleSpin switches banks through one routine at $02C7, sometimes with bank 0.
-# MBC1 turns 0 into 1 there, MBC5 doesn't, so the routine jumps to a copy in bank
-# 0's free padding that does the same, leaving A and the flags as they were.
-TS_ROUTINE = 0x02C7
-TS_ROUTINE_BYTES = bytes([0xEA, 0xB8, 0xC0, 0xEA, 0x00, 0x21, 0xC9])   # ld ($C0B8),a / ld ($2100),a / ret
-TS_PATCH = 0x0070
-TS_PATCH_BYTES = bytes([
-    0xEA, 0xB8, 0xC0,        # ld ($C0B8),a     the game's copy of the bank, as before
-    0xF5,                    # push af
-    0xA7,                    # and a
-    0x20, 0x01,              # jr nz,+1
-    0x3C,                    # inc a            bank 0 means bank 1, as on MBC1
-    0xEA, 0x00, 0x21,        # ld ($2100),a
-    0xF1,                    # pop af
-    0xC9,                    # ret
-])
-
-
 def slot_offset(slot):
     """Where a game slot starts in the cart's flash: slot 0 is 1 MiB at 1 MiB, then 2 MiB each."""
     return MIB if slot == 0 else slot * 2 * MIB
@@ -52,17 +34,13 @@ def slot_size(slot):
     return MIB if slot == 0 else 2 * MIB
 
 
-def to_mbc5(rom, key):
-    """The game as an MBC5 cart. All four only write banks 1 to 7 to the $2000 register,
-    which MBC5 treats as MBC1 does, apart from TaleSpin's bank 0."""
+def to_mbc5(rom):
+    """The game as an MBC5 cart. All four write only banks 1 to 7 to the $2000 register,
+    which MBC5 treats as MBC1 does, and TaleSpin also bank 0. MBC1 turns that into bank
+    1 and MBC5 doesn't, but TaleSpin only writes 0 when it restores a bank it saved
+    before choosing any, and never reads the switchable bank before choosing a real one
+    (see the README), so only the header changes."""
     out = bytearray(rom)
-    if key == 'talespin':
-        if rom[TS_ROUTINE:TS_ROUTINE + len(TS_ROUTINE_BYTES)] != TS_ROUTINE_BYTES:
-            sys.exit('TaleSpin: the bank-switch routine is not where expected')
-        if any(rom[TS_PATCH:TS_PATCH + len(TS_PATCH_BYTES)]):
-            sys.exit('TaleSpin: the padding for the patch is not free')
-        out[TS_PATCH:TS_PATCH + len(TS_PATCH_BYTES)] = TS_PATCH_BYTES
-        out[TS_ROUTINE:TS_ROUTINE + 3] = bytes([0xC3, TS_PATCH & 0xFF, TS_PATCH >> 8])   # jp TS_PATCH
     out[0x147] = MBC5
     out[0x14D] = header_checksum(out)
     out[0x14E:0x150] = global_checksum(out).to_bytes(2, 'big')
@@ -126,7 +104,7 @@ def build_image(roms, art):
     menu = menu_rom(roms, art)
     out[:len(menu)] = menu
     for slot, (g, rom) in enumerate(zip(GAMES, roms)):
-        game = to_mbc5(rom, g['key'])
+        game = to_mbc5(rom)
         assert len(game) <= slot_size(slot)
         out[slot_offset(slot):slot_offset(slot) + len(game)] = game
     return bytes(out)
