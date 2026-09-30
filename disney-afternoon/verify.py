@@ -3,19 +3,16 @@
 
     python3 verify.py MULTICART DUCKTALES DUCKTALES2 TALESPIN DARKWING bundleMain.mbundle
 
-1. The header is valid and says 2 MiB MBC1 with 8 KiB of RAM and no battery.
-2. Each quarter holds its game byte for byte, apart from the combo patch, and in
-   quarter 0 the boot hook and header.
+1. The header is valid and says 2 MiB MBC1 without RAM.
+2. Each quarter holds its game byte for byte, apart from the boot hook and header
+   fields in quarter 0.
 3. The splash and all four menu screens appear as built, the cursor wraps both
    ways, and B, SELECT and left/right do nothing.
-4. A+B+SELECT+START on each game's title screen and in the middle of play
-   brings back the menu with that game highlighted.
-5. For each game, launched from the menu, every frame of scripted play matches
-   the stock ROM given the same input, on a DMG and on a Game Boy Color. So
-   does a second launch after going back with the combo. The multicart starts a
-   few frames later (the launcher clears WRAM and waits for line 0), so the
-   delay is found once on the attract mode, and the streams must then agree on
-   every frame. The script never presses SELECT, so it never makes the combo.
+4. For each game, launched from the menu, every frame of scripted play matches
+   the stock ROM given the same input, on a DMG and on a Game Boy Color.
+   The multicart starts a few frames later (the launcher clears WRAM and waits
+   for line 0), so the delay is found once on the attract mode, and the streams
+   must then agree on every frame.
 """
 import hashlib, multiprocessing, os, queue, random, shutil, sys, tempfile
 
@@ -25,14 +22,6 @@ import build, mbundle
 from pyboy import PyBoy
 
 PLAY_FRAMES = 11000          # about three minutes of play per game
-# Frames after a launch to reach each title screen, and presses on the way.
-TO_TITLE = [(200, []), (700, [(400, 'start')]), (500, []), (2500, [])]
-# Presses after a launch that get into play; the combo is tried 300 frames on.
-INTO_PLAY = [[(176, 'start'), (296, 'start'), (416, 'start')],
-             [(406, 'start'), (636, 'start'), (756, 'start'), (876, 'a'), (996, 'a')],
-             [(496, 'start'), (636, 'start'), (776, 'start'), (916, 'start')],
-             [(2636, 'start'), (2786, 'start'), (2936, 'start'), (3086, 'a')]]
-COMBO = ('a', 'b', 'select', 'start')
 ALIGN_WINDOW = 12            # the multicart may start up to this many frames later
 ALIGN_FRAMES = 600           # attract-mode frames used to find that delay
 SESSION_TIMEOUT = 900        # seconds; a stuck emulator counts as a failure
@@ -84,19 +73,17 @@ def press(pb, button, frames=20):
 # ---- static -------------------------------------------------------------------
 
 def static_checks(multi, roms):
-    check(len(multi) == build.ROM_SIZE and multi[0x147] == 0x02 and multi[0x148] == 0x06
-          and multi[0x149] == 0x02, 'header: 2 MiB, MBC1 with 8 KiB of RAM, no battery')
+    check(len(multi) == build.ROM_SIZE and multi[0x147] == 0x01 and multi[0x148] == 0x06
+          and multi[0x149] == 0x00, 'header: 2 MiB, MBC1, no RAM')
     check(multi[0x14D] == build.header_checksum(multi), 'header checksum')
     check(int.from_bytes(multi[0x14E:0x150], 'big') == build.global_checksum(multi), 'global checksum')
     check(multi[0x104:0x134] == roms[0][0x104:0x134], 'Nintendo logo intact')
-    boot, _, labels = build.build_code()
+    boot = build.build_code()[0]
     changed = {0x102, 0x103} | set(range(build.HOOK, build.HOOK + len(boot))) | set(range(0x134, 0x150))
-    for at, data in build.combo_patches(roms, labels, len(boot)):
-        changed |= set(range(at, at + len(data)))
     for q, (g, r) in enumerate(zip(build.GAMES, roms)):
         base = q * build.QUARTER
         diff = [i for i in range(len(r)) if multi[base + i] != r[i] and base + i not in changed]
-        check(not diff, f"quarter {q} holds {g['label']} unchanged but for its patch"
+        check(not diff, f"quarter {q} holds {g['label']} unchanged"
                         + (f' (first diff at {diff[0]:#x})' if diff else ''))
 
 
@@ -129,7 +116,7 @@ def menu_checks(multi, screens):
 def input_script(seed):
     """(frame, button, hold) presses, timed from the game's entry."""
     rng = random.Random(seed)
-    buttons = ['a', 'b', 'left', 'right', 'up', 'down']        # never SELECT
+    buttons = ['a', 'b', 'left', 'right', 'up', 'down']
     out, f = [], 30
     while f < PLAY_FRAMES:
         if f % 600 < 20:              # tap START to get through menus and pauses
@@ -155,32 +142,8 @@ def start_stock(rom, cgb):
     raise SystemExit('stock ROM never reached $0100')
 
 
-def run_presses(pb, frames, presses):
-    for f in range(frames):
-        for pf, b in presses:
-            if pf == f:
-                pb.button(b, 4)
-        pb.tick(1, True)
-
-
-def to_title(pb, sel):
-    run_presses(pb, *TO_TITLE[sel])
-
-
-def combo(pb):
-    for b in COMBO:
-        pb.button_press(b)
-    pb.tick(10, True)
-    for b in COMBO:
-        pb.button_release(b)
-    pb.tick(40, True)
-
-
-def start_multi(multi, sel, go, cgb, bounce=False):
+def start_multi(multi, sel, go, cgb):
     """Launch game sel from the menu; stop in the frame the launcher is entered.
-
-    With bounce, go on to the game's title, back to the menu with the combo, and
-    launch it again, stopping at that second launch.
 
     PyBoy hooks patch memory when registered, so the launch stub in HRAM and a
     game's entry in a remapped quarter can't be hooked; the menu's jump to the
@@ -194,18 +157,11 @@ def start_multi(multi, sel, go, cgb, bounce=False):
     for _ in range(sel):
         press(pb, 'down')
     pb.button('a', 3)
-    for launch in range(2 if bounce else 1):
-        for _ in range(600):
-            pb.tick(1, True)
-            if len(hit) > launch:
-                break
-        else:
-            raise SystemExit('menu never launched a game')
-        if bounce and launch == 0:
-            to_title(pb, sel)
-            combo(pb)
-            pb.button('a', 3)
-    return pb
+    for _ in range(600):
+        pb.tick(1, True)
+        if hit:
+            return pb
+    raise SystemExit('menu never launched a game')
 
 
 def play(pb, script, frames, offset=0):
@@ -222,9 +178,9 @@ def play(pb, script, frames, offset=0):
     return hashes
 
 
-def session(rom, sel, go, cgb, script, frames, offset=0, bounce=False):
+def session(rom, sel, go, cgb, script, frames, offset=0):
     """One emulator run: the stock ROM if sel is None, else game sel from the menu."""
-    pb = start_stock(rom, cgb) if sel is None else start_multi(rom, sel, go, cgb, bounce)
+    pb = start_stock(rom, cgb) if sel is None else start_multi(rom, sel, go, cgb)
     hashes = play(pb, script, frames, offset)
     done(pb)
     return hashes
@@ -273,9 +229,6 @@ def play_checks(multi, roms, cgb):
             check(False, f'{name}: start-up delay not pinned down (fits: {offsets})')
             continue
         off = offsets[0]
-        again = run(multi, sel, go, cgb, [], ALIGN_FRAMES + ALIGN_WINDOW, 0, True)
-        check(again is not None and delay(again, probe_want) == [off],
-              f'{name}: launched again after the combo, it starts exactly as the first time')
         script = input_script(1000 + sel)
         want = run(rom, None, go, cgb, script, PLAY_FRAMES)
         got = run(multi, sel, go, cgb, script, PLAY_FRAMES + off, off)
@@ -286,25 +239,6 @@ def play_checks(multi, roms, cgb):
         bad = [i for i in range(10, PLAY_FRAMES) if got[i] != want[i]]
         check(not bad, f'{name}: {PLAY_FRAMES - 10} frames of play match stock '
                        f'(start-up delay {off} frames)' + (f'; first mismatch at frame {bad[0]}' if bad else ''))
-
-
-def combo_checks(multi, screens):
-    """A+B+SELECT+START on each title screen and in play brings back the menu
-    with that game highlighted."""
-    go = build.build_code()[2]['go']
-    for sel, g in enumerate(build.GAMES):
-        pb = start_multi(multi, sel, go, False)
-        to_title(pb, sel)
-        combo(pb)
-        check(screen_matches(pb, screens[1 + sel]),
-              f"the combo on the {g['label']} title screen goes back to the menu on that game")
-        pb.button('a', 3)
-        pb.tick(2, True)
-        run_presses(pb, INTO_PLAY[sel][-1][0] + 300, INTO_PLAY[sel])
-        combo(pb)
-        check(screen_matches(pb, screens[1 + sel]),
-              f"the combo in {g['label']}'s play goes back to the menu on that game")
-        done(pb)
 
 
 def main():
@@ -318,7 +252,6 @@ def main():
     static_checks(multi, roms)
     screens = build.screens(roms, art)
     menu_checks(multi, screens)
-    combo_checks(multi, screens)
     play_checks(multi, roms, cgb=False)
     play_checks(multi, roms, cgb=True)
     print(f'\n{len(failures)} failure(s)' if failures else '\nall checks pass')

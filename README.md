@@ -21,7 +21,7 @@ comes as a build script instead of an IPS file.
 | Bubble Bobble | [`bubblebobble/`](bubblebobble/) | Adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Classic Bubble Bobble | [`classicbubblebobble/`](classicbubblebobble/) | Makes Bub jump, fall and shoot like the Master System version: a faster, higher-arcing jump with more control in the air, quicker falls off ledges, and a shot that snaps out twice as fast over the same distance. Also adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
-| Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. A+B+SELECT+START anywhere in a game goes back to the menu. Otherwise each game runs exactly as on its own cart. |
+| Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. Each game runs exactly as on its own cart. |
 
 ## Applying a patch
 

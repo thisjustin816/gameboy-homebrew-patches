@@ -1,5 +1,5 @@
-; Menu, in bank MENU_BANK at $4000. Entered at start from the boot hook, or at
-; back from a game's title screen when B is pressed. Interrupts are off either way.
+; Menu, in bank MENU_BANK at $4000. Entered from the boot hook with
+; interrupts off and SP at MENU_STACK.
 ;
 ; Every screen is a whole picture in its own bank: the splash, then one per
 ; game with that game highlighted. Moving the cursor loads the next picture.
@@ -9,46 +9,13 @@
 
 SEL = $C000
 PAD_HELD = $C001            ; buttons in the low nibble, d-pad in the high nibble
-
-; Cart RAM holds what the boot ROM left, so a game started again after B gets
-; the same start as the first time: the registers the boot hook saved, then the
-; I/O registers the games may change and don't all set themselves.
-STASH = $A000
-STASH_REGS = 8
+PAD_NEW = $C002
 
 start:
-    ld sp,MENU_STACK
-    ld a,$0A
-    ld ($0000),a            ; cart RAM on
-    ld hl,SAVED_REGS
-    ld de,STASH
-    ld b,STASH_REGS
+    ld hl,loader_src
+    ld de,LOADER
+    ld b,LOADER_LEN
     call copy
-    ld h,d
-    ld l,e
-    ldh a,($06)             ; TMA
-    ld (hl+),a
-    ldh a,($07)             ; TAC
-    ld (hl+),a
-    ldh a,($41)             ; STAT
-    ld (hl+),a
-    ldh a,($45)             ; LYC
-    ld (hl+),a
-    ldh a,($4A)             ; WY
-    ld (hl+),a
-    ldh a,($4B)             ; WX
-    ld (hl+),a
-    ldh a,($48)             ; OBP0
-    ld (hl+),a
-    ldh a,($49)             ; OBP1
-    ld (hl+),a
-    ldh a,($24)             ; NR50
-    ld (hl+),a
-    ldh a,($25)             ; NR51
-    ld (hl+),a
-    xor a
-    ld ($0000),a            ; cart RAM off
-    call copy_loader
     xor a
     ld (SEL),a
     ld (PAD_HELD),a
@@ -58,29 +25,6 @@ wait_start:
     call frame
     and $09                 ; A or START
     jr z,wait_start
-    jr menu
-
-; From a game: A = its menu index, quarter 0 mapped, bank MENU_BANK at $4000.
-back:
-    ld sp,MENU_STACK
-    ld (SEL),a
-    ld a,$FF                ; ignore whatever is still held from the game
-    ld (PAD_HELD),a
-    xor a
-    ldh ($FF),a             ; IE
-    ldh ($07),a             ; TAC: stop the game's timer
-    ldh ($26),a             ; sound off, which silences every channel
-    ld a,$80
-    ldh ($26),a             ; and back on, as the boot ROM leaves it
-    ld a,$0A
-    ld ($0000),a
-    ld hl,STASH
-    ld de,SAVED_REGS
-    ld b,STASH_REGS
-    call copy
-    xor a
-    ld ($0000),a
-    call copy_loader        ; the game has had all of WRAM
 
 menu:
     ld a,(SEL)
@@ -90,7 +34,7 @@ menu_loop:
     call frame
     ld b,a
     and $09                 ; A or START launches
-    jp nz,launch_game
+    jr nz,launch_game
     ld a,b
     and $40                 ; up
     jr nz,cursor_up
@@ -109,12 +53,6 @@ cursor_store:
     and 3
     ld (SEL),a
     jr menu
-
-copy_loader:
-    ld hl,loader_src
-    ld de,LOADER
-    ld b,LOADER_LEN
-    jr copy
 
 ; Wait for the next VBlank, read the pad, return newly pressed keys in A
 ; (bit 0 A, 1 B, 2 SELECT, 3 START, 4 right, 5 left, 6 up, 7 down).
@@ -152,16 +90,11 @@ frame:
     ld a,c
     ret
 
-; Wait until LY enters VBlank (line 144) from outside it. With the LCD off LY
-; stays at 0, so return at once.
+; Wait until LY enters VBlank (line 144) from outside it.
 vblank:
-    ldh a,($40)
-    and $80
-    ret z
-vblank_out:
     ldh a,($44)
     cp 144
-    jr z,vblank_out
+    jr z,vblank
 vblank_in:
     ldh a,($44)
     cp 144
@@ -194,14 +127,6 @@ copy:
     jr nz,copy
     ret
 
-; Fill B bytes from HL with zero.
-zero:
-    xor a
-    ld (hl+),a
-    dec b
-    jr nz,zero
-    ret
-
 ; Hand over to the chosen game with the display and interrupt registers as
 ; the boot ROM leaves them: LCD on with a blank map, BGP $FC, IE 0, IF $E1.
 launch_game:
@@ -219,38 +144,11 @@ clear_map:
     jr nz,clear_map
     ld hl,$8000             ; and tile 0 itself, in case a screen changes that
     ld b,16
-    call zero
-    ld hl,$FE00             ; OAM, which a game left behind after B
-    ld b,$A0
-    call zero
-    ld hl,$FF80             ; HRAM below the saved registers, likewise
-    ld b,SAVED_REGS - $FF80
-    call zero
-    ld a,$0A
-    ld ($0000),a
-    ld hl,STASH + STASH_REGS
-    ld a,(hl+)
-    ldh ($06),a
-    ld a,(hl+)
-    ldh ($07),a
-    ld a,(hl+)
-    ldh ($41),a
-    ld a,(hl+)
-    ldh ($45),a
-    ld a,(hl+)
-    ldh ($4A),a
-    ld a,(hl+)
-    ldh ($4B),a
-    ld a,(hl+)
-    ldh ($48),a
-    ld a,(hl+)
-    ldh ($49),a
-    ld a,(hl+)
-    ldh ($24),a
-    ld a,(hl+)
-    ldh ($25),a
+clear_tile0:
     xor a
-    ld ($0000),a
+    ld (hl+),a
+    dec b
+    jr nz,clear_tile0
     ld a,$FC
     ldh ($47),a
     ld a,$91
