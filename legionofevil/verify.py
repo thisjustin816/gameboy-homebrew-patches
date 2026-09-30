@@ -261,22 +261,12 @@ def check_pause(rom):
     g.tick(60)
     check("START opens the menu and the game stands still behind it",
           g.m[0xFF40] & 0x20 and g.m[0xFF4A] == 0 and g.m[0xC0D9] == tick)
+    rows = [bytes(g.m[0x9C00 + y * 32 + 4 + k] for k in range(13)) for y in (7, 9, 11)]
+    check("the pause menu offers RESUME and SAVE AND QUIT, and nothing below them",
+          rows[0].startswith(bytes([0x66, 0x59, 0x67, 0x69])) and rows[1][:4] == bytes([0x67, 0x55, 0x6A, 0x59]) and rows[2] == bytes([0x7F] * 13))
     g.press("a", after=20)
     check("RESUME returns to the run: the game ticks again, the HUD window and sprites are back",
           g.m[0xC0D9] != tick and g.m[0xFF4A] == 0x80 and g.m[0xFF40] & 0x02 and g.m[0xC5B5] == 0)
-    money = g.m[0xC5DF] | g.m[0xC5E0] << 8
-    g.m[0xC5E5], g.m[0xC5E6] = 0x64, 0x00
-    g.press("start", after=40)
-    g.press("down", after=10)
-    g.press("down", after=10)
-    g.press("a", after=30)                              # GIVE UP: asks first
-    g.press("down", after=10)
-    g.press("a", after=300)                             # YES
-    check("GIVE UP ends the run and banks the money",
-          g.m[0xC5DB] == 1 and g.m[0xC5DF] | g.m[0xC5E0] << 8 == money + 100)
-    g.press("start", after=300)
-    check("START on a given-up run's game-over screen returns to the title, not the store",
-          g.m[0xFF40] == 0xC1 and g.m[0xC5DC] == 0 and g.m[0xD002] & 1)
 
 
 def check_continue(rom, tick_count=900):

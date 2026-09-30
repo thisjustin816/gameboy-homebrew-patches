@@ -72,7 +72,6 @@ F_SAVE      = $01               ; an upgrade save exists
 F_RUN       = $02               ; a run snapshot exists
 F_PEND_STORE = $04              ; open the store when the run loop starts
 F_PEND_CONT  = $08              ; restore the snapshot when the run loop starts
-F_GIVEUP     = $10              ; the run was given up: START on its game-over screen resets
 
 LCDC        = $40
 LY          = $44
@@ -840,8 +839,6 @@ ce_no:      xor a
 str_paused: db 7,3,"PAUSED",0
 str_resume: db 4,7,"RESUME",0
 str_squit:  db 4,9,"SAVE AND QUIT",0
-str_giveup: db 4,11,"GIVE UP",0
-str_gu:     db 4,6,"GIVE UP",0
 str_theme:  db 2,15,"SELECT: ",0
 
 ; START during a live run. The stock game pauses on START; this replaces that
@@ -885,8 +882,6 @@ pm_draw:    ld hl,str_paused
             call ov_text
             ld hl,str_squit
             call ov_text
-            ld hl,str_giveup
-            call ov_text
             ld a,(V_CGB)
             ld (V_MHINT),a          ; the theme line only means something on color hardware
             or a
@@ -895,42 +890,13 @@ pm_draw:    ld hl,str_paused
             call ov_text
             call theme_name_draw
 pm_nohint:  call ov_show
-            ld b,3
+            ld b,2
             ld c,7
             ld d,2
             call menu_run
             cp 1
             jr z,pm_save
-            cp 2
-            jr z,pm_giveup
             jp ov_close
-pm_giveup:  call ov_reset
-            xor a
-            ld (V_MHINT),a
-            ld hl,str_gu
-            call ov_text
-            ld hl,str_sure2
-            call ov_text
-            ld hl,str_no
-            call ov_text
-            ld hl,str_yes
-            call ov_text
-            call ov_show
-            ld b,2
-            ld c,11
-            ld d,4
-            call menu_run
-            cp 1
-            jr z,pm_dead
-            call ov_reset
-            jr pm_draw
-pm_dead:    call ov_close
-            ld a,(V_FLAGS)
-            or F_GIVEUP
-            ld (V_FLAGS),a
-            ld a,1
-            ld ($C5DB),a            ; what a fatal hit sets: the game-over screen
-            ret
 pm_save:    call ov_close
             call suspend
 pm_saved:   or a
@@ -1323,13 +1289,6 @@ wait_hook:  call ready
             cp $B8
             ret nz
             ld a,(V_FLAGS)
-            bit 4,a
-            jr z,wh_nogu
-            ld a,($C5DC)            ; START on the game-over screen opened the store:
-            or a                    ; after a given-up run, go back to the title instead
-            jr z,wh_nogu
-            jp reset_game
-wh_nogu:    ld a,(V_FLAGS)
             bit 2,a
             jr z,wh_cont
             res 2,a

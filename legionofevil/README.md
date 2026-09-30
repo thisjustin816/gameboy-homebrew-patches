@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `11d431f099e86222734ef5ffb0336b16` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `90cdbc2bde564c0598f9ea1d73b514e3` |
 
 ## What you get
 
@@ -22,9 +22,9 @@ when the camera scrolls.
   when a run is saved), NEW RUN (the store, then difficulty and weapon, as after
   a death) and ERASE SAVE (asks first, NO is the default). B backs out. With
   nothing saved, START starts a run as before.
-- **Pause menu.** START during a run opens PAUSED: RESUME, SAVE AND QUIT, or
-  GIVE UP (asks first; it ends the run and banks its money, like dying, and START on
-  its game-over screen returns to the title instead of the store). The
+- **Pause menu.** START during a run opens PAUSED: RESUME or SAVE AND QUIT.
+  To abandon a run, SAVE AND QUIT and pick NEW RUN; the abandoned run's money is
+  not banked (dying banks it, as in the stock game). The
   stock pause is replaced by this menu and the game stands still behind it.
 - **Save and quit, then continue.** SAVE AND QUIT writes the whole run (enemies,
   weapons, position, level, time) and returns to the title. CONTINUE puts you
@@ -88,8 +88,8 @@ checks:
   store purchase is written at once;
 - the title menu, NO and YES on the erase page, and that the color theme
   survives an erase;
-- the pause menu stops the game, RESUME carries on, GIVE UP ends the run, banks
-  its money and returns to the title after the game-over screen;
+- the pause menu stops the game and offers RESUME and SAVE AND QUIT, and RESUME
+  carries on;
 - SAVE AND QUIT, a power cycle and CONTINUE give a run identical to one that was
   never interrupted: the same screens and the same game memory for 900 frames;
 - a snapshot with a damaged byte is not offered;
