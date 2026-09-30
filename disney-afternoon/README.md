@@ -39,9 +39,14 @@ screens as PNGs.
 
 ## Where it runs
 
-The result is a 2 MiB MBC1 cart without RAM. It needs an emulator or flash cart that
-handles MBC1's mode 1 on a large ROM: PyBoy, mGBA, SameBoy, BGB,
-Gambatte and EverDrive-class carts do. Carts that only do MBC5 banking won't run it.
+The result is a 2 MiB MBC1 cart without RAM. Starting any game but DuckTales needs
+MBC1's mode 1 on a large ROM, where the upper bank bits also pick the bank at `$0000`.
+Accurate emulators do this; the collection runs fully in PyBoy and SameBoy.
+
+Most flash carts don't. On an EverDrive GB, DuckTales starts and the other three go
+back to the splash: its MBC1 leaves bank 0 at `$0000` in mode 1, as its mapper
+support doesn't cover MBC1 multicarts. Carts that only do MBC5 banking can't run it
+either, since MBC5 always shows bank 0 at `$0000`.
 
 ## How it works
 
