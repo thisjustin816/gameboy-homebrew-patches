@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `961f343237534acef1bdd2ec6c03cc7f` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `22ea1dd198e8cc4f2791b9091df9d061` |
 
 ## What you get
 
@@ -20,7 +20,8 @@ when the camera scrolls.
   to battery RAM as they change, so turning the console off never loses them.
 - **Title menu.** With a save, START on the title opens a menu: CONTINUE (only
   when a run is saved), NEW RUN (the store, then difficulty and weapon, as after
-  a death) and ERASE SAVE (asks first, NO is the default). B backs out. With
+  a death; if a run is saved it asks first, because starting a new run throws the
+  saved one away) and ERASE SAVE (asks first). NO is the default on both pages. B backs out. With
   nothing saved, START starts a run as before.
 - **Pause menu.** START during a run opens PAUSED: RESUME or SAVE & QUIT.
   To abandon a run, SAVE & QUIT and pick NEW RUN; the abandoned run's money is
@@ -91,6 +92,8 @@ checks:
   store purchase is written at once;
 - the title menu, NO and YES on the erase page, and that the color theme
   survives an erase;
+- NEW RUN with a saved run asks first: the page's text and columns, NO keeps the
+  run, YES opens the store and removes the snapshot from battery RAM;
 - the pause menu stops the game and offers RESUME and SAVE & QUIT, and RESUME
   carries on;
 - SAVE & QUIT, a power cycle and CONTINUE give a run identical to one that was

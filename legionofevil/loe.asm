@@ -782,10 +782,18 @@ str_new_a:  db 4,7,"NEW RUN",0
 str_new_b:  db 4,9,"NEW RUN",0
 str_era_a:  db 4,9,"ERASE SAVE",0
 str_era_b:  db 4,11,"ERASE SAVE",0
-str_sure1:  db 4,6,"ERASE SAVE",0
-str_sure2:  db 4,8,"ARE YOU SURE?",0
-str_no:     db 6,11,"NO",0
-str_yes:    db 6,13,"YES",0
+; Confirm pages: heading in column 3 (where LEGION OF EVIL starts), text in
+; column 3, the NO and YES rows like the menu's items (column 4, cursor in 2).
+str_e1:     db 3,3,"ERASE SAVE",0
+str_e2:     db 3,6,"ARE YOU SURE?",0
+str_en:     db 4,9,"NO",0
+str_ey:     db 4,11,"YES",0
+str_n1:     db 3,3,"NEW RUN",0
+str_n2:     db 3,6,"RUN IN PROGRESS",0
+str_n3:     db 3,8,"WILL BE LOST.",0
+str_n4:     db 3,10,"ARE YOU SURE?",0
+str_nn:     db 4,13,"NO",0
+str_ny:     db 4,15,"YES",0
 
 ; Buttons in V_JOY (bit 7 start, 6 select, 5 b, 4 a, 3 down, 2 up).
 title_logic: ld a,(V_JOY)
@@ -859,6 +867,21 @@ tm_continue: ld a,(V_FLAGS)
             or F_PEND_CONT
             jr tm_go_run
 tm_new:     ld a,(V_FLAGS)
+            and F_RUN
+            jr z,tm_new_go          ; no saved run: nothing to lose
+            call confirm_newrun
+            or a
+            jr nz,tm_new_yes
+            call ov_reset           ; NO: back to the menu, the run still saved
+            jr tm_draw
+tm_new_yes: call sram_on            ; YES: the saved run is thrown away
+            xor a
+            ld (S_RUN_OK),a
+            call sram_off
+            ld a,(V_FLAGS)
+            and $FD                 ; drop F_RUN
+            ld (V_FLAGS),a
+tm_new_go:  ld a,(V_FLAGS)
             or F_PEND_STORE
 tm_go_run:  ld (V_FLAGS),a
             call ov_close
@@ -870,18 +893,18 @@ tm_go_run:  ld (V_FLAGS),a
 ; A = 1 if the save was erased.
 confirm_erase:
             call ov_reset
-            ld hl,str_sure1
+            ld hl,str_e1
             call ov_text
-            ld hl,str_sure2
+            ld hl,str_e2
             call ov_text
-            ld hl,str_no
+            ld hl,str_en
             call ov_text
-            ld hl,str_yes
+            ld hl,str_ey
             call ov_text
             call ov_show
             ld b,2
-            ld c,11
-            ld d,4
+            ld c,9
+            ld d,2
             call menu_run
             cp 1
             jr nz,ce_no
@@ -889,6 +912,32 @@ confirm_erase:
             ld a,1
             ret
 ce_no:      xor a
+            ret
+
+; A = 1 to throw the saved run away and start a new one.
+confirm_newrun:
+            call ov_reset
+            ld hl,str_n1
+            call ov_text
+            ld hl,str_n2
+            call ov_text
+            ld hl,str_n3
+            call ov_text
+            ld hl,str_n4
+            call ov_text
+            ld hl,str_nn
+            call ov_text
+            ld hl,str_ny
+            call ov_text
+            call ov_show
+            ld b,2
+            ld c,13
+            ld d,2
+            call menu_run
+            cp 1
+            ld a,0
+            ret nz
+            inc a
             ret
 
 ; ---------------------------------------------------------------- pause

@@ -378,6 +378,52 @@ def check_continue(rom, tick_count=900):
     check("a damaged snapshot is not offered", sub4.m[0xD002] & 2 == 0 and sub4.m[0xD002] & 1 == 1)
 
 
+def font_tiles(text):
+    """The game's tile codes for upper-case text, digits and spaces."""
+    return bytes(0x7F if c == " " else 0x55 + ord(c) - 65 for c in text)
+
+
+def check_new_run_confirm(rom):
+    print("NEW RUN with a saved run")
+    g = Game(rom, "nr")
+    start_run(g)
+    play(g, 600)
+    until_live(g)
+    g.press("start", after=40)
+    g.press("down", after=10)
+    g.press("a", after=400)                             # SAVE & QUIT
+    g.stop()
+    g2 = Game(rom, "nr", fresh=False)
+    g2.tick(200)
+    g2.press("start", after=30)
+    at = lambda col, row, n: bytes(g2.m[0x9C00 + row * 32 + col + k] for k in range(n))
+    menu_heading = at(3, 3, 14)
+    g2.press("down", after=10)                          # NEW RUN
+    g2.press("a", after=30)
+    check("NEW RUN asks first when a run is saved, in the same columns as the title menu",
+          menu_heading == font_tiles("LEGION OF EVIL") and at(3, 3, 7) == font_tiles("NEW RUN")
+          and at(3, 6, 15) == font_tiles("RUN IN PROGRESS") and at(3, 8, 13) == font_tiles("WILL BE LOST") [:12] + b"\xF2"
+          and at(3, 10, 13)[:12] == font_tiles("ARE YOU SURE") and at(3, 10, 13)[-1] == 0xF0
+          and at(4, 13, 2) == font_tiles("NO") and at(4, 15, 3) == font_tiles("YES")
+          and g2.m[0x9C00 + 13 * 32 + 2] == 0x7E, "heading in column 3, NO and YES in column 4, cursor in 2")
+    check("the store has not opened behind it", g2.m[0xC5DC] == 0 and g2.m[0xD002] & 2)
+    g2.press("a", after=30)                             # NO is the default
+    check("NO keeps the saved run and returns to the menu", g2.m[0xD002] & 2 and g2.m[0xC5DC] == 0
+          and at(4, 7, 8) == font_tiles("CONTINUE"))
+    g2.press("down", after=10)
+    g2.press("a", after=30)
+    g2.press("down", after=10)                          # YES
+    g2.press("a", after=200)
+    check("YES opens the store and throws the saved run away", g2.m[0xC5DC] == 1 and g2.m[0xD002] & 2 == 0)
+    ram = g2.stop()
+    check("the snapshot is gone from battery RAM", ram[0x16] == 0)
+    g3 = Game(rom, "nr", fresh=False)
+    g3.tick(200)
+    g3.press("start", after=30)
+    check("after a power cycle the title no longer offers CONTINUE", g3.m[0xD002] & 2 == 0 and g3.m[0xD002] & 1
+          and bytes(g3.m[0x9C00 + 7 * 32 + 4 + k] for k in range(7)) == font_tiles("NEW RUN"))
+
+
 def check_glyphs(rom):
     print("Punctuation glyphs")
     data = open(rom, "rb").read()
@@ -409,7 +455,7 @@ def check_glyphs(rom):
     g2.press("start", after=30)
     g2.press("down", after=10)
     g2.press("a", after=30)
-    row = bytes(g2.m[0x9C00 + 8 * 32 + 4 + k] for k in range(13))
+    row = bytes(g2.m[0x9C00 + 6 * 32 + 3 + k] for k in range(13))
     check("the erase page asks ARE YOU SURE? with a question mark", row[-1] == 0xF0 and row[0] == 0x55)
     g3 = Game(rom, "glyph3")
     start_run(g3)
@@ -624,6 +670,7 @@ def main():
     check_pause(rompath)
     check_continue(rompath)
     check_glyphs(rompath)
+    check_new_run_confirm(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
     check_color(stock, rompath)
