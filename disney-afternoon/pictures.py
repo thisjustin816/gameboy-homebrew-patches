@@ -18,30 +18,17 @@ SHADES = [(255, 255, 255), (170, 170, 170), (85, 85, 85), (0, 0, 0)]
 
 OUTLINE_SHARE = 0.25
 
-# The collection logo
-SPLASH_SIZE = (144, 104)
+# The collection logo, built from its layers in the PC files: the triangle with the Mickey
+# shape from its own layer, then the letters of the finished logo.
+SPLASH_SIZE = (144, 112)
+SPLASH_TOP = 4               # the logo's top row on the splash
 TRIANGLE_SHADE = 2           # dark gray triangle
 MICKEY_SHADE = 1             # with a light gray Mickey on it
-LETTER_SHARE = 0.5           # letters cover at least this much of a pixel to be drawn
-BANNER_SHARE = 0.15          # inside the COLLECTION banner the pink outline is not kept
-# The Mickey shape behind the letters, tilted: one ear top right, the other left of
-# the head. Circles (x, y, radius) in the source image, traced by hand; the left ear
-# sits as far from the head as the right one does.
-MICKEY = [(782, 182, 117), (403, 403, 117), (683, 448, 165)]
-OO_FIRST = (625, 376, 670, 420)     # the first O of AFTERNOON in the source
-OO_STEP = 46                        # and how far the second one sits to its right
-BORDER = 1, 2                # the triangle's edge: a black line, then a white band this wide
-# COLLECTION, drawn by hand in white on the black banner: at this size a scaled-down
-# serif loses the E's middle stroke. Every glyph is 9 pixels tall.
-COLLECTION_FONT = {
-    'C': ['..####.', '.##..##', '##....#', '##.....', '##.....', '##.....', '##....#', '.##..##', '..####.'],
-    'O': ['..###..', '.##.##.', '##...##', '##...##', '##...##', '##...##', '##...##', '.##.##.', '..###..'],
-    'L': ['####..', '.##...', '.##...', '.##...', '.##...', '.##...', '.##..#', '.##..#', '######'],
-    'E': ['######', '.##..#', '.##...', '.##.#.', '.####.', '.##.#.', '.##...', '.##..#', '######'],
-    'T': ['########', '#..##..#', '...##...', '...##...', '...##...', '...##...', '...##...', '...##...', '..####..'],
-    'I': ['####', '.##.', '.##.', '.##.', '.##.', '.##.', '.##.', '.##.', '####'],
-    'N': ['###...##', '.##....#', '.###...#', '.#.##..#', '.#..##.#', '.#...###', '.#....##', '.#.....#', '###....#'],
-}
+MICKEY_DARK = 75             # the Mickey is darker than the stripes around it, once they are blurred
+FILL_SHARE = 0.45            # a letter's fill covers this much of a pixel to be drawn
+TEXT_SHARE = 0.4             # the same for the small words, whose strokes are thinner
+TEXT_SCALE = 1.25            # THE, AFTERNOON and COLLECTION are drawn this much bigger to stay readable
+BANNER_SHADE = 1             # COLLECTION's banner: light gray, with a black edge
 
 # The game logos
 LOGO_SIZE = (160, 72)
@@ -243,6 +230,12 @@ def corners(mask):
                                      np.argmax(xs + ys), np.argmin(xs - ys))]
 
 
+def triangle_corners(lime):
+    """The triangle's top left, top right and bottom corners, from its lime edge."""
+    ys, xs = np.nonzero(lime)
+    return [(xs[i], ys[i]) for i in (np.argmin(xs + ys), np.argmax(xs - ys), np.argmax(ys))]
+
+
 def erode(mask):
     """Shrink a mask by one pixel in all eight directions."""
     m = np.pad(mask, 1)
@@ -253,86 +246,144 @@ def erode(mask):
     return out
 
 
-def draw_word(img, font, word, cx, cy, shade):
-    """Draw a word from a bitmap font, centered on (cx, cy), with one pixel between letters."""
-    width = sum(len(font[ch][0]) for ch in word) + len(word) - 1
-    x = round(cx - width / 2)
-    y = round(cy - len(font[word[0]]) / 2)
-    for ch in word:
-        for gy, line in enumerate(font[ch]):
-            for gx, p in enumerate(line):
-                if p == '#':
-                    img.putpixel((x + gx, y + gy), SHADES[shade])
-        x += len(font[ch][0]) + 1
+def dilate(mask):
+    """Grow a mask by one pixel in all eight directions."""
+    m = np.pad(mask, 1)
+    out = mask.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            out |= m[1 + dy:1 + dy + mask.shape[0], 1 + dx:1 + dx + mask.shape[1]]
+    return out
 
 
-def splash_logo(png):
-    """The triangle and Mickey drawn as clean shapes at the target size, the letters on top."""
+def shift(mask, dx, dy):
+    """A mask moved right by dx and down by dy."""
+    out = np.zeros_like(mask)
+    h, w = mask.shape
+    out[dy:, dx:] = mask[:h - dy, :w - dx]
+    return out
+
+
+def box_blur(x, r):
+    k = 2 * r + 1
+    c = np.pad(np.pad(x, r, mode='edge').cumsum(0).cumsum(1), ((1, 0), (1, 0)))
+    return (c[k:, k:] - c[:-k, k:] - c[k:, :-k] + c[:-k, :-k]) / (k * k)
+
+
+def cover(mask, scale, w, h):
+    """How much of each target pixel a full-size mask covers, 0 to 1."""
+    im = Image.fromarray((np.clip(mask.astype(float), 0, 1) * 255).astype('uint8'))
+    a = np.asarray(im.resize((round(mask.shape[1] * scale), round(mask.shape[0] * scale)), Image.BOX)) / 255
+    out = np.zeros((h, w))
+    out[:min(h, a.shape[0]), :min(w, a.shape[1])] = a[:h, :w]
+    return out
+
+
+def scale_about(mask, k, c):
+    """A full-size mask scaled by k about the point c, as coverage 0 to 1."""
+    coeffs = (1 / k, 0, c[0] - c[0] / k, 0, 1 / k, c[1] - c[1] / k)
+    im = Image.fromarray(mask.astype('uint8') * 255)
+    return np.asarray(im.transform(im.size, Image.AFFINE, coeffs, Image.BILINEAR)) / 255
+
+
+def mickey_mask(bg_png, shape, triangle):
+    """The Mickey shape from the triangle layer, moved onto the finished logo, whose triangle
+    corners are triangle. The layer draws it as darker stripes: blurred, it stands out."""
+    B = np.asarray(Image.open(io.BytesIO(bg_png)).convert('RGBA')).astype(float)
+    lum = 0.299 * B[..., 0] + 0.587 * B[..., 1] + 0.114 * B[..., 2]
+    alpha = B[..., 3] / 255
+    blurred = box_blur(lum * alpha, 8) / np.maximum(box_blur(alpha, 8), 1e-3)
+    r, g, b = B[..., 0], B[..., 1], B[..., 2]
+    lime = (abs(r - 154) < 40) & (abs(g - 233) < 30) & (b < 110)
+    inside = (alpha > 0.9) & ~lime & (box_blur(lime.astype(float), 12) == 0)
+    lab, ps = parts((blurred < MICKEY_DARK) & inside)
+    mask = lab == max(ps, key=lambda p: p[2])[0]
+    # the layer is placed differently from the finished logo: map one triangle onto the other
+    src = np.array(triangle_corners(lime), float)
+    M = np.linalg.solve(np.c_[np.array(triangle, float), np.ones(3)], src)
+    im = Image.fromarray(mask.astype('uint8') * 255).transform(
+        (shape[1], shape[0]), Image.AFFINE, (M[0, 0], M[1, 0], M[2, 0], M[0, 1], M[1, 1], M[2, 1]), Image.BILINEAR)
+    return np.asarray(im) / 255
+
+
+def split_letters(mask):
+    """A word's letters, one mask each. Letters that touch in the art (a serif, two O's) are
+    cut apart at their thinnest column."""
+    lab, ps = parts(mask)
+    ps = [(n, b) for n, b, s in ps if s > 150]
+    typical = sorted(b[2] - b[0] for n, b in ps)[len(ps) // 2]
+    out = []
+    def cut(m, b):
+        if b[2] - b[0] <= 1.6 * typical:
+            out.append(m)
+            return
+        cols = m[:, b[0]:b[2] + 1].sum(0)
+        lo, hi = int(len(cols) * 0.3), int(len(cols) * 0.7)
+        x = b[0] + lo + int(np.argmin(cols[lo:hi]))
+        for part in (m & (np.arange(m.shape[1]) < x), m & (np.arange(m.shape[1]) >= x)):
+            ys, xs = np.nonzero(part)
+            cut(part, (xs.min(), ys.min(), xs.max(), ys.max()))
+    for n, b in ps:
+        cut(lab == n, b)
+    return sorted(out, key=lambda m: np.nonzero(m)[1].min())
+
+
+def separated(covers, share):
+    """The letters' fills together, with at least a pixel between neighbours for the outline."""
+    total = np.zeros(covers[0].shape, bool)
+    for c in covers:
+        total |= (c >= share) & ~dilate(total)
+    return total
+
+
+def splash_logo(png, bg_png):
+    """The collection logo: the triangle with its edge and the Mickey shape, then each word as
+    white fills from the art with a black outline and drop shadow drawn at the target size."""
     A = np.asarray(Image.open(io.BytesIO(png)).convert('RGBA')).astype(int)
     ys, xs = np.nonzero(A[..., 3] > 40)
-    x0, y0 = xs.min(), ys.min()
-    A = A[y0:ys.max() + 1, x0:xs.max() + 1]
+    A = A[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    h0, w0 = A.shape[:2]
+    scale = min(SPLASH_SIZE[0] / w0, SPLASH_SIZE[1] / h0)
+    w, h = int(w0 * scale), int(h0 * scale)
     _, lime, code, banner = splash_layers(A)
-    scale, w, h, blk = blocks(code.shape, SPLASH_SIZE)
-    ly, lx = np.nonzero(lime)
-    tip = [np.argmin(lx + ly), np.argmax(lx - ly), np.argmax(ly)]       # top left, top right, bottom
+    triangle = triangle_corners(lime)
     base = Image.new('L', (w, h), 0)
-    ImageDraw.Draw(base).polygon([(lx[i] * scale, ly[i] * scale) for i in tip], fill=1)
-    mickey = Image.new('L', (w, h), 0)
-    dm = ImageDraw.Draw(mickey)
-    for cx, cy, rr in MICKEY:
-        cx, cy = cx - x0, cy - y0
-        dm.ellipse(((cx - rr) * scale, (cy - rr) * scale, (cx + rr) * scale, (cy + rr) * scale), fill=1)
+    ImageDraw.Draw(base).polygon([(x * scale, y * scale) for x, y in triangle], fill=1)
     tri = np.asarray(base) == 1
-    # the ears only just touch the head: close the sliver of triangle between them
-    mk = np.asarray(mickey) == 1
-    for _ in range(2):
-        mk = ~erode(~mk)
-    for _ in range(2):
-        mk = erode(mk)
-    shade_base = np.where(tri, np.where(mk, MICKEY_SHADE, TRIANGLE_SHADE), 0)
-    # the lime edge, as a black line and a white band inside it
-    inner = tri
-    for _ in range(BORDER[0]):
-        inner = erode(inner)
-    shade_base[tri & ~inner] = 3
-    band = inner
-    for _ in range(BORDER[1]):
-        band = erode(band)
-    shade_base[inner & ~band] = 0
-    # the letters' purple shadow goes black with their outline, so it can't be mistaken
-    # for the triangle or show through the Mickey shape
-    to_shade = [0, 0, 3, 3, 3]
+    mickey = cover(mickey_mask(bg_png, A.shape, triangle), scale, w, h) >= 0.5
+    shade = np.where(tri, np.where(mickey, MICKEY_SHADE, TRIANGLE_SHADE), 0)
+    # the lime edge, as a black line with a white band inside it
+    inner = erode(tri)
+    band = erode(erode(inner))
+    shade[tri & ~inner] = 3
+    shade[inner & ~band] = 0
+
+    def lettering(fill):
+        edge = dilate(fill)
+        shade[edge | shift(edge, 1, 1)] = 3
+        shade[fill] = 0
+
+    q = Image.new('L', (w0, h0), 0)
+    ImageDraw.Draw(q).polygon([(int(x), int(y)) for x, y in corners(banner)], fill=1)
+    in_banner = np.asarray(q) == 1
+    lettering(cover((code == 0) & ~in_banner, scale, w, h) >= FILL_SHARE)
+    lab, ps = parts(code == 1)
+    for top in (True, False):                    # THE, then AFTERNOON
+        word = np.isin(lab, [n for n, b, s in ps if s > 150 and (b[3] < h0 / 3) == top])
+        ys, xs = np.nonzero(word)
+        c = ((xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2)
+        lettering(separated([cover(scale_about(l, TEXT_SCALE, c), scale, w, h)
+                             for l in split_letters(word)], TEXT_SHARE))
+    # the banner grows leftward from its right end, so it stays on the canvas
+    ys, xs = np.nonzero(in_banner)
+    c = (xs.max(), (ys.min() + ys.max()) / 2)
+    ban = cover(scale_about(in_banner, TEXT_SCALE, c), scale, w, h) >= 0.5
+    shade[dilate(ban)] = 3
+    shade[ban] = BANNER_SHADE
+    lettering(separated([cover(scale_about(l, TEXT_SCALE, c), scale, w, h)
+                         for l in split_letters((code == 0) & in_banner)], TEXT_SHARE))
     out = Image.new('RGB', (w, h))
-    for ty in range(h):
-        for tx in range(w):
-            by0, by1, bx0, bx1 = blk[ty][tx]
-            block = code[by0:by1, bx0:bx1].ravel()
-            c = np.bincount(block[block >= 0], minlength=5)
-            total = block.size
-            # the pink outline is kept on the triangle; inside the banner it is black
-            # already, and keeping it there would eat the white letters' thin strokes
-            if c[4] >= OUTLINE_SHARE * total and c[3] < BANNER_SHARE * total:
-                s = 3
-            elif c.sum() >= LETTER_SHARE * total:
-                s = to_shade[int(c[:4].argmax())]
-            else:
-                s = shade_base[ty, tx]
-            out.putpixel((tx, ty), SHADES[s])
-    out = despeckle(out)
-    # AFTERNOON's two O's are the same glyph but land on different pixel phases; draw the
-    # second as a copy of the first. In the source they sit side by side, OO_STEP apart.
-    ox0, oy0, ox1, oy1 = [v * scale for v in (OO_FIRST[0] - x0, OO_FIRST[1] - y0,
-                                              OO_FIRST[2] - x0, OO_FIRST[3] - y0)]
-    bx0, by0 = int(np.floor(ox0)), int(np.floor(oy0)) - 1
-    bx1, by1 = int(np.ceil(ox1)), int(np.ceil(oy1)) + 1
-    out.paste(out.crop((bx0, by0, bx1, by1)), (bx0 + round(OO_STEP * scale), by0))
-    # the banner as a clean black shape, with COLLECTION drawn on it by hand
-    quad = [(x * scale, y * scale) for x, y in corners(banner)]
-    ImageDraw.Draw(out).polygon(quad, fill=SHADES[3])
-    cx = sum(x for x, _ in quad) / 4
-    cy = sum(y for _, y in quad) / 4
-    draw_word(out, COLLECTION_FONT, 'COLLECTION', cx, cy, 0)
+    out.putdata([SHADES[v] for v in shade.ravel()])
     return out
 
 
@@ -502,10 +553,10 @@ def game_logo(art, games, g):
 
 # ---- screens ------------------------------------------------------------------------
 
-def splash_screen(png, glyphs):
+def splash_screen(png, bg_png, glyphs):
     img = Image.new('RGB', (160, 144), SHADES[0])
-    logo = splash_logo(png)
-    img.paste(logo, (snap((160 - logo.width) // 2), 8))
+    logo = splash_logo(png, bg_png)
+    img.paste(logo, (snap((160 - logo.width) // 2), SPLASH_TOP))
     draw_text(img, glyphs, 4, PROMPT_ROW, 'PRESS START')
     return img
 

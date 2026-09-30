@@ -39,6 +39,7 @@ GAMES = [
 ]
 BUNDLE_MD5 = 'c20f738bd6e913e2b669cb15d87d697c'   # PC release, bundleMain.mbundle
 SPLASH_ART = 'LogoDisneyAfternoon.png'
+SPLASH_BG = 'LogoDisneyBG.png'           # its triangle and Mickey shape on their own
 FONT_MD5 = '28356ffe0f0535fed3193648ce142cca'      # the glyphs font_glyphs picks out
 
 # DuckTales bank 0: the entry point we redirect, and the padding the boot hook uses.
@@ -106,7 +107,7 @@ def screens(roms, art):
     """The five screens in bank order: splash, then each game highlighted."""
     glyphs = font_glyphs(roms[1])
     cap = pictures.land_select(roms[0])
-    out = [pictures.splash_screen(art[SPLASH_ART], glyphs)]
+    out = [pictures.splash_screen(art[SPLASH_ART], art[SPLASH_BG], glyphs)]
     for i, g in enumerate(GAMES):
         logo = pictures.game_logo(art, GAMES, g)
         out.append(pictures.menu_screen(logo, glyphs, cap, GAMES, i))

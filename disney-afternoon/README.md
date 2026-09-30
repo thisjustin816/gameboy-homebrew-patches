@@ -58,8 +58,12 @@ Gambatte and EverDrive-class carts do. Carts that only do MBC5 banking won't run
   - Each logo is sorted into color families before it is scaled down, so colors of
     the same brightness stay apart. A thin outline wins any pixel it covers a quarter
     of, so it stays unbroken.
-  - The collection logo's triangle and the Mickey shape behind the letters are
-    drawn as clean shapes at the target size, with the letters on top.
+  - The collection logo is rebuilt from its layers in the PC files. The triangle is
+    drawn as a clean shape with a black and white edge, and the Mickey shape behind
+    the letters comes from the triangle's own layer. Each word is the art's white
+    or yellow letter fill, scaled down, with a black outline and drop shadow drawn
+    at Game Boy size. THE, AFTERNOON and COLLECTION are drawn 25% bigger than in
+    the original so they stay readable, with at least a pixel between letters.
   - The DuckTales logos keep their red-to-yellow fill as an ordered dither across
     three shades.
   - Every game logo gets the same "Disney's", taken from the DuckTales logo.
