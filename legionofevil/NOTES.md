@@ -71,7 +71,7 @@ banks the run's money, so it is also a clean way to end a run in a test.
   at `$8800` with signed indices. The window (WY `$80`) carries the HUD rows.
 - The font for menus is in VRAM during a run: A-Z at tiles `$55`-`$6E`, 0 at `$6F`,
   1-9 at `$70`-`$78`, `:` `$79`, `-` `$7C`, `+` `$7D`, the diamond cursor `$7E`,
-  blank `$7F`. There is no `&`, `?` or `>`.
+  blank `$7F`. The patch adds `?` `!` `.` `,` `'` `&` as BG tiles `$F0`-`$F5` (VRAM `$8F00`). Tiles `$A8`-`$FF` are blank on every screen, including level-up, boss loot and the win screen.
 - Tile graphics never change during a run, so a snapshot does not need them.
 - The palettes are written once, at the title: BGP and OBP0 `$E1`, OBP1 `$6C`.
   Sprite attributes only use bits 4 (OBP1, the damage flash) and 5 (X flip).

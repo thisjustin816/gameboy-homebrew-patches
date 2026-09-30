@@ -262,7 +262,7 @@ def check_pause(rom):
     check("START opens the menu and the game stands still behind it",
           g.m[0xFF40] & 0x20 and g.m[0xFF4A] == 0 and g.m[0xC0D9] == tick)
     rows = [bytes(g.m[0x9C00 + y * 32 + 4 + k] for k in range(13)) for y in (7, 9, 11)]
-    check("the pause menu offers RESUME and SAVE AND QUIT, and nothing below them",
+    check("the pause menu offers RESUME and SAVE & QUIT, and nothing below them",
           rows[0].startswith(bytes([0x66, 0x59, 0x67, 0x69])) and rows[1][:4] == bytes([0x67, 0x55, 0x6A, 0x59]) and rows[2] == bytes([0x7F] * 13))
     g.press("a", after=20)
     check("RESUME returns to the run: the game ticks again, the HUD window and sprites are back",
@@ -321,10 +321,10 @@ def check_continue(rom, tick_count=900):
     sub.tick(3)
     sub.press("start", after=40)
     sub.press("down", after=10)
-    sub.press("a", after=400)                           # SAVE AND QUIT
+    sub.press("a", after=400)                           # SAVE & QUIT
     title_back = sub.m[0xFF40] == 0xC1
     ram = sub.stop()
-    check("SAVE AND QUIT writes a snapshot and lands on the title", ram[0x16] == 0x5A and title_back)
+    check("SAVE & QUIT writes a snapshot and lands on the title", ram[0x16] == 0x5A and title_back)
     sub2 = Game(rom, "sub", fresh=False)
     sub2.tick(200)
     check("after a power cycle the title offers CONTINUE", sub2.m[0xD002] & 3 == 3)
@@ -376,6 +376,46 @@ def check_continue(rom, tick_count=900):
     sub4 = Game(rom, "sub3", fresh=False)
     sub4.tick(200)
     check("a damaged snapshot is not offered", sub4.m[0xD002] & 2 == 0 and sub4.m[0xD002] & 1 == 1)
+
+
+def check_glyphs(rom):
+    print("Punctuation glyphs")
+    data = open(rom, "rb").read()
+    at = 2 * 0x4000 + _LABELS["glyphs"] - 0x4000
+    g = Game(rom, "glyph")
+    g.tick(200)
+    vram = bytes(g.m[0x8F00 + i] for i in range(96))
+    check("the six glyph tiles are in video memory", vram == data[at:at + 96] and any(vram))
+    seen = {}
+    for ch in "?!.,'&A0 :":
+        stub = [0x3E, 0x02, 0xEA, 0x00, 0x20, 0x3E, ord(ch), 0xCD, _LABELS["tile_of"] & 0xFF, _LABELS["tile_of"] >> 8,
+                0xEA, 0x20, 0xDC, 0x18, 0xFE]              # bank 2, ld a,ch, call tile_of, store, spin
+        for i, b in enumerate(stub):
+            g.m[0xDC00 + i] = b
+        g.pb.register_file.PC = 0xDC00
+        g.tick(2, False)
+        seen[ch] = g.m[0xDC20]
+    check("the game's text routine maps ? ! . , ' & to tiles $F0-$F5 and leaves the old characters alone",
+          [seen[c] for c in "?!.,'&"] == [0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5] and seen["A"] == 0x55 and seen["0"] == 0x6F
+          and seen[" "] == 0x7F and seen[":"] == 0x79)
+    g = Game(rom, "glyph-save")                         # the routine test above leaves its emulator in a spin loop
+    start_run(g)
+    g.m[0xC5E5], g.m[0xC5E6] = 0x2C, 0x01
+    g.m[0xC5DB] = 1
+    g.tick(300)
+    g.stop()
+    g2 = Game(rom, "glyph-save", fresh=False)
+    g2.tick(200)
+    g2.press("start", after=30)
+    g2.press("down", after=10)
+    g2.press("a", after=30)
+    row = bytes(g2.m[0x9C00 + 8 * 32 + 4 + k] for k in range(13))
+    check("the erase page asks ARE YOU SURE? with a question mark", row[-1] == 0xF0 and row[0] == 0x55)
+    g3 = Game(rom, "glyph3")
+    start_run(g3)
+    g3.press("start", after=40)
+    row = bytes(g3.m[0x9C00 + 9 * 32 + 4 + k] for k in range(11))
+    check("the pause menu reads SAVE & QUIT", row[5] == 0xF5 and row[0] == 0x67)
 
 
 def sprite_overflow(game, frames):
@@ -583,6 +623,7 @@ def main():
     check_erase(rompath)
     check_pause(rompath)
     check_continue(rompath)
+    check_glyphs(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
     check_color(stock, rompath)

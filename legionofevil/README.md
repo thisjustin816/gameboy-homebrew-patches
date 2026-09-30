@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `90cdbc2bde564c0598f9ea1d73b514e3` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `961f343237534acef1bdd2ec6c03cc7f` |
 
 ## What you get
 
@@ -22,11 +22,11 @@ when the camera scrolls.
   when a run is saved), NEW RUN (the store, then difficulty and weapon, as after
   a death) and ERASE SAVE (asks first, NO is the default). B backs out. With
   nothing saved, START starts a run as before.
-- **Pause menu.** START during a run opens PAUSED: RESUME or SAVE AND QUIT.
-  To abandon a run, SAVE AND QUIT and pick NEW RUN; the abandoned run's money is
+- **Pause menu.** START during a run opens PAUSED: RESUME or SAVE & QUIT.
+  To abandon a run, SAVE & QUIT and pick NEW RUN; the abandoned run's money is
   not banked (dying banks it, as in the stock game). The
   stock pause is replaced by this menu and the game stands still behind it.
-- **Save and quit, then continue.** SAVE AND QUIT writes the whole run (enemies,
+- **Save and quit, then continue.** SAVE & QUIT writes the whole run (enemies,
   weapons, position, level, time) and returns to the title. CONTINUE puts you
   back on the same frame. Continuing uses the saved run up, so a saved run
   can't be reloaded after you die in it.
@@ -34,6 +34,9 @@ when the camera scrolls.
   blood, purple, sepia) on any screen: the title, menus, the store and during a
   run. The pause menu shows "SELECT:" and the theme's name. The choice is saved
   and survives ERASE SAVE. Color hardware only.
+- **Punctuation.** The game's font has no `? ! . , ' &`, so the patch adds them,
+  drawn in the font's style into tiles that no screen uses. The menus use them
+  ("ARE YOU SURE?", "SAVE & QUIT").
 - **The player stays on screen.** The hardware draws the first ten sprites on a
   scanline, in table order. The game puts the player last, so a crowd hid part of
   the player. Now the player and weapon sprites come first and the enemies
@@ -88,15 +91,17 @@ checks:
   store purchase is written at once;
 - the title menu, NO and YES on the erase page, and that the color theme
   survives an erase;
-- the pause menu stops the game and offers RESUME and SAVE AND QUIT, and RESUME
+- the pause menu stops the game and offers RESUME and SAVE & QUIT, and RESUME
   carries on;
-- SAVE AND QUIT, a power cycle and CONTINUE give a run identical to one that was
+- SAVE & QUIT, a power cycle and CONTINUE give a run identical to one that was
   never interrupted: the same screens and the same game memory for 900 frames;
 - a snapshot with a damaged byte is not offered;
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
 - the stock game writes the scroll registers on visible lines and the patched
   game's registers never change between VBlanks;
+- the six punctuation tiles are in video memory, the game's text routine maps each
+  character to the right tile, and the erase and pause pages use them;
 - the color palettes in palette RAM are the theme's colors through the game's own
   shades, the game-over, store and difficulty screens have the same shades in
   color and in gray, SELECT changes and saves the theme in a run, in the pause menu (which names it)
@@ -108,7 +113,7 @@ What this does not show:
 
 - **Real hardware.** Nothing here ran on a console, a Chromatic or a flash cart.
   Double speed, the color palettes, the save on a real battery cartridge and the
-  soft reset after SAVE AND QUIT are emulator results only.
+  soft reset after SAVE & QUIT are emulator results only.
 - **Sound.** The music keeps playing behind the menus, and CONTINUE restores the
   music player's state, but the hardware sound registers are not restored. The
   song may be quiet until its next note after CONTINUE. Sound was not compared.

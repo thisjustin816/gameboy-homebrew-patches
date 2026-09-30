@@ -310,6 +310,7 @@ bh_nopal:   call sig_check
             ld (V_FLAGS),a
 bh_done:    call sram_off
             call cgb_setup
+            call glyph_setup
             ld a,$A5
             ld (V_MAGIC1),a
             ld a,$5A
@@ -440,6 +441,37 @@ es_clr:     ld (hl+),a
             ld c,0
             ld de,upg_def
             jp upg_xfer
+
+; ---------------------------------------------------------------- glyphs
+; The game's font has no punctuation beyond : - + so six glyphs, drawn in its
+; style (a 1-pixel margin, a 6x6 letterform, the same two tones), go into BG
+; tiles $F0-$F5 (VRAM $8F00). No screen the game shows uses those tiles.
+glyphs:
+            db $FF,$FF,$FF,$C3,$FF,$99,$FF,$F9,$FF,$E7,$FF,$FF,$FF,$E7,$FF,$FF        ; ?
+            db $FF,$FF,$FF,$E7,$FF,$E7,$FF,$E7,$FF,$E7,$FF,$FF,$FF,$E7,$FF,$FF        ; !
+            db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$9F,$FF,$9F,$FF,$FF        ; .
+            db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$9F,$FF,$9F,$FF,$BF        ; ,
+            db $FF,$FF,$FF,$E7,$FF,$E7,$FF,$EF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF        ; '  (the comma's shape, raised)
+            db $FF,$FF,$FF,$C7,$FF,$93,$FF,$C7,$FF,$93,$FF,$91,$FF,$C5,$FF,$FF        ; &
+
+glyph_setup:
+            ldh a,(LCDC)
+            ld (V_LCDC),a
+            bit 7,a
+            jr z,gs_copy            ; LCD already off
+gs_line:    ldh a,(LY)              ; interrupts are still off at boot: poll for VBlank
+            cp $90
+            jr nz,gs_line
+            ldh a,(LCDC)
+            res 7,a
+            ldh (LCDC),a
+gs_copy:    ld hl,glyphs
+            ld de,$8F00
+            ld bc,96
+            call cpy
+            ld a,(V_LCDC)
+            ldh (LCDC),a
+            ret
 
 ; ---------------------------------------------------------------- theme
 ; SELECT anywhere cycles the color theme (color hardware only) and saves it.
@@ -605,7 +637,31 @@ to_4:       cp $2B
             jr nz,to_5
             ld a,$7D
             ret
-to_5:       cp $30
+to_5:       cp $3F
+            jr nz,to_q1
+            ld a,$F0                ; ?
+            ret
+to_q1:      cp $21
+            jr nz,to_q2
+            ld a,$F1                ; !
+            ret
+to_q2:      cp $2E
+            jr nz,to_q3
+            ld a,$F2                ; .
+            ret
+to_q3:      cp $2C
+            jr nz,to_q4
+            ld a,$F3                ; ,
+            ret
+to_q4:      cp $27
+            jr nz,to_q5
+            ld a,$F4                ; '
+            ret
+to_q5:      cp $26
+            jr nz,to_q6
+            ld a,$F5                ; &
+            ret
+to_q6:      cp $30
             jr nz,to_6
             ld a,$6F
             ret
@@ -727,7 +783,7 @@ str_new_b:  db 4,9,"NEW RUN",0
 str_era_a:  db 4,9,"ERASE SAVE",0
 str_era_b:  db 4,11,"ERASE SAVE",0
 str_sure1:  db 4,6,"ERASE SAVE",0
-str_sure2:  db 4,8,"ARE YOU SURE",0
+str_sure2:  db 4,8,"ARE YOU SURE?",0
 str_no:     db 6,11,"NO",0
 str_yes:    db 6,13,"YES",0
 
@@ -838,7 +894,7 @@ ce_no:      xor a
 ; ---------------------------------------------------------------- pause
 str_paused: db 7,3,"PAUSED",0
 str_resume: db 4,7,"RESUME",0
-str_squit:  db 4,9,"SAVE AND QUIT",0
+str_squit:  db 4,9,"SAVE & QUIT",0
 str_theme:  db 2,15,"SELECT: ",0
 
 ; START during a live run. The stock game pauses on START; this replaces that
