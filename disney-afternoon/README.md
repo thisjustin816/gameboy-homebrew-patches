@@ -48,6 +48,36 @@ back to the splash: its MBC1 leaves bank 0 at `$0000` in mode 1, as its mapper
 support doesn't cover MBC1 multicarts. Carts that only do MBC5 banking can't run it
 either, since MBC5 always shows bank 0 at `$0000`.
 
+## ChisFlash MAX build
+
+For a ChisFlash MAX 16-in-1 cart, `chisflash.py` builds an 8 MiB flash image with the
+same splash and menu:
+
+```
+python3 chisflash.py DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle -o "Disney Afternoon Collection (ChisFlash MAX).gb"
+```
+
+That cart only does MBC5 banking, but its CPLD can reset the console into any of its
+16 slots, so it doesn't need MBC1's mode 1:
+
+- The menu slot, at the start of the flash, holds a 256 KiB MBC5 ROM: its own boot
+  code in bank 0, and the menu and screens in banks 4 to 9 as in the collection.
+- The four games sit in slots 0 to 3, at 1, 2, 4 and 6 MiB, each converted to MBC5.
+  All four only write banks 1 to 7 to the `$2000` register, which MBC5 treats as MBC1
+  does, so the conversion is the header's cartridge type, plus one patch in TaleSpin.
+  Its bank-switch routine at `$02C7` is sometimes called with bank 0, which MBC1 turns
+  into bank 1 and MBC5 doesn't. The routine now jumps to a copy in bank 0's free
+  padding at `$0070` that does the same, leaving A and the flags as they were.
+- Picking a game copies a stub to HRAM that writes `$40` to `$4000`, the slot to
+  `$B000` and 1 to `$A000`, then writes `$4000` again. The cart then resets the
+  console into that slot, and the game boots cold, exactly like its own cart. This
+  register sequence comes from the
+  [chisflash-max16-menu](https://github.com/dmcclung/chisflash-max16-menu) project,
+  which worked it out from the cart's CPLD.
+
+The image ends after slot 3. Write it from the start of the flash; slots 4 to 15 are
+left as they were.
+
 ## How it works
 
 - Each game sits at the start of its own 512 KiB quarter of the ROM. None of them has
@@ -104,6 +134,19 @@ python3 verify.py "Disney Afternoon Collection (GB).gb" DuckTales.gb DuckTales2.
 
 As a control, a build that launches Darkwing Duck without switching MBC1 to mode 1
 hangs, and `verify.py` reports the hang as a failure.
+
+`verify_chisflash.py` checks a ChisFlash image the same way:
+
+```
+python3 verify_chisflash.py "Disney Afternoon Collection (ChisFlash MAX).gb" DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle
+```
+
+PyBoy has no ChisFlash CPLD, so it checks the parts: the menu ROM's screens, blink
+and cursor as an MBC5 cart; that picking each game leaves the stub in HRAM with that
+game's slot; and that each converted game matches its stock ROM on every frame of the
+same scripted play, on DMG and Game Boy Color. As a control, TaleSpin converted
+without its patch has to differ from stock. The reset into a slot itself has only
+been checked against the register sequence, not on the cart.
 
 A trace of about five minutes of play per stock game shows each one writing only to
 the `$2000` bank register, with banks 0 to 7. A write to `$4000` or `$6000` would break
