@@ -1,4 +1,4 @@
-# Legion of Evil: save, pause menu and color patch
+# Legion of Evil: save and color patch
 
 A patch for Legion of Evil (Game Boy) that adds a battery save, a pause menu
 that can save a run partway through, and a color mode with double speed for the
@@ -230,7 +230,7 @@ named after the ROM.
 Python 3 only:
 
 ```
-python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save, pause menu & color patch by thisJUSTin816 v1.0].gb" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.0].gb" --ips LegionOfEvil-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -239,5 +239,5 @@ instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
 `pip install pyboy pillow`:
 
 ```
-python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save, pause menu & color patch by thisJUSTin816 v1.0].gb"
+python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.0].gb"
 ```
