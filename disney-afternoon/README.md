@@ -28,7 +28,7 @@ Needs Python 3 with Pillow and PyBoy (`pip install pyboy pillow`). PyBoy is used
 read DuckTales 2's font from its title screen.
 
 ```
-python3 build.py DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle -o "Disney Afternoon Collection.gb"
+python3 build.py DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle -o "Disney Afternoon Collection (GB).gb"
 ```
 
 The script refuses any input whose md5 isn't listed above.
@@ -61,7 +61,7 @@ Gambatte and EverDrive-class carts do. Carts that only do MBC5 banking won't run
 `verify.py` checks a built ROM in PyBoy:
 
 ```
-python3 verify.py "Disney Afternoon Collection.gb" DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle
+python3 verify.py "Disney Afternoon Collection (GB).gb" DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle
 ```
 
 - The ROM is exactly what `build.py` makes, its header and checksums are valid, and each
