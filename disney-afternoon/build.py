@@ -181,7 +181,7 @@ def build_code():
         LOADER=LOADER, LOADER_LEN=len(loader), LAUNCH=LAUNCH, LAUNCH_LEN=len(launch),
         P_QUARTER=lab['launch'] + 1, P_MODE=lab['launch'] + 6,
         P_TARGET=lab['jump'] + 1, P_TARGET_HI=lab['jump'] + 2)
-        + src('menu.asm') + db_lines('loader_src', loader)
+        + src('menu.asm') + src('mbc1_launch.asm') + db_lines('loader_src', loader)
         + db_lines('launch_src', launch) + db_lines('games', games))
     menu, menu_lab, _ = assemble(menu_src, 0x4000)
     # the patch points must be the operands the stub was assembled with

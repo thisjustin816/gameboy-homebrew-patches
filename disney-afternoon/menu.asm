@@ -7,7 +7,8 @@
 ; The builder defines PROMPT_MAP (the map address of the splash's PRESS START
 ; row), BLINK_FRAMES and BLINK_CYCLE (twice that). It appends loader_src and
 ; launch_src (the loader and launch stub, assembled for LOADER and LAUNCH), and
-; games (quarter, mode, entry lo, hi).
+; the cart's set_launch, which patches the stub for the game in SEL, with its
+; data (mbc1_launch.asm for the MBC1 collection, chis_launch.asm for ChisFlash).
 
 SEL = $C000
 PAD_HELD = $C001            ; buttons in the low nibble, d-pad in the high nibble
@@ -190,21 +191,7 @@ clear_tile0:
     ld de,LAUNCH
     ld b,LAUNCH_LEN
     call copy
-    ld a,(SEL)              ; games + 4 * SEL
-    add a,a
-    add a,a
-    ld e,a
-    ld d,0
-    ld hl,games
-    add hl,de
-    ld a,(hl+)
-    ld (P_QUARTER),a
-    ld a,(hl+)
-    ld (P_MODE),a
-    ld a,(hl+)
-    ld (P_TARGET),a
-    ld a,(hl+)
-    ld (P_TARGET_HI),a
+    call set_launch         ; patch the stub for the game in SEL
     xor a
     ldh ($FF),a
     ld a,$E1
