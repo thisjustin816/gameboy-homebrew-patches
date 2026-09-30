@@ -27,7 +27,8 @@ MICKEY_SHADE = 1             # with a light gray Mickey on it
 MICKEY_DARK = 75             # the Mickey is darker than the stripes around it, once they are blurred
 FILL_SHARE = 0.45            # a letter's fill covers this much of a pixel to be drawn
 TEXT_SHARE = 0.4             # the same for the small words, whose strokes are thinner
-TEXT_SCALE = 1.25            # THE, AFTERNOON and COLLECTION are drawn this much bigger to stay readable
+TEXT_SCALE = 1.25            # THE and AFTERNOON are drawn this much bigger to stay readable
+BANNER_SCALE = 1.2           # and COLLECTION with its banner this much, the most that fits the canvas
 BANNER_SHADE = 1             # COLLECTION's banner: light gray, with a black edge
 
 # The game logos
@@ -374,13 +375,13 @@ def splash_logo(png, bg_png):
         c = ((xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2)
         lettering(separated([cover(scale_about(l, TEXT_SCALE, c), scale, w, h)
                              for l in split_letters(word)], TEXT_SHARE))
-    # the banner grows leftward from its right end, so it stays on the canvas
+    # the banner grows about its own center, so it stays lined up as in the original
     ys, xs = np.nonzero(in_banner)
-    c = (xs.max(), (ys.min() + ys.max()) / 2)
-    ban = cover(scale_about(in_banner, TEXT_SCALE, c), scale, w, h) >= 0.5
+    c = ((xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2)
+    ban = cover(scale_about(in_banner, BANNER_SCALE, c), scale, w, h) >= 0.5
     shade[dilate(ban)] = 3
     shade[ban] = BANNER_SHADE
-    lettering(separated([cover(scale_about(l, TEXT_SCALE, c), scale, w, h)
+    lettering(separated([cover(scale_about(l, BANNER_SCALE, c), scale, w, h)
                          for l in split_letters((code == 0) & in_banner)], TEXT_SHARE))
     out = Image.new('RGB', (w, h))
     out.putdata([SHADES[v] for v in shade.ravel()])
