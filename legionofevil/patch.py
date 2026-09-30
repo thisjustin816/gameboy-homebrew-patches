@@ -79,6 +79,7 @@ ROM_PROFILES = {
             ("store: buy routine", 0x5ABB, "cdcf22", "t_buy"),
             ("game over screen", 0x5947, "cd7519", "t_over"),
             ("frame wait", 0x7AF8, "f040e680", "t_wait"),
+            ("the non-fatal hit", 0x4ACC, "21d0c7", "t_hit"),
         ],
     },
 }

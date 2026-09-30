@@ -48,7 +48,9 @@ V_WX        = $D00D
 V_SAVESP    = $D00E             ; two bytes
 V_MHINT     = $D019             ; 1 while the menu shows the theme line
 V_MREDRAW   = $D01A             ; the theme changed: redraw its name
-WINBAK      = $D100             ; 1 KB copy of the window map
+WINBAK      = $D100             ; 1 KB copy of the window map, $D100-$D4FF
+PAGEBUF     = $D500             ; the menu page being drawn: 20 x 18 tiles
+SHOWN       = $D700             ; what the window map holds now (PAGEBUF + $200)
 OAMBUF      = $DA00             ; the sprite table the VBlank DMA copies from
 V_ROT       = $D010             ; which enemy pair leads this frame
 V_CGB       = $D011             ; 1 on a Game Boy Color
@@ -59,8 +61,11 @@ C_OBP0      = $D015
 C_OBP1      = $D016
 C_PAL       = $D017
 C_VALID     = $D018
-PALBUF      = $D200             ; BG palette 0, then OBJ palettes 0 and 1: 24 bytes
+PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 bytes
 S_PAL       = $A014             ; the theme, and its check byte
+THEME_COUNT = 16
+V_TPTR      = $D01B             ; two bytes: the theme's palettes
+V_HIT       = $D01D             ; frames left in the player's hit pulse (4 = just hit)
 SH_SCX      = $94               ; HRAM: the game's scroll and palette writes land here,
 SH_SCY      = $95               ; and the VBlank hook copies them to the hardware
 SH_BGP      = $96
@@ -74,6 +79,7 @@ F_PEND_STORE = $04              ; open the store when the run loop starts
 F_PEND_CONT  = $08              ; restore the snapshot when the run loop starts
 
 LCDC        = $40
+STAT        = $41
 LY          = $44
 WY          = $4A
 WX          = $4B
@@ -151,6 +157,15 @@ t_wait:     push af
 t_reset:    ld a,1
             ld ($2000),a
             jp $0150
+; The game's non-fatal hit ($4ACC ld hl,$C7D0), then a new hit pulse unless one
+; is running. A is free here: the game loads it again straight after.
+t_hit:      ld a,(V_HIT)
+            or a
+            jr nz,th_on
+            ld a,4
+            ld (V_HIT),a
+th_on:      ld hl,$C7D0
+            ret
 
 ; ==== org bank2 ====
 ; ---------------------------------------------------------------- helpers
@@ -191,6 +206,35 @@ s16_nc:     dec bc
             ld a,b
             or c
             jr nz,s16_loop
+            ret
+
+; Video memory is only reachable while the LCD is not drawing a line (STAT mode
+; 0 or 1). These wait for that before each access, as the game's own tile
+; routine does at $7A9A, so the screen never has to be switched off. Once the
+; wait ends there are at least 20 cycles (mode 2) before the next line locks it.
+; Copy BC bytes from HL to DE, one side of which is video memory.
+vcopy:      ldh a,(STAT)
+            and 2
+            jr nz,vcopy
+vc_ld:      ld a,(hl+)
+vc_st:      ld (de),a
+            inc de
+            dec bc
+            ld a,b
+            or c
+            jr nz,vcopy
+            ret
+
+; Fill BC bytes of video memory at HL with D.
+vfill:      ldh a,(STAT)
+            and 2
+            jr nz,vfill
+            ld a,d
+vf_st:      ld (hl+),a
+            dec bc
+            ld a,b
+            or c
+            jr nz,vfill
             ret
 
 wait_vbl:   ld hl,$7AF8
@@ -271,7 +315,7 @@ bh_clr:     ld (hl+),a
             cp (hl)
             jr nz,bh_nopal
             ld a,b
-            cp 8
+            cp THEME_COUNT
             jr nc,bh_nopal
             ld (V_PAL),a
 bh_nopal:   call sig_check
@@ -353,26 +397,14 @@ cgb_setup:  xor a
             ldh ($FF),a
 cs_fast:    ld a,$50                ; the DMA wait is counted in CPU cycles, which are
             ldh ($87),a             ; half as long now: $28 became $50
-cs_line:    ldh a,(LY)              ; interrupts are still off here, so poll for VBlank
-            cp $90
-            jr nz,cs_line
-            ldh a,(LCDC)
-            ld (V_LCDC),a
-            res 7,a
-            ldh (LCDC),a
             ld a,1
             ldh ($4F),a             ; VRAM bank 1 holds the tile attributes
             ld hl,$9800
             ld bc,$0800
-cs_clr:     xor a
-            ld (hl+),a
-            dec bc
-            ld a,b
-            or c
-            jr nz,cs_clr
+            ld d,0
+            call vfill
+            xor a
             ldh ($4F),a
-            ld a,(V_LCDC)
-            ldh (LCDC),a
             ret
 
 ; ---------------------------------------------------------------- save
@@ -455,23 +487,10 @@ glyphs:
             db $FF,$FF,$FF,$C7,$FF,$93,$FF,$C7,$FF,$93,$FF,$91,$FF,$C5,$FF,$FF        ; &
 
 glyph_setup:
-            ldh a,(LCDC)
-            ld (V_LCDC),a
-            bit 7,a
-            jr z,gs_copy            ; LCD already off
-gs_line:    ldh a,(LY)              ; interrupts are still off at boot: poll for VBlank
-            cp $90
-            jr nz,gs_line
-            ldh a,(LCDC)
-            res 7,a
-            ldh (LCDC),a
-gs_copy:    ld hl,glyphs
+            ld hl,glyphs
             ld de,$8F00
             ld bc,96
-            call cpy
-            ld a,(V_LCDC)
-            ldh (LCDC),a
-            ret
+            jp vcopy
 
 ; ---------------------------------------------------------------- theme
 ; SELECT anywhere cycles the color theme (color hardware only) and saves it.
@@ -480,12 +499,14 @@ theme_next: ld a,(V_CGB)
             ret z
             ld a,(V_PAL)
             inc a
-            and 7
-            ld (V_PAL),a
+            cp THEME_COUNT
+            jr c,tn_ok
+            xor a
+tn_ok:      ld (V_PAL),a
             jp pal_save
 
-; Six letters, one theme each.
-theme_names: db "GREEN GRAY  POCKETAMBER ICE   BLOOD PURPLESEPIA "
+; Ten letters, one theme each.
+theme_names: db "DMG       POCKET    LIGHT     DK GREEN  GREEN     REVERSE   BROWN     RED       DK BROWN  BLUE      DK BLUE   GRAY      PASTEL    ORANGE    YELLOW    OLIVE     "
 
 ; The current theme's name at column 10, row 15 of the window map.
 theme_name_draw:
@@ -495,16 +516,17 @@ theme_name_draw:
             ld d,h
             ld e,l
             ld a,(V_PAL)
-            and 7
             ld l,a
-            add a,a
-            add a,l
-            add a,a                 ; theme * 6
-            ld c,a
-            ld b,0
-            ld hl,theme_names
+            ld h,0
+            add hl,hl
+            ld b,h
+            ld c,l
+            add hl,hl
+            add hl,hl
+            add hl,bc               ; theme * 10
+            ld bc,theme_names
             add hl,bc
-            ld b,6
+            ld b,10
 tn_loop:    ld a,(hl+)
             push hl
             call tile_of
@@ -527,16 +549,18 @@ mr_theme:   ld a,(V_MREDRAW)
             jp theme_name_draw
 
 ; ---------------------------------------------------------------- overlay
-; A full-screen window over whatever is showing. ov_open backs up the window's
-; tile map and leaves the LCD off; draw the screen, then ov_show. ov_reset
-; starts another screen the same way. ov_close puts the window map back.
-ov_open:    call wait_vbl
-            xor a
+; A full-screen page in the window, over whatever is showing. The LCD stays on
+; throughout, as it does when the game changes its own screens: drawing goes to
+; PAGEBUF, and page_flush sends the tiles that differ to the window map through
+; the waits above. SHOWN mirrors the window map's top-left 20 x 18.
+;   ov_open   back up the window map, start a blank page
+;   ov_reset  start a blank page over the one showing
+;   ov_show   put the page on screen
+;   ov_close  put the window map and the screen back
+ov_open:    xor a
             ld (V_MHINT),a
             ldh a,(LCDC)
             ld (V_LCDC),a
-            res 7,a
-            ldh (LCDC),a
             ldh a,(WY)
             ld (V_WY),a
             ldh a,(WX)
@@ -544,31 +568,43 @@ ov_open:    call wait_vbl
             ld hl,WIN_MAP
             ld de,WINBAK
             ld bc,$0400
-ovo_copy:   ld a,(hl+)
+            call vcopy
+            ld hl,WINBAK            ; SHOWN = the rows now in the window map
+            ld de,SHOWN
+            ld b,18
+ovo_row:    ld c,20
+ovo_col:    ld a,(hl+)
             ld (de),a
             inc de
-            dec bc
-            ld a,b
-            or c
-            jr nz,ovo_copy
-            jp ov_clear
+            dec c
+            jr nz,ovo_col
+            push de
+            ld de,12
+            add hl,de
+            pop de
+            dec b
+            jr nz,ovo_row
 
-ov_reset:   call wait_vbl
-            ldh a,(LCDC)
-            res 7,a
-            ldh (LCDC),a
-
-ov_clear:   ld hl,WIN_MAP
-            ld bc,$0400
-ovc_loop:   ld a,TILE_BLANK
+ov_reset:   ld hl,PAGEBUF
+            ld bc,360
+ovr_loop:   ld a,TILE_BLANK
             ld (hl+),a
             dec bc
             ld a,b
             or c
-            jr nz,ovc_loop
+            jr nz,ovr_loop
             ret
 
-ov_show:    xor a
+; Rows 2-17 first: until the window moves to the top only rows 0-1 of its map
+; can be on screen (the HUD in a run; the title has no window). Then, in
+; VBlank, move the window up and send rows 0-1.
+ov_show:    push bc                 ; callers set up menu_run's arguments first
+            push de
+            ld b,2
+            ld c,16
+            call page_flush
+            call wait_vbl
+            xor a
             ldh (WY),a
             ld a,7
             ldh (WX),a
@@ -576,44 +612,103 @@ ov_show:    xor a
             or $E0                  ; LCD on, window on, window map $9C00
             res 1,a                 ; sprites off
             ldh (LCDC),a
+            ld b,0
+            ld c,2
+            call page_flush
+ovs_done:   pop de
+            pop bc
             ret
 
+; In VBlank the window goes back where it was, which shows at most its rows 0-1;
+; the backup puts those back first, before the LCD reaches them.
 ov_close:   call wait_vbl
-            ldh a,(LCDC)
-            res 7,a
-            ldh (LCDC),a
-            ld hl,WINBAK
-            ld de,WIN_MAP
-            ld bc,$0400
-ovx_copy:   ld a,(hl+)
-            ld (de),a
-            inc de
-            dec bc
-            ld a,b
-            or c
-            jr nz,ovx_copy
             ld a,(V_WY)
             ldh (WY),a
             ld a,(V_WX)
             ldh (WX),a
             ld a,(V_LCDC)
-            or $80
             ldh (LCDC),a
-            ret
+ovc_flip:   ld hl,WINBAK
+            ld de,WIN_MAP
+            ld bc,$0400
+            jp vcopy
 
-; HL = tile map address of column B, row C in the window map.
-win_addr:   ld l,c
+; Send rows B to B+C-1 of PAGEBUF to the window map, only where they differ
+; from SHOWN.
+page_flush: push bc
+            ld a,b                  ; HL = PAGEBUF + 20 * B
+            ld l,a
+            ld h,0
+            add hl,hl
+            add hl,hl
+            ld d,h
+            ld e,l
+            add hl,hl
+            add hl,hl
+            add hl,de
+            ld de,PAGEBUF
+            add hl,de
+            push hl
+            ld l,b                  ; DE = WIN_MAP + 32 * B
             ld h,0
             add hl,hl
             add hl,hl
             add hl,hl
             add hl,hl
             add hl,hl
+            ld de,WIN_MAP
+            add hl,de
+            ld d,h
+            ld e,l
+            pop hl
+            pop bc
+            ld b,c                  ; B = rows to go
+pf_row:     ld c,20
+pf_col:     ld a,(hl)
+            inc h                   ; SHOWN is PAGEBUF + $200
+            inc h
+            cp (hl)
+            jr z,pf_same
+            ld (hl),a
+            push af
+pf_wait:    ldh a,(STAT)
+            and 2
+            jr nz,pf_wait
+            pop af
+pf_st:      ld (de),a
+pf_same:    dec h
+            dec h
+            inc hl
+            inc de
+            dec c
+            jr nz,pf_col
+            push hl
+            ld hl,12
+            add hl,de
+            ld d,h
+            ld e,l
+            pop hl
+            dec b
+            jr nz,pf_row
+            ret
+
+; HL = PAGEBUF address of column B, row C.
+win_addr:   push de
+            ld l,c
+            ld h,0
+            add hl,hl
+            add hl,hl
+            ld d,h
+            ld e,l
+            add hl,hl
+            add hl,hl
+            add hl,de               ; row * 20
             ld c,b
             ld b,0
             add hl,bc
-            ld bc,WIN_MAP
+            ld bc,PAGEBUF
             add hl,bc
+            pop de
             ret
 
 ; ASCII in A -> the game's font tile.
@@ -672,8 +767,7 @@ to_6:       cp $41
 to_letter:  add a,$14
             ret
 
-; HL -> column, row, then text ending in 0. The window map is written while
-; the LCD is on, so callers use this right after wait_vbl or with the LCD off.
+; HL -> column, row, then text ending in 0, drawn into PAGEBUF.
 ov_text:    ld a,(hl+)
             ld b,a
             ld a,(hl+)
@@ -709,6 +803,9 @@ menu_run:   ld a,b
 mr_loop:    call wait_vbl
             call mr_theme
             call mr_cursor
+            ld b,0
+            ld c,18
+            call page_flush
             call music_tick
             call read_joy
             ld a,(V_MPREV)
@@ -961,12 +1058,7 @@ run_logic:  ld a,(V_JOY)
             push bc
             call theme_next
             pop bc
-rl_nosel:   bit 7,c
-            ret z
-            ld a,b
-            and $7F
-            ld (V_JOY),a
-            ld a,($C5B5)            ; a menu or the store is showing
+rl_nosel:   ld a,($C5B5)            ; a menu or the store is showing: START is theirs
             ld b,a
             ld a,($C5B6)            ; the stock pause
             or b
@@ -978,6 +1070,11 @@ rl_flags:   ld a,(hl+)
             ret nz
             dec b
             jr nz,rl_flags
+            ld a,(V_JOY)            ; in live play START belongs to the pause menu: the
+            and $7F                 ; stock pause, which froze the run with nothing on
+            ld (V_JOY),a            ; screen, never sees it, even while held from the title
+            bit 7,c
+            ret z
             jp pause_menu
 
 pause_menu: call ov_open
@@ -1071,16 +1168,10 @@ su_ok:      call save_hook          ; a run needs the upgrade save beside it
             ld de,R_WRAM
             ld bc,WRAM_LEN
             call cpy
-            ei                      ; the frame wait needs the VBlank interrupt
-            call wait_vbl
-            di
-            ldh a,(LCDC)
-            res 7,a
-            ldh (LCDC),a
             ld hl,$9800
             ld de,R_MAP
             ld bc,$0800
-            call cpy
+            call vcopy
             ld hl,S_RUN
             ld bc,R_SUM - S_RUN
             call sum16
@@ -1112,16 +1203,11 @@ restore_run:
             ld (V_JOY),a
             di
             ld sp,$DEFE             ; a scratch stack below the page being restored
-rr_wait:    ldh a,(LY)
-            cp $90
-            jr nz,rr_wait
-            ldh a,(LCDC)
-            res 7,a
-            ldh (LCDC),a
+            call blackout           ; the maps change over a few frames: show black meanwhile
             ld hl,R_MAP
             ld de,$9800
             ld bc,$0800
-            call cpy
+            call vcopy
             ld hl,R_WRAM
             ld de,$C000
             ld bc,WRAM_LEN
@@ -1155,6 +1241,14 @@ rr_wait:    ldh a,(LY)
             ldh ($FF),a
             ld a,(R_IO)
             ldh (LCDC),a
+            ld a,(V_CGB)            ; the DMA routine's wait came back with HRAM:
+            or a                    ; set it for this console's speed
+            ld a,$28
+            jr z,rr_dma
+            ld a,$50
+rr_dma:     ldh ($87),a
+            xor a
+            ld (C_VALID),a          ; the colors are rebuilt from the restored shades
             call oam_build
             ld hl,R_SP
             ld a,(hl+)
@@ -1164,6 +1258,38 @@ rr_wait:    ldh a,(LY)
             call sram_off
             xor a
             ei
+            ret
+
+; Every palette black until the next rebuild: BGP, OBP0 and OBP1 on the old
+; hardware, palette RAM on a Game Boy Color (reachable, like video memory, only
+; outside mode 3). The restored HRAM shadows and C_VALID bring the colors back.
+blackout:   ld a,$FF
+            ldh ($47),a
+            ldh ($48),a
+            ldh ($49),a
+            ld a,(V_CGB)
+            or a
+            ret z
+            ld a,$80
+            ldh ($68),a
+            ld b,8
+bo_bg:      ldh a,(STAT)
+            and 2
+            jr nz,bo_bg
+            xor a
+bo_bgst:    ldh ($69),a
+            dec b
+            jr nz,bo_bg
+            ld a,$80
+            ldh ($6A),a
+            ld b,16
+bo_ob:      ldh a,(STAT)
+            and 2
+            jr nz,bo_ob
+            xor a
+bo_obst:    ldh ($6B),a
+            dec b
+            jr nz,bo_ob
             ret
 
 ; Start the game over, as if the console had just been switched on.
@@ -1286,55 +1412,120 @@ pc_build:   ldh a,(SH_BGP)
             ld (C_PAL),a
             ld a,1
             ld (C_VALID),a
+            ld a,(V_PAL)            ; V_TPTR = themes + theme * 24
+            ld l,a
+            ld h,0
+            add hl,hl
+            add hl,hl
+            add hl,hl
+            ld b,h
+            ld c,l
+            add hl,hl
+            add hl,bc
+            ld bc,themes
+            add hl,bc
+            ld a,l
+            ld (V_TPTR),a
+            ld a,h
+            ld (V_TPTR + 1),a
+            ld d,h
+            ld e,l
             ld hl,PALBUF
             ld a,(C_BGP)
-            call pal_four
+            call pal_four           ; the background palette
             ld a,(C_OBP0)
-            call pal_four
+            call pal_four           ; sprite palette 0 (DE moved on by 8)
             ld a,(C_OBP1)
             call pal_four
             ld a,1
             ld (PAL_DIRTY),a
             ret
 
-; Four colors of the theme, picked by the four 2-bit shades in A, at HL.
+; Four colors from the palette at DE, picked by the four 2-bit shades in A,
+; written at HL. DE comes back pointing at the next palette.
 pal_four:   ld b,4
             ld c,a
 pf_loop:    ld a,c
             and 3
             add a,a                 ; 2 bytes a color
-            ld e,a
-            ld a,(V_PAL)
-            and 7
-            swap a
-            rrca                    ; theme * 8
+            push de
             add a,e
             ld e,a
-            ld d,0
-            push hl
-            ld hl,themes
-            add hl,de
-            ld a,(hl+)
-            ld d,(hl)
-            pop hl
+            jr nc,pf_nc
+            inc d
+pf_nc:      ld a,(de)
             ld (hl+),a
-            ld a,d
+            inc de
+            ld a,(de)
             ld (hl+),a
+            pop de
             srl c
             srl c
             dec b
             jr nz,pf_loop
+            ld a,e
+            add a,8
+            ld e,a
+            ret nc
+            inc d
             ret
 
+; Each theme is three palettes of four colors, lightest first: the background,
+; sprite palette 0 and sprite palette 1, as the Game Boy Color's boot ROM
+; stores its compatibility palettes. The console screens are SameBoy's
+; measured colors; the twelve boot palettes are the ones the Game Boy Color
+; offers by holding a direction with or without A or B at power-on, with its
+; names; OLIVE is its palette combination 17.
 themes:
-            dw $6BFC,$3B11,$29A6,$1061            ; GREEN
-            dw $7FFF,$56B5,$2D6B,$0421            ; GRAY
-            dw $5338,$3651,$1D49,$0C63            ; POCKET
-            dw $53BF,$1ABD,$0951,$0044            ; AMBER
-            dw $7FFD,$7732,$59C8,$1C61            ; ICE
-            dw $73BF,$3A1D,$18B2,$0403            ; BLOOD
-            dw $7FBE,$7256,$4D0C,$1823            ; PURPLE
-            dw $6FDF,$3EDA,$1D6F,$0444            ; SEPIA
+            dw $4778,$3290,$1D87,$0861,$4778,$3290,$1D87,$0861,$4778,$3290,$1D87,$0861   ; DMG  (console)
+            dw $4B38,$3230,$1D27,$0440,$4B38,$3230,$1D27,$0440,$4B38,$3230,$1D27,$0440   ; POCKET  (console)
+            dw $638F,$4ACA,$31E6,$0861,$638F,$4ACA,$31E6,$0861,$638F,$4ACA,$31E6,$0861   ; LIGHT  (console)
+            dw $7FFF,$1BEF,$6180,$0000,$7FFF,$421F,$1CF2,$0000,$7FFF,$421F,$1CF2,$0000   ; DK GREEN  (Right+A)
+            dw $7FFF,$03EA,$011F,$0000,$7FFF,$03EA,$011F,$0000,$7FFF,$03EA,$011F,$0000   ; GREEN  (Right)
+            dw $0000,$4200,$037F,$7FFF,$0000,$4200,$037F,$7FFF,$0000,$4200,$037F,$7FFF   ; REVERSE  (Right+B)
+            dw $7FFF,$32BF,$00D0,$0000,$7FFF,$32BF,$00D0,$0000,$7FFF,$32BF,$00D0,$0000   ; BROWN  (Up)
+            dw $7FFF,$421F,$1CF2,$0000,$7FFF,$1BEF,$0200,$0000,$7FFF,$7E8C,$7C00,$0000   ; RED  (Up+A)
+            dw $639F,$4279,$15B0,$04CB,$7FFF,$32BF,$00D0,$0000,$7FFF,$32BF,$00D0,$0000   ; DK BROWN  (Up+B)
+            dw $7FFF,$7E8C,$7C00,$0000,$7FFF,$421F,$1CF2,$0000,$7FFF,$1BEF,$0200,$0000   ; BLUE  (Left)
+            dw $7FFF,$6E31,$454A,$0000,$7FFF,$421F,$1CF2,$0000,$7FFF,$32BF,$00D0,$0000   ; DK BLUE  (Left+A)
+            dw $7FFF,$5294,$294A,$0000,$7FFF,$5294,$294A,$0000,$7FFF,$5294,$294A,$0000   ; GRAY  (Left+B)
+            dw $53FF,$4A5F,$7E52,$0000,$53FF,$4A5F,$7E52,$0000,$53FF,$4A5F,$7E52,$0000   ; PASTEL  (Down)
+            dw $7FFF,$03FF,$001F,$0000,$7FFF,$03FF,$001F,$0000,$7FFF,$03FF,$001F,$0000   ; ORANGE  (Down+A)
+            dw $7FFF,$03FF,$012F,$0000,$7FFF,$7E8C,$7C00,$0000,$7FFF,$1BEF,$0200,$0000   ; YELLOW  (Down+B)
+            dw $7FFF,$42B5,$3DC8,$0000,$7FFF,$01DF,$0112,$0000,$7FFF,$01DF,$0112,$0000   ; OLIVE  (game palette 17)
+
+; ---------------------------------------------------------------- hit pulse
+; On a hit the game switches the player's four sprites to the second sprite
+; palette (attribute bit 4), and its player code puts the first one back on the
+; next frame, so the flash showed for one frame at most. Each hit with no pulse
+; running now gives 2 frames on the hit palette and 2 frames normal, set in the
+; game's sprite table before the frame's DMA; hits during a pulse don't restart
+; it, so being hit reads as a steady blink.
+hit_pulse:  ld a,(V_HIT)
+            or a
+            ret z
+            dec a
+            ld (V_HIT),a
+            cp 2                    ; 4 and 3 (now 3 and 2): lit; 2 and 1: normal
+            ld hl,$C093
+            ld b,4
+            jr c,hp_off
+hp_on:      set 4,(hl)
+            inc l
+            inc l
+            inc l
+            inc l
+            dec b
+            jr nz,hp_on
+            ret
+hp_off:     res 4,(hl)
+            inc l
+            inc l
+            inc l
+            inc l
+            dec b
+            jr nz,hp_off
+            ret
 
 ; ---------------------------------------------------------------- frame hooks
 ; E = buttons from the game's joypad read. The caller's return address shows
@@ -1382,17 +1573,18 @@ jh_done:    pop hl
 wait_hook:  call ready
             ret nz
             call pal_check
-            call oam_build
             ld hl,sp+12
             ld a,(hl+)
             ld h,(hl)
             ld l,a
             ld a,h
             cp $58
-            ret nz
+            jp nz,oam_build         ; not the run loop: just the sprite table
             ld a,l
             cp $B8
-            ret nz
+            jp nz,oam_build
+            call hit_pulse          ; before oam_build copies the sprite table
+            call oam_build
             ld a,(V_FLAGS)
             bit 2,a
             jr z,wh_cont

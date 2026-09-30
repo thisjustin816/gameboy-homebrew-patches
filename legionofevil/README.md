@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `22ea1dd198e8cc4f2791b9091df9d061` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `3b52e2aedaf70e2eccaed2a893aaf024` |
 
 ## What you get
 
@@ -25,16 +25,26 @@ when the camera scrolls.
   nothing saved, START starts a run as before.
 - **Pause menu.** START during a run opens PAUSED: RESUME or SAVE & QUIT.
   To abandon a run, SAVE & QUIT and pick NEW RUN; the abandoned run's money is
-  not banked (dying banks it, as in the stock game). The
-  stock pause is replaced by this menu and the game stands still behind it.
+  not banked (dying banks it, as in the stock game). The game stands still
+  behind the menu. It replaces the stock pause, which froze the run with nothing
+  on screen and could go off by itself when START was held from the title into
+  the run; now START in play only opens the menu.
 - **Save and quit, then continue.** SAVE & QUIT writes the whole run (enemies,
   weapons, position, level, time) and returns to the title. CONTINUE puts you
   back on the same frame. Continuing uses the saved run up, so a saved run
   can't be reloaded after you die in it.
-- **Color themes.** SELECT cycles eight themes (green, gray, pocket, amber, ice,
-  blood, purple, sepia) on any screen: the title, menus, the store and during a
-  run. The pause menu shows "SELECT:" and the theme's name. The choice is saved
-  and survives ERASE SAVE. Color hardware only.
+- **Color themes.** SELECT cycles 16 themes on any screen: the title, menus, the
+  store and during a run. The pause menu shows "SELECT:" and the theme's name.
+  The choice is saved and survives ERASE SAVE. Color hardware only. The themes:
+  - the original Game Boy screens: DMG (the default), POCKET and LIGHT;
+  - the twelve palettes a Game Boy Color offers for an old game when you hold a
+    direction, with or without A or B, at power-on, with their usual names:
+    DK GREEN (Right+A, "dark green", which is also what a Game Boy Color picks
+    for this game on its own), GREEN, REVERSE, BROWN, RED, DK BROWN, BLUE,
+    DK BLUE, GRAY, PASTEL, ORANGE and YELLOW. These have separate colors for the
+    background and the two sprite palettes, as on the console;
+  - OLIVE, a gray-green background with orange sprites, one of the Game Boy
+    Color's palettes for specific games.
 - **Punctuation.** The game's font has no `? ! . , ' &`, so the patch adds them,
   drawn in the font's style into tiles that no screen uses. The menus use them
   ("ARE YOU SURE?", "SAVE & QUIT").
@@ -47,6 +57,18 @@ when the camera scrolls.
 - **No tearing strip at the top.** The game changed the scroll registers while
   the picture was being drawn, which shifted the top few lines for a frame. The
   scroll and palette writes now wait for VBlank.
+- **Hit flash you can see.** On a hit the game switched the player to the second
+  sprite palette for a single frame. Each hit now shows 2 frames on that palette
+  and 2 frames normal, so being hit reads as a clear blink (and still does with
+  frame blending). The damage and hit timing are the game's own.
+- **No flashing between screens.** The menus used to switch the LCD off to redraw,
+  which a Game Boy Color shows as a white frame. They now draw with the LCD on,
+  the way the game draws its own screens: each video memory access waits until
+  the LCD is not drawing a line, only the tiles that change are rewritten, and a
+  page goes on screen in one VBlank. CONTINUE blacks the screen out through the
+  palettes for the few frames it takes to write the saved run back. The one
+  blank left is SAVE & QUIT's restart, which goes through the game's own start-up
+  as at power-on.
 - **Double speed.** On a Game Boy Color or Chromatic the game switches the CPU
   to double speed, so the logic uses at most about 60% of a frame at the worst
   moments instead of about 99%.
@@ -71,8 +93,8 @@ over 100% drops a frame (slowdown).
 | Build | Median | 95th percentile | Worst |
 |---|---|---|---|
 | Stock | 49% | 71% | 99% |
-| Patched, original Game Boy (single speed) | 52% | 69% | 86% |
-| Patched, Game Boy Color or Chromatic (double speed) | 34% | 42% | 60% |
+| Patched, original Game Boy (single speed) | 53% | 70% | 86% |
+| Patched, Game Boy Color or Chromatic (double speed) | 35% | 42% | 60% |
 
 The run is 12000 frames in PyBoy, so the exact numbers move with the play; the
 gap between single and double speed does not. On an original Game Boy the
@@ -97,12 +119,24 @@ checks:
 - the pause menu stops the game and offers RESUME and SAVE & QUIT, and RESUME
   carries on;
 - SAVE & QUIT, a power cycle and CONTINUE give a run identical to one that was
-  never interrupted: the same screens and the same game memory for 900 frames;
+  never interrupted: the same game memory, sprites and video memory for 900
+  frames, and the same screens apart from, on a frame or two, one tile edge that
+  the game draws a scanline earlier or later (its camera writes the background
+  while the picture is drawn, and the music, which keeps playing behind the
+  menu, shifts that write by a line);
 - a snapshot with a damaged byte is not offered;
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
+- stock shows the hit palette for one frame per hit, and the patched game shows
+  2 frames on and 2 off per hit, on both consoles;
 - the stock game writes the scroll registers on visible lines and the patched
   game's registers never change between VBlanks;
+- no menu, page or CONTINUE change turns the LCD off (the stock game never does
+  either), and SAVE & QUIT turns it off once, in the game's own start-up;
+- every video memory and palette access the patch makes happens while the LCD
+  is not drawing a line, at single and at double speed. PyBoy does not block
+  these accesses the way the hardware does, so this is checked separately, at
+  each access instruction;
 - the six punctuation tiles are in video memory, the game's text routine maps each
   character to the right tile, and the erase and pause pages use them;
 - the color palettes in palette RAM are the theme's colors through the game's own
@@ -115,8 +149,10 @@ checks:
 What this does not show:
 
 - **Real hardware.** Nothing here ran on a console, a Chromatic or a flash cart.
-  Double speed, the color palettes, the save on a real battery cartridge and the
-  soft reset after SAVE & QUIT are emulator results only.
+  Double speed, the color palettes, the save on a real battery cartridge, the
+  soft reset after SAVE & QUIT and the menus drawn with the LCD on are emulator
+  results only. The access-timing check follows the hardware's rule, but only a
+  console shows whether a menu comes out clean.
 - **Sound.** The music keeps playing behind the menus, and CONTINUE restores the
   music player's state, but the hardware sound registers are not restored. The
   song may be quiet until its next note after CONTINUE. Sound was not compared.
@@ -134,9 +170,9 @@ code.
 |---|---|
 | Header | `$143` = `$80` (color compatible), `$147` = `$03` (MBC1+RAM+BATTERY), `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
 | Bank 0 stubs (`$0048`, `$00CE`, `$01E1`) | Small routines in bytes the game never reads that switch to bank 2, run a hook and switch back |
-| Bank 2 (`$4000`) | The save, menus, pause, snapshot, sprite order and palette code (about 2 KB) |
+| Bank 2 (`$4000`) | The save, menus, pause, snapshot, sprite order, palette and theme code (about 3.3 KB) |
 | HRAM `$FF99` | The VBlank hook; copied from bank 2 at boot |
-| Hooks | boot, the joypad read on the title and in the run loop, the store's buy routine, the game-over screen, and the frame wait at `$7AF8` |
+| Hooks | boot, the joypad read on the title and in the run loop, the store's buy routine, the game-over screen, the non-fatal hit at `$4ACC`, and the frame wait at `$7AF8` |
 
 **Save format** (battery RAM, `$A000`): the signature `LOE1`, 15 bytes of
 upgrade state (`$C5C1` to `$C5CC`, `$C5CF`, `$C5DF` to `$C5E0`) and a check byte
@@ -162,6 +198,16 @@ copies them to the hardware and, on a color console, loads palette RAM when a
 theme or shade changed. The game only sets its palettes once, at the title,
 and uses only bits 4 and 5 of the sprite attributes, which is what makes the
 color conversion safe.
+
+**Menus with the LCD on.** A page is drawn into a 20 x 18 buffer in WRAM
+(`$D500`), and `page_flush` sends the tiles that differ from what the window map
+holds (a mirror at `$D700`), each one after the same wait for STAT mode 0 or 1
+the game's tile routine uses at `$7A9A`. Opening backs up the window map the
+same way. Only rows 0-1 of the window map can be on screen before the page
+moves up (the HUD in a run; the title has no window), so rows 2-17 are written
+first and rows 0-1 in the VBlank that moves the window to the top. Closing
+puts the window back in VBlank and restores rows 0-1 before the LCD reaches
+them.
 
 **Double speed.** Switching needs `KEY1` and `STOP` with interrupts off, done in
 the boot hook after the game has copied its OAM DMA routine. The DMA routine

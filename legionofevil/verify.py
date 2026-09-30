@@ -26,9 +26,9 @@ import patch as patcher
 from pyboy import PyBoy
 
 STOCK_MD5 = "cd544132f9d06ca9fe4f552ddc202878"
-# Shades the game picks from, and the color theme the patch starts with
+# Shades the game picks from, and the color theme the patch starts with (the DMG screen)
 PY_DMG = [(255, 255, 255), (169, 169, 169), (84, 84, 84), (0, 0, 0)]
-THEME0 = [(224, 248, 208), (136, 192, 112), (52, 104, 86), (8, 24, 32)]
+THEME0 = [(0xC6, 0xDE, 0x8C), (0x84, 0xA5, 0x63), (0x39, 0x61, 0x39), (0x08, 0x18, 0x10)]   # DMG, lightest first
 
 WORK = tempfile.mkdtemp(prefix="loe-verify-")
 RESULTS = []
@@ -191,6 +191,78 @@ def check_no_save_start(rom):
           g.m[0xFF40] == 0xE3 and g.m[0xC5B5] == 0 and g.m[0xC0D9] != a)
 
 
+def check_held_start(control, rom):
+    print("START held from the title")
+    for name, path in (("stock", control), ("patched", rom)):
+        g = Game(path, "hold-" + name)
+        g.tick(200)
+        g.pb.button_press("start")
+        g.tick(40)
+        g.pb.button_release("start")
+        g.tick(60)
+        frozen = g.m[0xC5B6] == 1
+        if name == "stock":
+            check("stock: a START held into the run sets off the stock pause, a frozen run with nothing shown (the control)", frozen)
+        else:
+            check("patched: the run starts and plays; the stock pause never sees START", not frozen and g.m[0xC5B5] == 0
+                  and g.m[0xFF4A] == 0x80)
+
+
+def hit_pattern(path, cgb):
+    """Frames with the player on the hit palette, as the hardware's sprite table
+    holds them, next to the frames the game registered a hit."""
+    data = bytearray(open(path, "rb").read())
+    if not cgb and data[0x143]:
+        data[0x143] = 0
+        fix_header(data)
+    p = os.path.join(WORK, f"hit-{'cgb' if cgb else 'dmg'}-{os.path.basename(path)}")
+    open(p, "wb").write(data)
+    g = Game(p, "hit" + ("c" if cgb else "d") + os.path.basename(path)[:4])
+    g.tick(200)
+    g.press("start", after=0)
+    g.tick(1200)                                        # the enemies reach a player standing still
+    shown, hits = [], []
+    g.pb.hook_register(1, 0x4ACC, lambda c: hits.append(len(shown)), None)   # the game's non-fatal hit
+    for _ in range(600):
+        g.tick(1, False)
+        # the player's four sprites always sit at the middle of the screen
+        # (OAM y $50/$58, x $48/$50; the game sets them at $3B15)
+        lit = any(g.m[0xFE03 + i * 4] & 0x10 for i in range(40)
+                  if g.m[0xFE00 + i * 4] in (0x50, 0x58) and g.m[0xFE01 + i * 4] in (0x48, 0x50))
+        shown.append(lit)
+        if g.m[0xC0CC] < 5:
+            g.m[0xC0CC] = 20
+    return shown, hits
+
+
+def runs(shown):
+    """(start, length) of each stretch of frames on the hit palette."""
+    out, start = [], None
+    for f, lit in enumerate(shown + [False]):
+        if lit and start is None:
+            start = f
+        elif not lit and start is not None:
+            out.append((start, f - start))
+            start = None
+    return out
+
+
+def check_hit_pulse(control, rom):
+    print("Hit pulse")
+    shown, hits = hit_pattern(control, False)
+    lit = {f for f, x in enumerate(shown) if x}
+    check("stock shows the hit palette only on the frames with a hit, one frame each (the control)",
+          len(hits) > 20 and lit == set(hits), f"{len(hits)} hits, {len(lit)} lit frames")
+    for cgb, name in ((False, "original Game Boy"), (True, "Game Boy Color")):
+        shown, hits = hit_pattern(rom, cgb)
+        r = runs(shown)
+        pulses_ok = all(n == 2 and s in hits for s, n in r)
+        gaps_ok = all(b[0] - (a[0] + a[1]) >= 2 for a, b in zip(r, r[1:]))
+        covered = all(any(s <= h < s + 4 for s, n in r) for h in hits)
+        check(f"{name}: every pulse is 2 frames on the hit palette from a hit, then at least 2 normal; no hit goes unshown",
+              len(r) > 20 and pulses_ok and gaps_ok and covered, f"{len(hits)} hits, {len(r)} pulses")
+
+
 def check_save_cycle(rom):
     print("Saving the upgrades")
     g = Game(rom, "save")
@@ -335,12 +407,13 @@ def check_continue(rom, tick_count=900):
     sync(sub2, (t0 + 25) & 0xFF)
     rec_sub = record(sub2, tick_count)
     # Game memory, the sprite table and video memory must match on every frame.
-    # Screens may differ only by a sliver on one scanline: the stock game writes
-    # its background map while the picture is drawn (about three quarters of its
-    # tile writes land on a visible line), so the same state can draw a few
-    # pixels of one line differently depending on the exact cycle. Frames where a
-    # line holds more than ten sprites are skipped, because the enemy order on
-    # such a line follows a counter that is not game state.
+    # Screens may differ only inside one tile over at most two adjacent lines:
+    # the game streams the camera's edge column into the background map while
+    # the picture is drawn, and the music player (the one state left out above,
+    # since it keeps playing behind the menu) changes how long a frame's first
+    # work takes, which can move that write by a scanline. Frames where a line
+    # holds more than ten sprites are skipped, because the enemy order on such a
+    # line follows a counter that is not game state.
     state_bad, screen_bad, slivers = [], [], 0
     for i in range(tick_count):
         a, b = rec_ref[i], rec_sub[i]
@@ -351,14 +424,20 @@ def check_continue(rom, tick_count=900):
                   + "; first bytes " + ",".join(hex(k) for k in range(len(a[1])) if a[1][k] != b[1][k])[:60])
         if a[0] != b[0] and not (a[2] or b[2]):
             px = [k // 3 for k in range(0, len(a[0]), 3) if a[0][k:k + 3] != b[0][k:k + 3]]
-            if len(px) > 16 or len({p // 160 for p in px}) > 1:
+            lines = sorted({p // 160 for p in px})
+            xs = sorted({p % 160 for p in px})
+            if xs[-1] - xs[0] > 7 or lines[-1] - lines[0] > 1:  # wider than a tile, or over more than two lines
                 screen_bad.append(i)
+                rows = sorted({p // 160 for p in px})
+                cols = sorted({p % 160 for p in px})
+                order = "same sprite order" if a[3] == b[3] else "sprite order differs"
+                print(f"    frame {i}: {len(px)} pixels differ, lines {rows[0]}-{rows[-1]}, columns {cols[0]}-{cols[-1]}; {order}")
             else:
                 slivers += 1
     bad = state_bad + screen_bad
     check(f"a continued run is identical to an uninterrupted one for {tick_count} frames",
           not bad, f"{len(state_bad)} frames with different memory, {len(screen_bad)} with different screens" if bad else
-          f"memory, sprites and video memory on every frame; {slivers} frame(s) had a one-line sliver of difference")
+          f"memory, sprites and video memory on every frame; {slivers} frame(s) differ inside one tile edge")
     ram = sub2.stop()
     check("CONTINUE uses the snapshot up", ram[0x16] == 0)
 
@@ -422,6 +501,129 @@ def check_new_run_confirm(rom):
     g3.press("start", after=30)
     check("after a power cycle the title no longer offers CONTINUE", g3.m[0xD002] & 2 == 0 and g3.m[0xD002] & 1
           and bytes(g3.m[0x9C00 + 7 * 32 + 4 + k] for k in range(7)) == font_tiles("NEW RUN"))
+
+
+def check_no_flash(control, rom):
+    """Every change of screen with the LCD left on. Turning the LCD off shows a
+    white screen on a Game Boy Color, and the first frame after it comes back on
+    is not shown, which is the flash between menus this checks for."""
+    print("No flashing")
+    sites = [0x019D, 0x57B1, 0x57B7, 0x5824, 0x582A, 0x7B1D]       # the game's own LCDC writes
+
+    def trace(path, tag):
+        g = Game(path, tag)
+        cycles = []
+
+        def cb(site):
+            new, old = g.pb.register_file.A, g.m[0xFF40]
+            if (old ^ new) & 0x80 and not new & 0x80:
+                cycles.append(site)
+        for a in sites:
+            g.pb.hook_register(0 if a < 0x4000 else 1, a, cb, a)
+        data = open(path, "rb").read()
+        for org, off, code in PIECES:
+            if 0x4000 <= org < 0x8000:
+                for i in range(len(code) - 1):
+                    if code[i] == 0xE0 and code[i + 1] == 0x40:        # ldh (LCDC),a
+                        g.pb.hook_register(2, org + i, cb, org + i)
+        return g, cycles
+
+    g, off = trace(control, "nf-stock")
+    g.tick(200)
+    del off[:]
+    g.press("start", after=200)
+    g.m[0xC5DB] = 1
+    g.tick(300)
+    for _ in range(4):
+        g.press("start", after=80)
+    check("the stock game changes screens without turning the LCD off (the control)", not off)
+
+    g, off = trace(rom, "nf-patched")
+    g.tick(200)
+    del off[:]
+    steps = []
+
+    def step(name, *keys, after=60):
+        del off[:]
+        for k in keys:
+            g.press(k, after=10)
+        g.tick(after)
+        steps.append((name, len(off)))
+    g.press("start", after=200)
+    g.m[0xC5DB] = 1
+    g.tick(300)
+    step("game over to store", "start")
+    step("store to difficulty", "start")
+    step("difficulty to weapon", "start")
+    step("weapon to run", "start", after=200)
+    for _ in range(200):
+        g.m[0xC0CC] = 20
+        g.tick(1)
+    until_live(g)
+    step("pause menu", "start")
+    step("theme change in the menu", "select")
+    step("resume", "a")
+    step("pause again", "start")
+    del off[:]
+    g.press("down", after=10)
+    g.press("a", after=300)
+    quit_cycles = len(off)
+    step("title menu", "start")
+    step("NEW RUN confirm page", "down", "a")
+    step("NO back to the menu", "a")
+    step("ERASE SAVE page", "down", "down", "a")
+    step("B back to the menu", "b")
+    step("CONTINUE into the run", "up", "up", "a", after=300)
+    flashes = [(n, c) for n, c in steps if c]
+    check("no menu, page or CONTINUE change turns the LCD off", not flashes,
+          ", ".join(f"{n}: {c}" for n, c in flashes) if flashes else f"{len(steps)} changes")
+    check("SAVE & QUIT turns it off once, in the game's own start-up (as at power-on)", quit_cycles == 1,
+          f"{quit_cycles} time(s)")
+
+
+def check_vram_timing(rom):
+    """PyBoy lets the CPU reach video memory while the LCD is drawing a line;
+    the hardware does not (the write is dropped, the read gives $FF). So every
+    video memory and palette access the patch makes is checked here against the
+    LCD's mode at that instruction."""
+    print("Video memory access timing")
+    for speed, path in (("original Game Boy", "dmg"), ("Game Boy Color, double speed", "cgb")):
+        data = bytearray(open(rom, "rb").read())
+        if path == "dmg":
+            data[0x143] = 0
+            fix_header(data)
+        p = os.path.join(WORK, f"vt-{path}-rom.gb")
+        open(p, "wb").write(data)
+        g = Game(p, "vt-" + path)
+        hits, bad = [0], [0]
+
+        def cb(ctx):
+            hits[0] += 1
+            if g.m[0xFF41] & 3 == 3:
+                bad[0] += 1
+        # Only the stores are hooked: PyBoy stalls with hooks on two adjacent
+        # one-byte instructions. vcopy's read (vc_ld) is the instruction right
+        # before its store, 2 cycles earlier, and mode 3 lasts at least 43, so a
+        # read in mode 3 puts its store there too and is caught here.
+        for name in ("vc_st", "vf_st", "pf_st", "bo_bgst", "bo_obst"):
+            g.pb.hook_register(2, _LABELS[name], cb, None)
+        start_run(g)
+        play(g, 300)
+        until_live(g)
+        g.press("start", after=40)
+        g.press("select", after=20)
+        g.press("a", after=40)
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.press("a", after=300)
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.press("a", after=40)
+        g.press("a", after=40)
+        g.press("up", after=10)
+        g.press("a", after=300)
+        check(f"{speed}: no video memory or palette access while a line is drawn", hits[0] > 1000 and bad[0] == 0,
+              f"{hits[0]} accesses, {bad[0]} in mode 3")
 
 
 def check_glyphs(rom):
@@ -649,15 +851,16 @@ def frame_budget(control, rom, frames=12000):
 
 
 _LABELS = {}
+PIECES = []
 
 
 def main():
     stock = open(sys.argv[1], "rb").read()
     rom = open(sys.argv[2], "rb").read()
     ips = os.path.join(HERE, "LegionOfEvil-save.ips")
-    global _LABELS
+    global _LABELS, PIECES
     profile = patcher.load_profile(stock)
-    _, _LABELS = patcher.assemble_sections(profile)
+    PIECES, _LABELS = patcher.assemble_sections(profile)
     control = os.path.join(WORK, "control.gb")
     open(control, "wb").write(build_control(stock))
     rompath = os.path.join(WORK, "patched.gb")
@@ -665,12 +868,16 @@ def main():
 
     check_rom(stock, rom, ips)
     check_no_save_start(rompath)
+    check_held_start(control, rompath)
     check_save_cycle(rompath)
+    check_hit_pulse(control, rompath)
     check_erase(rompath)
     check_pause(rompath)
     check_continue(rompath)
     check_glyphs(rompath)
     check_new_run_confirm(rompath)
+    check_no_flash(control, rompath)
+    check_vram_timing(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
     check_color(stock, rompath)
