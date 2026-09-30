@@ -6,8 +6,8 @@
 1. The header is valid and says 2 MiB MBC1 without RAM.
 2. Each quarter holds its game byte for byte, apart from the boot hook and header
    fields in quarter 0.
-3. The splash and all four menu screens appear as built, the cursor wraps both
-   ways, and B, SELECT and left/right do nothing.
+3. The splash and all four menu screens appear as built, PRESS START blinks,
+   the cursor wraps both ways, and B, SELECT and left/right do nothing.
 4. For each game, launched from the menu, every frame of scripted play matches
    the stock ROM given the same input, on a DMG and on a Game Boy Color.
    The multicart starts a few frames later (the launcher clears WRAM and waits
@@ -18,7 +18,7 @@ import hashlib, multiprocessing, os, queue, random, shutil, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import build, mbundle
+import build, mbundle, pictures
 from pyboy import PyBoy
 
 PLAY_FRAMES = 11000          # about three minutes of play per game
@@ -56,13 +56,28 @@ def frame_hash(pb):
     return hashlib.md5(pb.screen.image.tobytes()).digest()
 
 
+def as_dmg(img):
+    """A built screen as PyBoy's DMG shows it, as raw RGB bytes."""
+    to_dmg = {bytes(s): bytes(DMG_SHADES[i]) for i, s in enumerate(build.SHADES)}
+    raw = img.convert('RGB').tobytes()
+    return b''.join(to_dmg[raw[i:i + 3]] for i in range(0, len(raw), 3))
+
+
 def screen_matches(pb, expected):
     """Compare the DMG screen with a built screen, shade for shade."""
-    got = pb.screen.image.convert('RGB')
-    want = expected.convert('RGB')
-    to_dmg = {s: DMG_SHADES[i] for i, s in enumerate(build.SHADES)}
-    return all(got.getpixel((x, y)) == to_dmg[want.getpixel((x, y))]
-               for y in range(144) for x in range(160))
+    return pb.screen.image.convert('RGB').tobytes() == as_dmg(expected)
+
+
+def without_prompt(splash):
+    """The splash in the blink's off phase: the PRESS START row blank."""
+    img = splash.copy()
+    row = pictures.PROMPT_ROW * 8
+    img.paste(build.SHADES[0], (0, row, 160, row + 8))
+    return img
+
+
+def on_splash(pb, screens):
+    return screen_matches(pb, screens[0]) or screen_matches(pb, without_prompt(screens[0]))
 
 
 def press(pb, button, frames=20):
@@ -92,10 +107,26 @@ def static_checks(multi, roms):
 def menu_checks(multi, screens):
     pb = emu(multi)
     pb.tick(BOOT_WAIT, True)
-    check(screen_matches(pb, screens[0]), 'splash screen as built')
+    on, off = as_dmg(screens[0]), as_dmg(without_prompt(screens[0]))
+    phases = []
+    for _ in range(5 * build.BLINK_FRAMES):
+        pb.tick(1, True)
+        got = pb.screen.image.convert('RGB').tobytes()
+        phases.append('on' if got == on else 'off' if got == off else '?')
+    check('?' not in phases, 'splash screen as built, with PRESS START shown or blank')
+    runs, n = [], 1                  # lengths of the shown and blank stretches
+    for a, b in zip(phases, phases[1:]):
+        if a == b:
+            n += 1
+        else:
+            runs.append(n)
+            n = 1
+    inner = runs[1:]                 # the first stretch was already under way
+    check(len(inner) >= 3 and all(r == build.BLINK_FRAMES for r in inner),
+          f'PRESS START blinks every {build.BLINK_FRAMES} frames (stretches {runs + [n]})')
     for b in ('b', 'select', 'left', 'right', 'up', 'down'):
         press(pb, b)
-    check(screen_matches(pb, screens[0]), 'splash ignores everything but A and START')
+    check(on_splash(pb, screens), 'splash ignores everything but A and START')
     press(pb, 'start', 30)
     check(screen_matches(pb, screens[1]), 'START opens the menu on DUCKTALES')
     for i in range(1, 4):

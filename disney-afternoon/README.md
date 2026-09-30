@@ -2,7 +2,8 @@
 
 Builds one Game Boy ROM holding the four Capcom Disney Afternoon games that came out
 on Game Boy: DuckTales, DuckTales 2, TaleSpin and Darkwing Duck. It boots to a splash
-with the collection's logo, then a menu showing each game's logo.
+with the collection's logo and a blinking PRESS START, then a menu showing each game's
+logo above a list of the four games.
 
 | Where | Button | Does |
 |---|---|---|
@@ -24,14 +25,17 @@ No ROMs or PC files are included. Bring your own:
 
 ## Build
 
-Needs Python 3 with Pillow and PyBoy (`pip install pyboy pillow`). PyBoy is used to
-read DuckTales 2's font from its title screen.
+Needs Python 3 with Pillow, NumPy and PyBoy (`pip install pyboy pillow numpy`). PyBoy
+is used to read DuckTales 2's font from its title screen, and the menu's frame and
+arrow from DuckTales' LAND SELECT screen.
 
 ```
 python3 build.py DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle -o "Disney Afternoon Collection (GB).gb"
 ```
 
-The script refuses any input whose md5 isn't listed above.
+The script refuses any input whose md5 isn't listed above, and checks the font and
+frame it reads from the games by md5 as well. `--screens DIR` also writes the five
+screens as PNGs.
 
 ## Where it runs
 
@@ -47,7 +51,20 @@ Gambatte and EverDrive-class carts do. Carts that only do MBC5 banking won't run
   padding at `$0061`, which saves the registers the boot ROM left and runs the menu
   from DuckTales' empty bank 4.
 - The splash and the four menu screens are pictures in banks 5 to 9, one per screen.
-  Moving the cursor loads the next picture.
+  Moving the cursor loads the next picture. On the splash, the menu blanks the
+  PRESS START row every 30 frames and puts it back 30 frames later, writing the map
+  during VBlank.
+- `pictures.py` draws the screens from the PC logos in the Game Boy's four shades:
+  - Each logo is sorted into color families before it is scaled down, so colors of
+    the same brightness stay apart. A thin outline wins any pixel it covers a quarter
+    of, so it stays unbroken.
+  - The collection logo's triangle and the Mickey shape behind the letters are
+    drawn as clean shapes at the target size, with the letters on top.
+  - The DuckTales logos keep their red-to-yellow fill as an ordered dither across
+    three shades.
+  - Every game logo gets the same "Disney's", taken from the DuckTales logo.
+  - The menu's frame and arrow are DuckTales' own, from its LAND SELECT screen, and
+    the text is DuckTales 2's font.
 - To start a game, the menu puts the display and interrupt registers back the way the
   boot ROM leaves them. A stub in HRAM then writes the game's quarter to the `$4000`
   register and sets mode 1, so the game's own bank 0 appears at `$0000`. It clears
@@ -67,13 +84,13 @@ python3 verify.py "Disney Afternoon Collection (GB).gb" DuckTales.gb DuckTales2.
 - The ROM is exactly what `build.py` makes, its header and checksums are valid, and each
   quarter holds its game byte for byte, apart from the entry point, the hook and the
   header in quarter 0.
-- The splash and the four menu screens appear pixel for pixel as built, the cursor
-  wraps both ways, and other buttons do nothing.
+- The splash and the four menu screens appear pixel for pixel as built, PRESS START
+  blinks every 30 frames, the cursor wraps both ways, and other buttons do nothing.
 - Each game, launched from the menu, is played for about three minutes of scripted
   input next to the stock ROM with the same input. Every frame must match, on both DMG
   and Game Boy Color. The multicart starts a few frames later than the stock ROM (the
   launcher clears WRAM and waits for line 0), and the test measures that delay on the
-  attract mode first. 
+  attract mode first.
 
 As a control, a build that launches Darkwing Duck without switching MBC1 to mode 1
 hangs, and `verify.py` reports the hang as a failure.

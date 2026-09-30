@@ -9,17 +9,18 @@ the boot ROM leaves.
 
 Inputs are checked by md5: the four USA ROMs, and bundleMain.mbundle from the
 PC Disney Afternoon Collection for the logos. The menu font is DuckTales 2's
-own, read from its title screen in PyBoy.
+own, read from its title screen in PyBoy, and the menu's frame and arrow are
+DuckTales' own, from its LAND SELECT screen.
 
     python3 build.py DUCKTALES DUCKTALES2 TALESPIN DARKWING bundleMain.mbundle -o out.gb
 """
-import argparse, hashlib, io, os, sys
-from PIL import Image, ImageEnhance
+import argparse, hashlib, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from asm import assemble
-import mbundle
+import mbundle, pictures
+from pictures import SHADES
 
 BANK = 0x4000
 QUARTER = 0x80000
@@ -54,8 +55,7 @@ SAVED_REGS = 0xFFF6
 LOADER = 0xC100
 LAUNCH = 0xFF80
 
-# Shades 0-3, lightest first, as the menu's BGP ($E4) shows them.
-SHADES = [(255, 255, 255), (170, 170, 170), (85, 85, 85), (0, 0, 0)]
+BLINK_FRAMES = 30           # PRESS START shows this long, then is blank as long
 
 
 def md5(data):
@@ -102,61 +102,15 @@ def font_glyphs(dt2_rom):
     return glyphs
 
 
-def draw_glyph(img, glyph, px, py):
-    for y in range(8):
-        lo, hi = glyph[2 * y], glyph[2 * y + 1]
-        for x in range(8):
-            c = ((lo >> (7 - x)) & 1) | (((hi >> (7 - x)) & 1) << 1)
-            img.putpixel((px + x, py + y), SHADES[c])
-
-
-def draw_text(img, glyphs, col, row, text):
-    for j, ch in enumerate(text):
-        draw_glyph(img, glyphs[ch], (col + j) * 8, row * 8)
-
-
-# ---- art ----------------------------------------------------------------------
-
-def to_shades(png, size, contrast):
-    """Scale a PC image into size and map it to four shades; transparency is white."""
-    im = Image.open(io.BytesIO(png)).convert('RGBA')
-    im = im.crop(im.getbbox())
-    im.thumbnail(size, Image.LANCZOS)
-    bg = Image.new('RGBA', im.size, (255, 255, 255, 255))
-    bg.alpha_composite(im)
-    grey = ImageEnhance.Contrast(bg.convert('L')).enhance(contrast)
-    pal = Image.new('P', (1, 1))
-    pal.putpalette(sum([list(s) for s in SHADES[::-1]], []) + [0] * 756)
-    return grey.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB')
-
-
-def snap(x):
-    return x - x % 8
-
-
-def splash_screen(art, glyphs):
-    img = Image.new('RGB', (160, 144), SHADES[0])
-    logo = to_shades(art[SPLASH_ART], (144, 104), 1.2)
-    img.paste(logo, (snap((160 - logo.width) // 2), 8))
-    draw_text(img, glyphs, 4, 15, 'PRESS START')
-    return img
-
-
-def game_screen(art, glyphs, sel):
-    img = Image.new('RGB', (160, 144), SHADES[0])
-    logo = to_shades(art[GAMES[sel]['art']], (160, 80), 1.3)
-    img.paste(logo, (snap((160 - logo.width) // 2), 8 + snap((80 - logo.height) // 2)))
-    for i, g in enumerate(GAMES):
-        if i == sel:
-            draw_text(img, glyphs, 3, 12 + i, '>')
-        draw_text(img, glyphs, 5, 12 + i, g['label'])
-    return img
-
-
 def screens(roms, art):
     """The five screens in bank order: splash, then each game highlighted."""
     glyphs = font_glyphs(roms[1])
-    return [splash_screen(art, glyphs)] + [game_screen(art, glyphs, i) for i in range(len(GAMES))]
+    cap = pictures.land_select(roms[0])
+    out = [pictures.splash_screen(art[SPLASH_ART], glyphs)]
+    for i, g in enumerate(GAMES):
+        logo = pictures.game_logo(art, GAMES, g)
+        out.append(pictures.menu_screen(logo, glyphs, cap, GAMES, i))
+    return out
 
 
 def tileize(img):
@@ -221,6 +175,8 @@ def build_code():
         games += bytes([q, 1 if q else 0, target & 0xFF, target >> 8])
     menu_src = (common + consts(
         SPLASH_BANK=SPLASH_BANK, FIRST_GAME_BANK=FIRST_GAME_BANK,
+        PROMPT_MAP=0x9800 + 32 * pictures.PROMPT_ROW,
+        BLINK_FRAMES=BLINK_FRAMES, BLINK_CYCLE=2 * BLINK_FRAMES,
         LOADER=LOADER, LOADER_LEN=len(loader), LAUNCH=LAUNCH, LAUNCH_LEN=len(launch),
         P_QUARTER=lab['launch'] + 1, P_MODE=lab['launch'] + 6,
         P_TARGET=lab['jump'] + 1, P_TARGET_HI=lab['jump'] + 2)

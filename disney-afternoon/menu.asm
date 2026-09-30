@@ -4,12 +4,16 @@
 ; Every screen is a whole picture in its own bank: the splash, then one per
 ; game with that game highlighted. Moving the cursor loads the next picture.
 ;
-; The builder appends: loader_src and launch_src (the loader and launch stub,
-; assembled for LOADER and LAUNCH), and games (quarter, mode, entry lo, hi).
+; The builder defines PROMPT_MAP (the map address of the splash's PRESS START
+; row), BLINK_FRAMES and BLINK_CYCLE (twice that). It appends loader_src and
+; launch_src (the loader and launch stub, assembled for LOADER and LAUNCH), and
+; games (quarter, mode, entry lo, hi).
 
 SEL = $C000
 PAD_HELD = $C001            ; buttons in the low nibble, d-pad in the high nibble
 PAD_NEW = $C002
+BLINK = $C003               ; frames into the PRESS START blink cycle
+PROMPT = $C010              ; the splash's PRESS START row, 20 tiles
 
 start:
     ld hl,loader_src
@@ -21,10 +25,39 @@ start:
     ld (PAD_HELD),a
     ld a,SPLASH_BANK
     call show
+    call vblank             ; keep the prompt row, to put back after each blank
+    ld hl,PROMPT_MAP
+    ld de,PROMPT
+    ld b,20
+    call copy
+    xor a
+    ld (BLINK),a
 wait_start:
     call frame
     and $09                 ; A or START
-    jr z,wait_start
+    jr nz,menu
+    ld hl,BLINK             ; blink PRESS START: shown BLINK_FRAMES, then blank as long
+    inc (hl)
+    ld a,(hl)
+    cp BLINK_FRAMES
+    jr z,prompt_off
+    cp BLINK_CYCLE
+    jr nz,wait_start
+    ld (hl),0
+    ld hl,PROMPT            ; still in VBlank: frame returns right after it starts
+    ld de,PROMPT_MAP
+    ld b,20
+    call copy
+    jr wait_start
+prompt_off:
+    ld hl,PROMPT_MAP        ; tile 0 of every screen is blank
+    ld b,20
+    xor a
+clear_prompt:
+    ld (hl+),a
+    dec b
+    jr nz,clear_prompt
+    jr wait_start
 
 menu:
     ld a,(SEL)
