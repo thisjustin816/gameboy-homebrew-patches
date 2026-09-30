@@ -54,7 +54,7 @@ SHOWN       = $D700             ; what the window map holds now (PAGEBUF + $200)
 OAMBUF      = $DA00             ; the sprite table the VBlank DMA copies from
 V_ROT       = $D010             ; which enemy pair leads this frame
 V_CGB       = $D011             ; 1 on a Game Boy Color
-V_PAL       = $D012             ; the chosen color theme, 0-7
+V_PAL       = $D012             ; the chosen color theme, 0-15
 PAL_DIRTY   = $D013             ; set when PALBUF holds colors the VBlank hook should load
 C_BGP       = $D014             ; the shades and theme PALBUF was built from
 C_OBP0      = $D015
@@ -62,6 +62,8 @@ C_OBP1      = $D016
 C_PAL       = $D017
 C_VALID     = $D018
 PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 bytes
+V_KEEP      = $D038             ; three bytes: the game's shades while the screen is dark
+V_DARK      = $D03B             ; 1 from CONTINUE or NEW RUN, 2 once the store is asked for
 S_PAL       = $A014             ; the theme, and its check byte
 THEME_COUNT = 16
 V_TPTR      = $D01B             ; two bytes: the theme's palettes
@@ -981,11 +983,28 @@ tm_new_yes: call sram_on            ; YES: the saved run is thrown away
 tm_new_go:  ld a,(V_FLAGS)
             or F_PEND_STORE
 tm_go_run:  ld (V_FLAGS),a
+            call go_dark
             call ov_close
             ld a,(V_JOY)
             or $80
             ld (V_JOY),a
             ret
+
+; Everything in the game's darkest shade from here to the store or the restored
+; run, so the title, its wipe and the run's start-up don't show in between.
+go_dark:    ldh a,(SH_BGP)
+            ld (V_KEEP),a
+            ldh a,(SH_OBP0)
+            ld (V_KEEP+1),a
+            ldh a,(SH_OBP1)
+            ld (V_KEEP+2),a
+            ld a,$FF
+            ldh (SH_BGP),a
+            ldh (SH_OBP0),a
+            ldh (SH_OBP1),a
+            ld a,1
+            ld (V_DARK),a
+            jp wait_vbl             ; the VBlank hook applies it
 
 ; A = 1 if the save was erased.
 confirm_erase:
@@ -1203,7 +1222,11 @@ restore_run:
             ld (V_JOY),a
             di
             ld sp,$DEFE             ; a scratch stack below the page being restored
-            call blackout           ; the maps change over a few frames: show black meanwhile
+            ld a,(V_DARK)           ; the maps change over a few frames: keep the
+            or a                    ; screen dark meanwhile (CONTINUE already is)
+            call z,blackout
+            xor a
+            ld (V_DARK),a           ; the restored shadows bring the shades back
             ld hl,R_MAP
             ld de,$9800
             ld bc,$0800
@@ -1583,6 +1606,9 @@ wait_hook:  call ready
             ld a,l
             cp $B8
             jp nz,oam_build
+            ld a,(V_DARK)
+            cp 2
+            call z,undark
             call hit_pulse          ; before oam_build copies the sprite table
             call oam_build
             ld a,(V_FLAGS)
@@ -1592,6 +1618,8 @@ wait_hook:  call ready
             ld (V_FLAGS),a
             ld a,1
             ld ($C5DC),a            ; open the store, as the game-over flow does
+            ld a,2
+            ld (V_DARK),a
             xor a
             ld ($C5C0),a
             ld ($C5CD),a
@@ -1599,6 +1627,18 @@ wh_cont:    ld a,(V_FLAGS)
             bit 3,a
             ret z
             jp restore_run
+
+; The run loop's next wait after it asked for the store comes once the store is
+; drawn: bring the shades back.
+undark:     xor a
+            ld (V_DARK),a
+            ld a,(V_KEEP)
+            ldh (SH_BGP),a
+            ld a,(V_KEEP+1)
+            ldh (SH_OBP0),a
+            ld a,(V_KEEP+2)
+            ldh (SH_OBP1),a
+            jp pal_check
 
 ; ==== org hram ====
 ; The VBlank hook, copied to HRAM at boot. The game's VBlank handler called the

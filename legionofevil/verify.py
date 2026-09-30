@@ -581,6 +581,57 @@ def check_no_flash(control, rom):
           f"{quit_cycles} time(s)")
 
 
+def check_menu_exits(rom):
+    """NEW RUN and CONTINUE leave the title menu through the game's run start-up,
+    which also shows the title and its wipe. Between the menu and the store, or
+    the restored run, every frame must be one flat shade."""
+    print("Leaving the title menu")
+    for console in ("dmg", "cgb"):
+        data = bytearray(open(rom, "rb").read())
+        if console == "dmg":
+            data[0x143] = 0
+            fix_header(data)
+        p = os.path.join(WORK, f"mx-{console}.gb")
+        open(p, "wb").write(data)
+        for choice in ("NEW RUN", "CONTINUE"):
+            g = Game(p, "mx")
+            start_run(g)
+            if choice == "CONTINUE":
+                until_live(g)
+                g.tick(100)
+                g.press("start", after=30)
+                g.press("down", after=10)
+                g.press("a", after=300)
+            else:
+                g.m[0xC5DB] = 1
+                g.tick(300)
+            g.stop()
+            g = Game(p, "mx", fresh=False)
+            g.tick(200)
+            g.press("start", after=30)
+            menu = g.screen().tobytes()
+            restored = []
+            frame = [0]
+            g.pb.hook_register(2, _LABELS["restore_run"], lambda ctx: restored.append(frame[0]), None)
+            shots = []
+            g.pb.button_press("a")
+            for f in range(90):
+                frame[0] = f
+                g.tick(1)
+                if f == 4:
+                    g.pb.button_release("a")
+                im = g.screen()
+                shots.append((im.tobytes(), len(im.getcolors(256) or ())))
+            if choice == "NEW RUN":
+                end = next(i for i, (b, _) in enumerate(shots) if b == shots[-1][0])
+            else:
+                end = restored[0] + 1 if restored else len(shots)
+            between = [i for i, (b, n) in enumerate(shots[:end]) if b != menu and n > 1]
+            check(f"{console}: {choice} goes from the menu to {'the store' if choice == 'NEW RUN' else 'the run'} "
+                  "through one flat shade", end < len(shots) and not between,
+                  f"frames {between[:8]} show something else" if between else f"{end} frames")
+
+
 def check_vram_timing(rom):
     """PyBoy lets the CPU reach video memory while the LCD is drawing a line;
     the hardware does not (the write is dropped, the read gives $FF). So every
@@ -877,6 +928,7 @@ def main():
     check_glyphs(rompath)
     check_new_run_confirm(rompath)
     check_no_flash(control, rompath)
+    check_menu_exits(rompath)
     check_vram_timing(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)

@@ -11,7 +11,7 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `3b52e2aedaf70e2eccaed2a893aaf024` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `67a8949542c8738555517a3e24329352` |
 
 ## Changes
 
@@ -65,9 +65,10 @@ when the camera scrolls.
   game draws its own screens (a Game Boy Color shows an LCD-off frame as white):
   each video memory access waits until the LCD is not drawing a line, only the
   tiles that change are rewritten, and a page goes on screen in one VBlank.
-  CONTINUE blacks the screen out through the palettes for the few frames it
-  takes to write the saved run back. The one blank left is SAVE & QUIT's
-  restart, which goes through the game's own start-up as at power-on.
+  CONTINUE and NEW RUN start a run through the game's own start-up, which shows
+  the title and its wipe first; the screen stays in its darkest shade from the
+  menu until the restored run or the store is ready. The one blank left is SAVE
+  & QUIT's restart, which goes through the game's own start-up as at power-on.
 - **Double speed.** On a Game Boy Color or Chromatic the game switches the CPU
   to double speed, so the logic uses at most about 60% of a frame at the worst
   moments (stock: about 99%).
@@ -132,6 +133,8 @@ checks:
   game's registers never change between VBlanks;
 - no menu, page or CONTINUE change turns the LCD off (the stock game never does
   either), and SAVE & QUIT turns it off once, in the game's own start-up;
+- NEW RUN and CONTINUE go from the menu to the store or the run through one
+  flat shade, on both consoles;
 - every video memory and palette access the patch makes happens while the LCD
   is not drawing a line, at single and at double speed. PyBoy does not block
   these accesses the way the hardware does, so this is checked separately, at
