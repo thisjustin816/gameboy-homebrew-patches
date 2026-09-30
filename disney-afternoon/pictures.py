@@ -30,6 +30,18 @@ BANNER_SHARE = 0.15          # inside the COLLECTION banner the pink outline is 
 MICKEY = [(782, 182, 117), (403, 403, 117), (683, 448, 165)]
 OO_FIRST = (625, 376, 670, 420)     # the first O of AFTERNOON in the source
 OO_STEP = 46                        # and how far the second one sits to its right
+BORDER = 1, 2                # the triangle's edge: a black line, then a white band this wide
+# COLLECTION, drawn by hand in white on the black banner: at this size a scaled-down
+# serif loses the E's middle stroke. Every glyph is 9 pixels tall.
+COLLECTION_FONT = {
+    'C': ['..####.', '.##..##', '##....#', '##.....', '##.....', '##.....', '##....#', '.##..##', '..####.'],
+    'O': ['..###..', '.##.##.', '##...##', '##...##', '##...##', '##...##', '##...##', '.##.##.', '..###..'],
+    'L': ['####..', '.##...', '.##...', '.##...', '.##...', '.##...', '.##..#', '.##..#', '######'],
+    'E': ['######', '.##..#', '.##...', '.##.#.', '.####.', '.##.#.', '.##...', '.##..#', '######'],
+    'T': ['########', '#..##..#', '...##...', '...##...', '...##...', '...##...', '...##...', '...##...', '..####..'],
+    'I': ['####', '.##.', '.##.', '.##.', '.##.', '.##.', '.##.', '.##.', '####'],
+    'N': ['###...##', '.##....#', '.###...#', '.#.##..#', '.#..##.#', '.#...###', '.#....##', '.#.....#', '###....#'],
+}
 
 # The game logos
 LOGO_SIZE = (160, 72)
@@ -217,7 +229,41 @@ def splash_layers(A):
     shadow = solid & ~white & ~yellow & ~pink & ~banner
     for c, m in ((0, white), (1, yellow), (2, shadow), (3, banner), (4, pink)):
         code[m] = c
-    return triangle, lime, code
+    # the magenta banner and its blue border; the letters' shadows hold specks of the same
+    # magenta, so keep only the biggest part
+    lab, ps = parts(banner | (solid & (r < 100) & (b > 180)))
+    banner_quad = lab == max(ps, key=lambda p: p[2])[0]
+    return triangle, lime, code, banner_quad
+
+
+def corners(mask):
+    """The extreme points of a mask: top left, top right, bottom right, bottom left."""
+    ys, xs = np.nonzero(mask)
+    return [(xs[i], ys[i]) for i in (np.argmin(xs + ys), np.argmax(xs - ys),
+                                     np.argmax(xs + ys), np.argmin(xs - ys))]
+
+
+def erode(mask):
+    """Shrink a mask by one pixel in all eight directions."""
+    m = np.pad(mask, 1)
+    out = mask.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            out &= m[1 + dy:1 + dy + mask.shape[0], 1 + dx:1 + dx + mask.shape[1]]
+    return out
+
+
+def draw_word(img, font, word, cx, cy, shade):
+    """Draw a word from a bitmap font, centered on (cx, cy), with one pixel between letters."""
+    width = sum(len(font[ch][0]) for ch in word) + len(word) - 1
+    x = round(cx - width / 2)
+    y = round(cy - len(font[word[0]]) / 2)
+    for ch in word:
+        for gy, line in enumerate(font[ch]):
+            for gx, p in enumerate(line):
+                if p == '#':
+                    img.putpixel((x + gx, y + gy), SHADES[shade])
+        x += len(font[ch][0]) + 1
 
 
 def splash_logo(png):
@@ -226,20 +272,37 @@ def splash_logo(png):
     ys, xs = np.nonzero(A[..., 3] > 40)
     x0, y0 = xs.min(), ys.min()
     A = A[y0:ys.max() + 1, x0:xs.max() + 1]
-    _, lime, code = splash_layers(A)
+    _, lime, code, banner = splash_layers(A)
     scale, w, h, blk = blocks(code.shape, SPLASH_SIZE)
     ly, lx = np.nonzero(lime)
-    corners = [np.argmin(lx + ly), np.argmax(lx - ly), np.argmax(ly)]   # top left, top right, bottom
+    tip = [np.argmin(lx + ly), np.argmax(lx - ly), np.argmax(ly)]       # top left, top right, bottom
     base = Image.new('L', (w, h), 0)
-    ImageDraw.Draw(base).polygon([(lx[i] * scale, ly[i] * scale) for i in corners], fill=1)
+    ImageDraw.Draw(base).polygon([(lx[i] * scale, ly[i] * scale) for i in tip], fill=1)
     mickey = Image.new('L', (w, h), 0)
     dm = ImageDraw.Draw(mickey)
     for cx, cy, rr in MICKEY:
         cx, cy = cx - x0, cy - y0
         dm.ellipse(((cx - rr) * scale, (cy - rr) * scale, (cx + rr) * scale, (cy + rr) * scale), fill=1)
-    shade_base = np.where(np.asarray(base) == 1,
-                          np.where(np.asarray(mickey) == 1, MICKEY_SHADE, TRIANGLE_SHADE), 0)
-    to_shade = [0, 0, 2, 3, 3]
+    tri = np.asarray(base) == 1
+    # the ears only just touch the head: close the sliver of triangle between them
+    mk = np.asarray(mickey) == 1
+    for _ in range(2):
+        mk = ~erode(~mk)
+    for _ in range(2):
+        mk = erode(mk)
+    shade_base = np.where(tri, np.where(mk, MICKEY_SHADE, TRIANGLE_SHADE), 0)
+    # the lime edge, as a black line and a white band inside it
+    inner = tri
+    for _ in range(BORDER[0]):
+        inner = erode(inner)
+    shade_base[tri & ~inner] = 3
+    band = inner
+    for _ in range(BORDER[1]):
+        band = erode(band)
+    shade_base[inner & ~band] = 0
+    # the letters' purple shadow goes black with their outline, so it can't be mistaken
+    # for the triangle or show through the Mickey shape
+    to_shade = [0, 0, 3, 3, 3]
     out = Image.new('RGB', (w, h))
     for ty in range(h):
         for tx in range(w):
@@ -264,6 +327,12 @@ def splash_logo(png):
     bx0, by0 = int(np.floor(ox0)), int(np.floor(oy0)) - 1
     bx1, by1 = int(np.ceil(ox1)), int(np.ceil(oy1)) + 1
     out.paste(out.crop((bx0, by0, bx1, by1)), (bx0 + round(OO_STEP * scale), by0))
+    # the banner as a clean black shape, with COLLECTION drawn on it by hand
+    quad = [(x * scale, y * scale) for x, y in corners(banner)]
+    ImageDraw.Draw(out).polygon(quad, fill=SHADES[3])
+    cx = sum(x for x, _ in quad) / 4
+    cy = sum(y for _, y in quad) / 4
+    draw_word(out, COLLECTION_FONT, 'COLLECTION', cx, cy, 0)
     return out
 
 
@@ -369,7 +438,14 @@ def split_wordmark(png):
     lab, ps = parts(a[..., 3] > 40)
     big = [n for n, b, s in ps if s >= WORDMARK_PART]
     title_top = min(b[1] for n, b, s in ps if s >= WORDMARK_PART)
-    word = [n for n, b, s in ps if s < WORDMARK_PART and b[3] < title_top + a.shape[0] // 4]
+    small = [(n, b) for n, b, s in ps if s < WORDMARK_PART]
+    word = [n for n, b in small if b[3] < title_top + a.shape[0] // 4]
+    # a long y tail reaches further down: take any small part that starts within the
+    # wordmark's rows and sits within its width
+    wx0 = min(b[0] for n, b in small if n in word)
+    wx1 = max(b[2] for n, b in small if n in word)
+    wy1 = max(b[3] for n, b in small if n in word)
+    word += [n for n, b in small if n not in word and b[1] <= wy1 and wx0 <= b[0] and b[2] <= wx1]
     # keep the soft edge around the letters with them: grow the mask by 2 pixels
     grown = np.isin(lab, word)
     for _ in range(2):
@@ -411,7 +487,11 @@ def game_logo(art, games, g):
     scale = min(LOGO_SIZE[0] / full.width, LOGO_SIZE[1] / full.height)
     dims = (round(full.width * scale), round(full.height * scale))
     canvas = Image.new('RGB', dims, SHADES[0])
-    canvas.paste(title_logo(g['key'], png_bytes(title), dims), (0, 0))
+    # the title alone is smaller than the whole logo when the wordmark stuck out; keep it
+    # at the whole logo's scale and place
+    tb = title.getbbox()
+    size = (round((tb[2] - tb[0]) * scale), round((tb[3] - tb[1]) * scale))
+    canvas.paste(title_logo(g['key'], png_bytes(title), size), (round(tb[0] * scale), round(tb[1] * scale)))
     wm = master_wordmark(art, games)
     cx, cy = (box[0] + box[2]) / 2 * scale, (box[1] + box[3]) / 2 * scale
     x = min(max(0, round(cx - wm.width / 2)), canvas.width - wm.width)
