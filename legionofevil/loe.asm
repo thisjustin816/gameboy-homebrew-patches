@@ -407,7 +407,7 @@ cs_fast:    ld a,$50                ; the DMA wait is counted in CPU cycles, whi
             call vfill
             xor a
             ldh ($4F),a
-            ret
+            jp pal_check            ; the theme's colors from the first frame
 
 ; ---------------------------------------------------------------- save
 ; True (Z clear) once boot_hook has cleared the variable page.
@@ -597,12 +597,23 @@ ovr_loop:   ld a,TILE_BLANK
             jr nz,ovr_loop
             ret
 
-; Rows 2-17 first: until the window moves to the top only rows 0-1 of its map
-; can be on screen (the HUD in a run; the title has no window). Then, in
-; VBlank, move the window up and send rows 0-1.
-ov_show:    push bc                 ; callers set up menu_run's arguments first
+; A first page: rows 2-17 first, since until the window moves to the top only
+; rows 0-1 of its map can be on screen (the HUD in a run; the title has no
+; window). Then, in VBlank, move the window up and copy rows 0-1.
+ov_show:    push bc
             push de
-            ld b,2
+            ldh a,(LCDC)            ; a page already showing: from VBlank, top to
+            bit 5,a                 ; bottom, which stays ahead of the LCD
+            jr z,ovs_first
+            ldh a,(WY)
+            or a
+            jr nz,ovs_first
+            call wait_vbl
+            ld b,0
+            ld c,18
+            call page_flush
+            jr ovs_done
+ovs_first:  ld b,2
             ld c,16
             call page_flush
             call wait_vbl
@@ -614,9 +625,24 @@ ov_show:    push bc                 ; callers set up menu_run's arguments first
             or $E0                  ; LCD on, window on, window map $9C00
             res 1,a                 ; sprites off
             ldh (LCDC),a
-            ld b,0
-            ld c,2
-            call page_flush
+            ld hl,PAGEBUF           ; rows 0-1 in this VBlank, a plain copy (no
+            ld de,WIN_MAP           ; mode waits) so it ends before line 0
+            ld b,2
+ov01_row:   ld c,20
+ov01_col:   ld a,(hl+)
+ov01_st:    ld (de),a
+            inc de
+            dec c
+            jr nz,ov01_col
+            ld a,e
+            add a,12
+            ld e,a
+            dec b
+            jr nz,ov01_row
+            ld hl,PAGEBUF           ; and SHOWN to match, outside VBlank
+            ld de,SHOWN
+            ld bc,40
+            call cpy
 ovs_done:   pop de
             pop bc
             ret
@@ -802,6 +828,8 @@ menu_run:   ld a,b
             ld a,$FF
             ld (V_MDRAW),a
             ld (V_MPREV),a
+            call mr_cursor          ; the page goes on screen with its cursor
+            call ov_show
 mr_loop:    call wait_vbl
             call mr_theme
             call mr_cursor
@@ -939,8 +967,7 @@ tm_no_run:  ld hl,str_new_a
             ld hl,str_era_a
             call ov_text
             ld b,2
-tm_go:      call ov_show
-            ld c,7
+tm_go:      ld c,7
             ld d,2
             call menu_run
             cp $FF
@@ -1017,7 +1044,6 @@ confirm_erase:
             call ov_text
             ld hl,str_ey
             call ov_text
-            call ov_show
             ld b,2
             ld c,9
             ld d,2
@@ -1045,7 +1071,6 @@ confirm_newrun:
             call ov_text
             ld hl,str_ny
             call ov_text
-            call ov_show
             ld b,2
             ld c,13
             ld d,2
@@ -1110,15 +1135,15 @@ pm_draw:    ld hl,str_paused
             ld hl,str_theme
             call ov_text
             call theme_name_draw
-pm_nohint:  call ov_show
-            ld b,2
+pm_nohint:  ld b,2
             ld c,7
             ld d,2
             call menu_run
             cp 1
             jr z,pm_save
             jp ov_close
-pm_save:    call ov_close
+pm_save:    call go_dark            ; the run stays hidden while it is saved
+            call ov_close
             call suspend
 pm_saved:   or a
             ret z                   ; 0: the snapshot was just restored
@@ -1178,6 +1203,14 @@ su_ok:      call save_hook          ; a run needs the upgrade save beside it
             ld hl,$FF80
             ld de,R_HRAM
             ld bc,127
+            call cpy
+            ld hl,V_KEEP            ; the game's shades, not the dark ones
+            ld de,R_HRAM + SH_BGP - $80
+            ld bc,3
+            call cpy
+            ld hl,V_KEEP
+            ld de,R_IO + 4
+            ld bc,3
             call cpy
             ld hl,$DF00
             ld de,R_STACK
@@ -1321,6 +1354,20 @@ reset_game: di
             ldh ($0F),a
             ldh ($FF),a
             ldh ($26),a
+            ldh a,(LCDC)            ; LCD off in VBlank, and video memory cleared as
+            bit 7,a                 ; the boot ROM leaves it, so the start-up
+            jr z,rg_off             ; shows nothing of the run
+rg_vbl:     ldh a,($44)
+            cp 144
+            jr nz,rg_vbl
+            xor a
+            ldh (LCDC),a
+rg_off:     ld hl,$8000
+rg_clr:     xor a
+            ld (hl+),a
+            ld a,h
+            cp $A0
+            jr nz,rg_clr
             jp t_reset
 
 ; ---------------------------------------------------------------- sprites

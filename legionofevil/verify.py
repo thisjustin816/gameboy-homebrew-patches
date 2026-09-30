@@ -577,7 +577,7 @@ def check_no_flash(control, rom):
     flashes = [(n, c) for n, c in steps if c]
     check("no menu, page or CONTINUE change turns the LCD off", not flashes,
           ", ".join(f"{n}: {c}" for n, c in flashes) if flashes else f"{len(steps)} changes")
-    check("SAVE & QUIT turns it off once, in the game's own start-up (as at power-on)", quit_cycles == 1,
+    check("SAVE & QUIT turns it off once, for the restart (as at power-on)", quit_cycles == 1,
           f"{quit_cycles} time(s)")
 
 
@@ -632,6 +632,68 @@ def check_menu_exits(rom):
                   f"frames {between[:8]} show something else" if between else f"{end} frames")
 
 
+def check_menu_screens(rom):
+    """Each menu page goes on screen in one step, cursor included, and SAVE &
+    QUIT hides the run until its restart, which then looks like a power-on."""
+    print("Menu pages and SAVE & QUIT")
+    for console in ("dmg", "cgb"):
+        data = bytearray(open(rom, "rb").read())
+        if console == "dmg":
+            data[0x143] = 0
+            fix_header(data)
+        p = os.path.join(WORK, f"ms-{console}.gb")
+        open(p, "wb").write(data)
+
+        def changes(g, button, n=40):
+            g.pb.button_press(button)
+            seen, prev = 0, g.screen().tobytes()
+            for f in range(n):
+                g.tick(1)
+                if f == 4:
+                    g.pb.button_release(button)
+                b = g.screen().tobytes()
+                seen += b != prev and g.m[0xFF4A] == 0 and g.m[0xFF40] & 0x20 != 0   # the menu's window
+                prev = b
+            return seen
+        g = Game(p, "ms")
+        cold = []
+        for _ in range(300):
+            g.tick(1)
+            cold.append(g.screen().tobytes())
+        start_run(g)
+        until_live(g)
+        g.tick(60)
+        steps = [("pause menu", changes(g, "start"))]
+        g.press("down", after=10)
+        g.pb.button_press("a")
+        menu = g.screen().tobytes()
+        shown, off_at = [], None
+        for f in range(400):
+            g.tick(1)
+            if f == 4:
+                g.pb.button_release("a")
+            im = g.screen()
+            if off_at is None:
+                if not g.m[0xFF40] & 0x80:
+                    off_at = f
+                elif im.tobytes() != menu and len(im.getcolors(256) or ()) > 1:
+                    shown.append(f)
+        last = g.screen().tobytes()
+        check(f"{console}: SAVE & QUIT shows one flat shade until the LCD goes off for the restart",
+              off_at is not None and not shown, f"frames {shown[:8]} show something else" if shown else f"{off_at} frames")
+        check(f"{console}: the restart ends on the title a power-on shows", last == cold[-1])
+        g.press("start", after=40)
+        g.pb.button_release("start")
+        for name, keys in (("NEW RUN confirm", ("down", "a")), ("NO", ("a",)),
+                           ("ERASE SAVE page", ("down", "down", "a")), ("B back to the menu", ("b",))):
+            for k in keys[:-1]:
+                g.press(k, after=20)
+            steps.append((name, changes(g, keys[-1])))
+        bad = [f"{n}: {c}" for n, c in steps if c != 1]
+        check(f"{console}: every menu page goes on screen in one step, with its cursor", not bad,
+              ", ".join(bad) if bad else f"{len(steps)} pages")
+
+
 def check_vram_timing(rom):
     """PyBoy lets the CPU reach video memory while the LCD is drawing a line;
     the hardware does not (the write is dropped, the read gives $FF). So every
@@ -656,7 +718,7 @@ def check_vram_timing(rom):
         # one-byte instructions. vcopy's read (vc_ld) is the instruction right
         # before its store, 2 cycles earlier, and mode 3 lasts at least 43, so a
         # read in mode 3 puts its store there too and is caught here.
-        for name in ("vc_st", "vf_st", "pf_st", "bo_bgst", "bo_obst"):
+        for name in ("vc_st", "vf_st", "pf_st", "ov01_st", "bo_bgst", "bo_obst"):
             g.pb.hook_register(2, _LABELS[name], cb, None)
         start_run(g)
         play(g, 300)
@@ -929,6 +991,7 @@ def main():
     check_new_run_confirm(rompath)
     check_no_flash(control, rompath)
     check_menu_exits(rompath)
+    check_menu_screens(rompath)
     check_vram_timing(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
