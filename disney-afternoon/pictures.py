@@ -25,8 +25,9 @@ MICKEY_SHADE = 1             # with a light gray Mickey on it
 LETTER_SHARE = 0.5           # letters cover at least this much of a pixel to be drawn
 BANNER_SHARE = 0.15          # inside the COLLECTION banner the pink outline is not kept
 # The Mickey shape behind the letters, tilted: one ear top right, the other left of
-# the head. Circles (x, y, radius) in the source image, traced by hand.
-MICKEY = [(782, 182, 117), (502, 419, 117), (683, 448, 165)]
+# the head. Circles (x, y, radius) in the source image, traced by hand; the left ear
+# sits as far from the head as the right one does.
+MICKEY = [(782, 182, 117), (403, 403, 117), (683, 448, 165)]
 OO_FIRST = (625, 376, 670, 420)     # the first O of AFTERNOON in the source
 OO_STEP = 46                        # and how far the second one sits to its right
 
