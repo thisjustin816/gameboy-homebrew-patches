@@ -41,7 +41,7 @@ BRANCHES = (0xC3, 0xC2, 0xCA, 0xD2, 0xDA, 0xCD, 0xC4, 0xCC, 0xD4, 0xDC)
 
 ROM_PROFILES = {
     "cd544132f9d06ca9fe4f552ddc202878": {
-        "name": "Legion of Evil Rev 1",
+        "name": "Legion of Evil (Rev 1)",
         "rom_size": 0x10000,
         "code_bank": 2,
         # (offset, stock, patched): MBC1 -> +RAM+BATTERY, 32 KB -> 64 KB, no RAM -> 8 KB

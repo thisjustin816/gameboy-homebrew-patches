@@ -6,7 +6,7 @@ Game Boy Color and the ModRetro Chromatic. It also fixes the player sprite
 disappearing in crowds and the thin strip that shifts at the top of the screen
 when the camera scrolls.
 
-- Game: Legion of Evil Rev 1, 32 KB, no mapper (a plain ROM, no save RAM)
+- Game: Legion of Evil (Rev 1), 32 KB, no mapper (a plain ROM, no save RAM)
 - Stock md5: `cd544132f9d06ca9fe4f552ddc202878`
 
 | Patch | What it does | ROM md5 after patching |
@@ -230,7 +230,7 @@ named after the ROM.
 Python 3 only:
 
 ```
-python3 patch.py "Legion of Evil Rev 1.gb" -o "Legion of Evil Rev 1 [Save, pause menu & color patch by thisJUSTin816 v1.0].gb" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save, pause menu & color patch by thisJUSTin816 v1.0].gb" --ips LegionOfEvil-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -239,5 +239,5 @@ instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
 `pip install pyboy pillow`:
 
 ```
-python3 verify.py "Legion of Evil Rev 1.gb" "Legion of Evil Rev 1 [Save, pause menu & color patch by thisJUSTin816 v1.0].gb"
+python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save, pause menu & color patch by thisJUSTin816 v1.0].gb"
 ```
