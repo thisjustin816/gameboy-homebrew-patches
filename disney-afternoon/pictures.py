@@ -28,7 +28,7 @@ MICKEY_DARK = 75             # the Mickey is darker than the stripes around it, 
 FILL_SHARE = 0.45            # a letter's fill covers this much of a pixel to be drawn
 TEXT_SHARE = 0.4             # the same for the small words, whose strokes are thinner
 TEXT_SCALE = 1.25            # THE and AFTERNOON are drawn this much bigger to stay readable
-BANNER_SCALE = 1.2           # and COLLECTION with its banner this much, the most that fits the canvas
+BANNER_SCALE = 1.1           # and COLLECTION with its banner this much
 BANNER_SHADE = 1             # COLLECTION's banner: light gray, with a black edge
 
 # The game logos
