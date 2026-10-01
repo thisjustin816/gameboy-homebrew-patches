@@ -64,6 +64,7 @@ C_VALID     = $D018
 PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 bytes
 V_KEEP      = $D038             ; three bytes: the game's shades while the screen is dark
 V_DARK      = $D03B             ; 1 from CONTINUE or NEW RUN, 2 once the store is asked for
+V_BOOT      = $D03C             ; two bytes: $C0A0-$C0A1 kept over a restore
 S_PAL       = $A014             ; the theme, and its check byte
 THEME_COUNT = 16
 V_TPTR      = $D01B             ; two bytes: the theme's palettes
@@ -1264,10 +1265,19 @@ restore_run:
             ld de,$9800
             ld bc,$0800
             call vcopy
+            ld hl,$C0A0             ; the registers this console booted with: the
+            ld a,(hl+)              ; snapshot may come from the other kind of
+            ld (V_BOOT),a           ; console, and the start-up after the next
+            ld a,(hl)               ; SAVE & QUIT reads them
+            ld (V_BOOT+1),a
             ld hl,R_WRAM
             ld de,$C000
             ld bc,WRAM_LEN
             call cpy
+            ld a,(V_BOOT)
+            ld ($C0A0),a
+            ld a,(V_BOOT+1)
+            ld ($C0A1),a
             ld hl,R_STACK
             ld de,$DF00
             ld bc,$0100

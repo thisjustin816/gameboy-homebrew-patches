@@ -694,6 +694,43 @@ def check_menu_screens(rom):
               ", ".join(bad) if bad else f"{len(steps)} pages")
 
 
+def check_cross_console(rom):
+    """A run saved on one kind of console and continued on the other: the
+    restart after the next SAVE & QUIT must still know which console it is on."""
+    print("Continuing on the other kind of console")
+    data = bytearray(open(rom, "rb").read())
+    data[0x143] = 0
+    fix_header(data)
+    paths = {"cgb": os.path.join(WORK, "xc-cgb.gb"), "dmg": os.path.join(WORK, "xc-dmg.gb")}
+    open(paths["cgb"], "wb").write(rom if isinstance(rom, bytes) else open(rom, "rb").read())
+    open(paths["dmg"], "wb").write(data)
+    for saved_on, continued_on in (("dmg", "cgb"), ("cgb", "dmg")):
+        g = Game(paths[saved_on], "xc")
+        start_run(g)
+        until_live(g)
+        g.tick(100)
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.press("a", after=300)
+        ram = g.stop()
+        g = Game(paths[continued_on], "xc")
+        g.pb.stop(save=False)
+        open(g.path + ".ram", "wb").write(ram)
+        g = Game(paths[continued_on], "xc", fresh=False)
+        g.tick(200)
+        g.press("start", after=30)
+        g.press("a", after=200)
+        live = g.m[0xFF40] == 0xE3
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.press("a", after=600)
+        colors = len(g.screen().getcolors(256) or ())
+        cgb = g.m[0xD011]
+        check(f"saved on {saved_on}, continued on {continued_on}: SAVE & QUIT comes back to a visible title "
+              "on the right console", live and colors > 1 and cgb == (continued_on == "cgb"),
+              f"continued {live}, {colors} colors, color flag {cgb}")
+
+
 def check_vram_timing(rom):
     """PyBoy lets the CPU reach video memory while the LCD is drawing a line;
     the hardware does not (the write is dropped, the read gives $FF). So every
@@ -992,6 +1029,7 @@ def main():
     check_no_flash(control, rompath)
     check_menu_exits(rompath)
     check_menu_screens(rompath)
+    check_cross_console(rompath)
     check_vram_timing(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
