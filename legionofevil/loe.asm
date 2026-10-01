@@ -65,6 +65,9 @@ PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 by
 V_KEEP      = $D038             ; three bytes: the game's shades while the screen is dark
 V_DARK      = $D03B             ; 1 from CONTINUE or NEW RUN, 2 once the store is asked for
 V_BOOT      = $D03C             ; two bytes: $C0A0-$C0A1 kept over a restore
+V_RUMBLE    = $D03E             ; frames left of a solid rumble (a death, a boss)
+V_DIED      = $D03F             ; 1 once a death has rumbled
+V_BOSSN     = $D040             ; bosses in play last frame
 S_PAL       = $A014             ; the theme, and its check byte
 THEME_COUNT = 16
 V_TPTR      = $D01B             ; two bytes: the theme's palettes
@@ -1276,6 +1279,8 @@ restore_run:
             ld de,$C000
             ld bc,WRAM_LEN
             call cpy
+            call boss_count         ; the bosses of the restored run are not new
+            ld (V_BOSSN),a
             ld a,(V_BOOT)
             ld ($C0A0),a
             ld a,(V_BOOT+1)
@@ -1678,6 +1683,7 @@ wait_hook:  call ready
             cp 2
             call z,undark
             call hit_pulse          ; before oam_build copies the sprite table
+            call big_rumble
             call oam_build
             ld a,(V_FLAGS)
             bit 2,a
@@ -1695,8 +1701,61 @@ wh_cont:    ld a,(V_FLAGS)
             bit 3,a
             ret z
             jp restore_run
-wh_other:   call motor_off          ; not the run loop: no hit pulse, just the
-            jp oam_build            ; sprite table
+wh_other:   xor a                   ; not the run loop: no rumble, just the
+            ld (V_RUMBLE),a         ; sprite table
+            call motor_off
+            jp oam_build
+
+; A death and a boss's entrance run the motor solid: 30 and 20 frames. A death
+; is the game-over flag going up; a boss entrance is one more slot in the loot
+; table, which only bosses fill.
+big_rumble: ld a,($C5DB)
+            or a
+            jr nz,br_dead
+            ld (V_DIED),a
+            jr br_boss
+br_dead:    ld a,(V_DIED)
+            or a
+            jr nz,br_boss
+            inc a
+            ld (V_DIED),a
+            ld a,30
+            ld (V_RUMBLE),a
+br_boss:    call boss_count
+            ld hl,V_BOSSN
+            cp (hl)
+            ld (hl),a
+            jr z,br_run
+            jr c,br_run
+            ld a,(V_RUMBLE)
+            cp 20
+            jr nc,br_run
+            ld a,20
+            ld (V_RUMBLE),a
+br_run:     ld a,(V_RUMBLE)
+            or a
+            jr z,br_none
+            dec a
+            ld (V_RUMBLE),a
+            ld a,RUMBLE
+hr_big_st:  ld ($4000),a
+            ret
+br_none:    ld a,(V_HIT)            ; no solid rumble: the motor follows the hit
+            cp 2                    ; pulse, on while its palette is lit
+            ret nc
+            jp motor_off
+
+; A = the number of bosses in play: the loot table's non-zero slots.
+boss_count: ld hl,$C14A
+            ld bc,$1000             ; B = 16 slots, C = count
+bc_loop:    ld a,(hl+)
+            or a
+            jr z,bc_next
+            inc c
+bc_next:    dec b
+            jr nz,bc_loop
+            ld a,c
+            ret
 
 ; The run loop's next wait after it asked for the store comes once the store is
 ; drawn: bring the shades back.

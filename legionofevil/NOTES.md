@@ -32,7 +32,8 @@ START advances through the last four.
 | `$C5C1`-`$C5C6` | store stats: health, speed, armor, xp bonus, hp regen, gold (order uncertain) |
 | `$C5C7`-`$C5CC` | weapon levels 0-3: sword, chainsaw, molotov, shuriken, boomerang, bowling |
 | `$C5CF` | highest difficulty unlocked, 0-3 |
-| `$C5D9`-`$C5DE` | screen-change flags: `$C5D9` and `$C5DA` are the level-up and boss-loot screens (which is which is uncertain), then game over (`$C5DB`), store (`$C5DC`), weapon (`$C5DD`), difficulty (`$C5DE`) |
+| `$C5D9`-`$C5DE` | screen-change flags: `$C5D9` the boss-loot screen and `$C5DA` the level-up screen, then game over (`$C5DB`), store (`$C5DC`), weapon (`$C5DD`), difficulty (`$C5DE`) |
+| `$C14A`-`$C159` | loot per enemy slot: non-zero only for a boss (`$20` the first, `$30` the second in a test run); a kill there sets `$C5E8` to it and `$C5D9` (`$4913`) |
 | `$C5DF`-`$C5E0` | banked money |
 | `$C5E5`-`$C5E6` | money collected in the run |
 | `$C7D0`-`$C7D3` | HUD redraw flags |
