@@ -3,10 +3,11 @@
 
 That cart only does MBC5 banking, which always shows bank 0 at $0000, so the
 MBC1 collection's way of starting a game can't work there. Instead the cart's
-CPLD can reset the console into any of its 16 slots, each holding one game as
+CPLD can switch the whole cart to any of its 16 slots, each holding one game as
 its own cart. This build puts the same splash and menu in the cart's menu slot,
-and the four games, converted to MBC5, in slots 0 to 3. Picking a game resets
-the console into its slot, so it starts cold, exactly like its own cart.
+and the four games, converted to MBC5, in slots 0 to 3. Picking a game switches
+the cart to its slot from HRAM and starts the game the way the boot ROM leaves
+it, as the menu ChisFlash ships for the cart does.
 
 Inputs are the same, checked by md5, as for build.py:
 
@@ -100,8 +101,19 @@ def build_code():
     menu, menu_lab, _ = assemble(menu_src, 0x4000)
     # the patch point must be the operand the stub was assembled with
     assert launch[5] == 0x3E and launch[8:10] == bytes([0x00, 0xB0]), 'launch stub no longer has ld a,slot / ld ($B000),a'
+    if len(launch) > build.SAVED_REGS - build.LAUNCH:
+        sys.exit('launch stub would overlap the saved registers')
     assert len(menu) <= BANK
     return boot, menu, {**menu_lab, **lab}
+
+
+def launch_stub(slot):
+    """The launch stub as it sits in HRAM for a game in slot."""
+    common = consts(SAVED_REGS=build.SAVED_REGS)
+    launch, lab, _ = assemble(common + src('chis_stub.asm'), build.LAUNCH)
+    out = bytearray(launch)
+    out[lab['launch'] + 6 - build.LAUNCH] = slot
+    return bytes(out)
 
 
 def menu_rom(roms, art):

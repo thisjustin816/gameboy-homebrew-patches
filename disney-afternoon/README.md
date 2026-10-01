@@ -57,8 +57,8 @@ same splash and menu:
 python3 chisflash.py DuckTales.gb DuckTales2.gb TaleSpin.gb DarkwingDuck.gb bundleMain.mbundle -o "Disney Afternoon Collection (ChisFlash MAX).gb"
 ```
 
-That cart only does MBC5 banking, but its CPLD can reset the console into any of its
-16 slots, so it doesn't need MBC1's mode 1:
+That cart only does MBC5 banking, but its CPLD can switch the whole cart to any of
+its 16 slots, so it doesn't need MBC1's mode 1:
 
 - The menu slot, at the start of the flash, holds a 256 KiB MBC5 ROM: its own boot
   code in bank 0, and the menu and screens in banks 4 to 9 as in the collection.
@@ -71,15 +71,24 @@ That cart only does MBC5 banking, but its CPLD can reset the console into any of
   jumps to a copy in bank 0's free padding at `$0070` that turns 0 into 1, leaving A
   and the flags as they were. On MBC1 the patch changes only timing.
 - Every game, and the menu, writes a bank number before it first reads `$4000`-`$7FFF`,
-  so none of them depends on the bank the mapper holds when it starts. That matters
-  here: after the reset into a slot, a game gets whatever bank the cart's MBC5 mapper
-  holds, and the menu's last bank write is one of its own, 4 to 9.
-- Picking a game copies a stub to HRAM that writes `$40` to `$4000`, the slot to
-  `$B000` and 1 to `$A000`, then writes `$4000` again. The cart then resets the
-  console into that slot, and the game boots cold, exactly like its own cart. This
-  register sequence comes from the
-  [chisflash-max16-menu](https://github.com/dmcclung/chisflash-max16-menu) project,
-  which worked it out from the cart's CPLD.
+  so none of them depends on the bank the mapper holds when it starts. The stub maps
+  bank 1 anyway, but a CPLD that resets the console into the slot, or a power cycle,
+  leaves whatever bank the cart's MBC5 mapper holds.
+- Picking a game copies a stub to HRAM, as the cart's own menu does. It writes `$50`
+  to `$4000` to arm the CPLD, the slot to `$B000`, maps bank 1, then writes 1 to
+  `$A000`, which switches the cart to the slot, and 0 to `$4000` to disarm it. It then
+  starts the game the way the boot ROM leaves it: WRAM cleared, the boot ROM's
+  registers put back, and a jump to `$0100`, as the MBC1 collection's launcher does.
+  The published MAX v1.22 CPLD arms on bit 6 of the `$4000` write, while the 8M CPLD,
+  and the menu ChisFlash ships for the MAX cart, arm on bit 4, so the stub sets both.
+  The sequence and the warm start follow that shipped menu, from
+  [ChisFlash-MBC5](https://github.com/moribaka/ChisFlash-MBC5).
+
+  The first version of this build armed on bit 6 alone and then waited for the CPLD
+  to reset the console into the slot, as the
+  [chisflash-max16-menu](https://github.com/dmcclung/chisflash-max16-menu) project
+  does. On a GBMake 32 MiB ChisFlash cart the menu came up, but every game went to a
+  white screen: the stub's wait loop, with no reset coming.
 
 The image ends after slot 3. Write it from the start of the flash; slots 4 to 15 are
 left as they were.
@@ -151,6 +160,11 @@ PyBoy has no ChisFlash CPLD, so it checks the parts:
 
 - the menu ROM's screens, blink and cursor as an MBC5 cart;
 - that picking each game leaves the stub in HRAM with that game's slot;
+- that each game, launched from the menu, matches its reference on every frame of the
+  scripted play, after the start-up delay the warm start adds. PyBoy can't switch
+  slots, so at the launch the check puts the game's ROM where the menu's was, which is
+  what the stub's `$A000` write does on the cart. With the first version's stub, the
+  screen stays white;
 - that each converted game matches its stock ROM on every frame of the same scripted
   play, on DMG and Game Boy Color. TaleSpin is matched against the stock ROM with the
   same patch, as the patch shifts its timing a little;
@@ -161,8 +175,8 @@ PyBoy has no ChisFlash CPLD, so it checks the parts:
   with bank 0, 2, 3 or 4 to 9 mapped at power-on instead of bank 1. As a control, a
   copy of DuckTales 2 with its first bank write removed comes up differently.
 
-The reset into a slot itself has only been checked against the register sequence,
-not on the cart.
+The CPLD's switch itself, and which arm bit a given cart's CPLD takes, have only been
+checked against the register sequence and the shipped menu, not on the cart.
 
 A trace of about five minutes of play per stock game shows each one writing only to
 the `$2000` bank register, with banks 0 to 7. A write to `$4000` or `$6000` would break
