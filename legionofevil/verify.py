@@ -164,11 +164,12 @@ def build_control(stock):
 
 
 # ---------------------------------------------------------------- checks
-def check_rom(stock, rom, ips_path):
+def check_rom(stock, rom, ips_path, rumble):
     print("ROM")
     check("stock ROM is the profiled release", hashlib.md5(stock).hexdigest() == STOCK_MD5)
-    check("patched ROM is 64 KB MBC5+RUMBLE+RAM+BATTERY with 8 KB RAM and the color flag",
-          len(rom) == 0x10000 and rom[0x147] == 0x1E and rom[0x148] == 1 and rom[0x149] == 2 and rom[0x143] == 0x80)
+    kind = "MBC5+RUMBLE+RAM+BATTERY" if rumble else "MBC1+RAM+BATTERY"
+    check(f"patched ROM is 64 KB {kind} with 8 KB RAM and the color flag",
+          len(rom) == 0x10000 and rom[0x147] == (0x1E if rumble else 0x03) and rom[0x148] == 1 and rom[0x149] == 2 and rom[0x143] == 0x80)
     check("header checksum is valid", patcher.header_checksum(rom) == rom[0x14D])
     g = patcher.global_checksum(rom)
     check("global checksum is valid", g == (rom[0x14E] << 8 | rom[0x14F]))
@@ -176,7 +177,42 @@ def check_rom(stock, rom, ips_path):
           all(rom[a - 7] == 1 and stock[a - 7] == 2 for a in patcher.ROM_PROFILES[STOCK_MD5]["music_bank_loads"]))
     if ips_path and os.path.exists(ips_path):
         check("the committed IPS applied to the stock ROM gives this ROM", apply_ips(stock, open(ips_path, "rb").read()) == rom)
-    check("patch.py is deterministic", patcher.patch(stock, verbose=False) == rom)
+    check("patch.py is deterministic", patcher.patch(stock, verbose=False, rumble=rumble) == rom)
+
+
+def check_motor_harmless(rom):
+    """On the MBC1 build the motor writes go to a 2-bit register, so the bank at
+    $4000 must be the one mapped before each of them, through hits and a boss."""
+    print("Motor writes on MBC1")
+    data = open(rom, "rb").read()
+    bank2 = data[0x8000:0x8040]                         # the patch's code runs with bank 2 mapped
+    g = Game(rom, "mh")
+    names = ("hr_on_st", "hr_off_st", "hr_big_st")
+    writes, back, bad = dict.fromkeys(names, 0), dict.fromkeys(names, 0), [0]
+
+    def before(name):
+        writes[name] += 1
+
+    def after(name):
+        # A write that switched the ROM bank would take this code away, and the
+        # next instruction would never run in bank 2, so this count would fall short.
+        back[name] += 1
+        if bytes(g.m[0x4000 + i] for i in range(0x40)) != bank2:
+            bad[0] += 1
+    for name in names:
+        g.pb.hook_register(2, _LABELS[name], before, name)
+        g.pb.hook_register(2, _LABELS[name] + 3, after, name)    # the instruction after the write
+    g.tick(200)
+    g.press("start", after=0)
+    g.tick(1200)
+    for _ in range(600):
+        g.tick(1, False)
+        if g.m[0xC0CC] < 5:
+            g.m[0xC0CC] = 20
+    ok = writes["hr_on_st"] > 20 and writes == back and not bad[0]
+    check("MBC1 build: every motor write leaves bank 2 mapped at $4000", ok,
+          f"{sum(writes.values())} writes ({writes['hr_on_st']} on), {sum(back.values())} returned in bank 2, "
+          f"{bad[0]} with another bank there")
 
 
 def check_no_save_start(rom):
@@ -272,14 +308,14 @@ def runs(shown):
     return out
 
 
-def check_hit_pulse(control, rom):
+def check_hit_pulse(control, rom, rumble=True):
     print("Hit pulse")
     shown, hits = hit_pattern(control, False)
     lit = {f for f, x in enumerate(shown) if x}
     check("stock shows the hit palette only on the frames with a hit, one frame each (the control)",
           len(hits) > 20 and lit == set(hits), f"{len(hits)} hits, {len(lit)} lit frames")
     for cgb, name in ((False, "original Game Boy"), (True, "Game Boy Color")):
-        motor = []
+        motor = [] if rumble else None
         shown, hits = hit_pattern(rom, cgb, motor)
         r = runs(shown)
         pulses_ok = all(n == 2 and s in hits for s, n in r)
@@ -287,6 +323,8 @@ def check_hit_pulse(control, rom):
         covered = all(any(s <= h < s + 4 for s, n in r) for h in hits)
         check(f"{name}: every pulse is 2 frames on the hit palette from a hit, then at least 2 normal; no hit goes unshown",
               len(r) > 20 and pulses_ok and gaps_ok and covered, f"{len(hits)} hits, {len(r)} pulses")
+        if not rumble:
+            continue
         kick = 6                                         # HIT_KICK, counted in run-loop frames: a frame
         due = set()                                      # the game drops (a menu being drawn) holds it on
         for st, n in r:
@@ -1229,7 +1267,8 @@ PIECES = []
 def main():
     stock = open(sys.argv[1], "rb").read()
     rom = open(sys.argv[2], "rb").read()
-    ips = os.path.join(HERE, "LegionOfEvil-save.ips")
+    rumble = rom[0x147] == 0x1E                         # the rumble build, or the MBC1 one
+    ips = os.path.join(HERE, "LegionOfEvil-rumble.ips" if rumble else "LegionOfEvil-save.ips")
     global _LABELS, PIECES
     profile = patcher.load_profile(stock)
     PIECES, _LABELS = patcher.assemble_sections(profile)
@@ -1238,14 +1277,18 @@ def main():
     rompath = os.path.join(WORK, "patched.gb")
     open(rompath, "wb").write(rom)
 
-    check_rom(stock, rom, ips)
+    print("Build:", "MBC5+RUMBLE" if rumble else "MBC1, no rumble")
+    check_rom(stock, rom, ips, rumble)
     check_no_save_start(rompath)
     check_power_on_bank(rompath)
     check_held_start(control, rompath)
     check_save_cycle(rompath)
-    check_hit_pulse(control, rompath)
-    check_motor_off(rompath)
-    check_big_rumble(rompath)
+    check_hit_pulse(control, rompath, rumble)
+    if rumble:
+        check_motor_off(rompath)
+        check_big_rumble(rompath)
+    else:
+        check_motor_harmless(rompath)
     check_erase(rompath)
     check_pause(rompath)
     check_continue(rompath)

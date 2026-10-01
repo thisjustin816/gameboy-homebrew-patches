@@ -3,10 +3,12 @@
 
 The stock cartridge is a plain 32 KB ROM with no save RAM. This patch:
 
-  1. Grows the ROM to 64 KB and marks the header MBC5+RUMBLE+RAM+BATTERY with
-     8 KB of RAM, then repairs both checksums. The game already writes bank
-     numbers to $2000, which an MBC5 board takes, and the rumble motor is bit 3
-     of its RAM bank register.
+  1. Grows the ROM to 64 KB and marks the header MBC1+RAM+BATTERY with 8 KB of
+     RAM, or with --rumble MBC5+RUMBLE+RAM+BATTERY, then repairs both
+     checksums. The game already writes bank numbers to $2000, which both
+     boards take. On MBC5+RUMBLE the motor is bit 3 of the RAM bank register;
+     on MBC1 that register is 2 bits wide, so the motor writes ($08, $00) leave
+     both banks where they are.
   2. Points the seven music-player calls at bank 1. Stock passes bank 2, which
      a plain ROM ignores but a banked cartridge or emulator would map. The
      cartridge entry maps bank 1 too, as the start-up runs code there before
@@ -47,8 +49,10 @@ ROM_PROFILES = {
         "name": "Legion of Evil (Rev 1)",
         "rom_size": 0x10000,
         "code_bank": 2,
-        # (offset, stock, patched): ROM only -> MBC5+RUMBLE+RAM+BATTERY, 32 KB -> 64 KB, no RAM -> 8 KB
-        "header": [(0x143, 0x00, 0x80), (0x147, 0x00, 0x1E), (0x148, 0x00, 0x01), (0x149, 0x00, 0x02)],
+        # (offset, stock, patched): ROM only -> MBC1+RAM+BATTERY, 32 KB -> 64 KB, no RAM -> 8 KB
+        "header": [(0x143, 0x00, 0x80), (0x147, 0x00, 0x03), (0x148, 0x00, 0x01), (0x149, 0x00, 0x02)],
+        # The rumble build's cartridge type: MBC5+RUMBLE+RAM+BATTERY
+        "rumble_cart_type": 0x1E,
         # Bank 0 bytes the game never reads: (start, end, md5 of the stock bytes)
         "filler": [
             (0x0048, 0x0080, "74444b7e7b01632f3277365c8ca35ec2"),
@@ -213,7 +217,7 @@ def _assemble_all(a, pre, header, pairs, origins, profile):
     return out
 
 
-def patch(rom_bytes, verbose=True):
+def patch(rom_bytes, verbose=True, rumble=False):
     rom = bytearray(rom_bytes)
     profile = load_profile(rom_bytes)
     say = print if verbose else (lambda *a, **k: None)
@@ -274,10 +278,13 @@ def patch(rom_bytes, verbose=True):
         if rom_bytes[at] != was:
             raise SystemExit(f"header byte {at:#05x} is {rom_bytes[at]:#04x}, expected {was:#04x}")
         rom[at] = now
+    if rumble:
+        rom[0x147] = profile["rumble_cart_type"]
     rom[OFF_HDR_SUM] = header_checksum(rom)
     g = global_checksum(rom)
     rom[OFF_GLOBAL_SUM], rom[OFF_GLOBAL_SUM + 1] = g >> 8, g & 0xFF
-    say(f"header: MBC5+RUMBLE+RAM+BATTERY, 64 KB, 8 KB RAM; checksums repaired (global {g:#06x})")
+    kind = "MBC5+RUMBLE+RAM+BATTERY" if rumble else "MBC1+RAM+BATTERY"
+    say(f"header: {kind}, 64 KB, 8 KB RAM; checksums repaired (global {g:#06x})")
     return bytes(rom)
 
 
@@ -286,9 +293,11 @@ def main():
     ap.add_argument("rom", help="stock Legion of Evil ROM")
     ap.add_argument("-o", "--output", help="patched ROM to write")
     ap.add_argument("--ips", help="IPS patch to write")
+    ap.add_argument("--rumble", action="store_true",
+                    help="declare MBC5+RUMBLE, so a rumble cartridge's motor runs on hits and boss entrances")
     args = ap.parse_args()
     original = open(args.rom, "rb").read()
-    patched = patch(original)
+    patched = patch(original, rumble=args.rumble)
     if args.output:
         open(args.output, "wb").write(patched)
         print(f"wrote {args.output}  (md5 {hashlib.md5(patched).hexdigest()})")

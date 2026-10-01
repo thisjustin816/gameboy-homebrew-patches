@@ -11,11 +11,14 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC5+RUMBLE+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `57d2cf87768f7f8be5c389103d9f59ce` |
+| `LegionOfEvil-save.ips` | Everything below except rumble. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible, for carts that only do MBC1. | `d8ac8d5d8ce2d01c62436769ae37550c` |
+| `LegionOfEvil-rumble.ips` | The same patch with rumble: the header says MBC5+RUMBLE+RAM+BATTERY, for a rumble cart. | `57d2cf87768f7f8be5c389103d9f59ce` |
+
+The two differ only in the cartridge type in the header (and its checksum).
 
 ## Versions
 
-- **v1.2:** the rumble motor runs solid for 6 frames from each hit, long enough for a motor to spin up, and for a third of a second when a boss comes in. The header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register. The game maps bank 1 before its start-up runs, so a flash cart whose mapper powers up on another bank no longer hangs on a white screen. A run saved by v1.1 is not offered; upgrades and money carry over.
+- **v1.2:** a second patch, `LegionOfEvil-rumble.ips`, where the rumble motor runs solid for 6 frames from each hit, long enough for a motor to spin up, and for a third of a second when a boss comes in. Its header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register; `LegionOfEvil-save.ips` stays MBC1. Both map bank 1 before its start-up runs, so a flash cart whose mapper powers up on another bank no longer hangs on a white screen. A run saved by v1.1 is not offered; upgrades and money carry over.
 - **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other, with its sprites, and without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
 - **v1.0:** the first release.
 
@@ -68,7 +71,8 @@ when the camera scrolls.
   sprite palette for a single frame. Each hit now shows 2 frames on that palette
   and 2 frames normal, so being hit reads as a clear blink (and still does with
   frame blending). The damage and hit timing are the game's own.
-- **Rumble.** On a cartridge or emulator with a rumble motor, the motor runs
+- **Rumble** (`LegionOfEvil-rumble.ips`). On a cartridge or emulator with a
+  rumble motor, the motor runs
   solid for 6 frames from each hit, long enough for a motor to spin up, and for a
   third of a second when a boss comes in. It stands in for sound effects, which the game has none of, so it
   marks events in play and not the ones that open a screen. It is off in menus,
@@ -153,13 +157,13 @@ checks:
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
 - stock shows the hit palette for one frame per hit, and the patched game shows
-  2 frames on and 2 off per hit, on both consoles, and the rumble motor runs
-  solid for the first 6 frames of each hit and at no other time in play;
-- the motor is off in the pause menu, after a death's last hit kick and through SAVE
-  & QUIT, even right after a hit, on both consoles;
-- a boss's entrance (found by playing until one comes in) runs the motor for 20
-  frames, and continuing a run with a boss in play does not rumble, on both
-  consoles;
+  2 frames on and 2 off per hit, on both consoles;
+- on the rumble patch, the motor runs solid for the first 6 frames of each hit
+  and at no other time in play, it is off in the pause menu, after a death's last
+  hit kick and through SAVE & QUIT, even right after a hit, and a boss's entrance
+  (found by playing until one comes in) runs it for 20 frames while continuing a
+  run with a boss in play does not, on both consoles;
+- on the other patch, every motor write leaves bank 2 mapped at `$4000`;
 - the stock game writes the scroll registers on visible lines and the patched
   game's registers never change between VBlanks;
 - no menu, page or CONTINUE change turns the LCD off (the stock game never does
@@ -204,7 +208,7 @@ way and has a rumble motor on bit 3 of its RAM bank register.
 
 | Where | What |
 |---|---|
-| Header | `$143` = `$80` (color compatible), `$147` = `$1E` (MBC5+RUMBLE+RAM+BATTERY), `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
+| Header | `$143` = `$80` (color compatible), `$147` = `$03` (MBC1+RAM+BATTERY), or `$1E` (MBC5+RUMBLE+RAM+BATTERY) in the rumble patch, `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
 | Bank 0 stubs (`$0048`, `$00CE`, `$01E1`) | Small routines in bytes the game never reads that switch to bank 2, run a hook and switch back |
 | Entry (`$0100`) | Jumps to a stub that maps bank 1 and then starts the game. The start-up calls `$7B08` and `$7FEB` before it writes a bank number, which a plain ROM always has mapped, but a mapper's power-on bank is not guaranteed to be 1 |
 | Bank 2 (`$4000`) | The save, menus, pause, snapshot, sprite order, palette and theme code (about 3.3 KB) |
@@ -262,7 +266,8 @@ named after the ROM.
 Python 3 only:
 
 ```
-python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save, color & rumble patch by thisJUSTin816 v1.2].gbc" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.2].gbc" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save, color & rumble patch by thisJUSTin816 v1.2].gbc" --ips LegionOfEvil-rumble.ips --rumble
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -271,5 +276,11 @@ instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
 `pip install pyboy pillow`:
 
 ```
+python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.2].gbc"
 python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save, color & rumble patch by thisJUSTin816 v1.2].gbc"
 ```
+
+`verify.py` reads the header to tell the two apart, runs the rumble checks on the
+rumble patch, and on the other checks that every motor write leaves the banks
+where they were (an MBC1 register at `$4000` has two bits, so `$08` and `$00`
+both write 0).
