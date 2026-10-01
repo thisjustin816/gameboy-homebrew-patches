@@ -65,7 +65,7 @@ PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 by
 V_KEEP      = $D038             ; three bytes: the game's shades while the screen is dark
 V_DARK      = $D03B             ; 1 from CONTINUE or NEW RUN, 2 once the store is asked for
 V_BOOT      = $D03C             ; two bytes: $C0A0-$C0A1 kept over a restore
-V_RUMBLE    = $D03E             ; frames left of a boss's solid rumble
+V_RUMBLE    = $D03E             ; frames left of a solid rumble (a hit's start, a boss)
 V_BOSSN     = $D040             ; bosses in play last frame
 S_PAL       = $A014             ; the theme, and its check byte
 THEME_COUNT = 16
@@ -79,6 +79,7 @@ SH_OBP1     = $98
 HRAM_CODE   = $FF99             ; the VBlank hook
 
 RUMBLE      = $08               ; MBC5: bit 3 of the RAM bank register drives the motor
+HIT_KICK    = 6                 ; frames of solid rumble at the start of a hit
 F_SAVE      = $01               ; an upgrade save exists
 F_RUN       = $02               ; a run snapshot exists
 F_PEND_STORE = $04              ; open the store when the run loop starts
@@ -1602,7 +1603,15 @@ themes:
 hit_pulse:  ld a,(V_HIT)
             or a
             ret z
-            dec a
+            cp 4                    ; a new hit: a motor needs a few frames to spin
+            jr nz,hp_count          ; up, so it runs solid for HIT_KICK first
+            ld a,(V_RUMBLE)
+            cp HIT_KICK
+            jr nc,hp_kicked
+            ld a,HIT_KICK
+            ld (V_RUMBLE),a
+hp_kicked:  ld a,4
+hp_count:   dec a
             ld (V_HIT),a
             cp 2                    ; 4 and 3 (now 3 and 2): lit; 2 and 1: normal
             ld hl,$C093

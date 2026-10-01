@@ -239,14 +239,17 @@ def hit_pattern(path, cgb, motor=None):
     shown, hits = [], []
     g.pb.hook_register(1, 0x4ACC, lambda c: hits.append(len(shown)), None)   # the game's non-fatal hit
     on = [False]
+    loop = [0]
     if motor is not None:
+        g.pb.hook_register(1, 0x58B8, lambda c: loop.__setitem__(0, loop[0] + 1), None)   # the run loop's wait
         g.pb.hook_register(2, _LABELS["hr_on_st"], lambda c: on.__setitem__(0, True), None)
         g.pb.hook_register(2, _LABELS["hr_off_st"], lambda c: on.__setitem__(0, False), None)
         g.pb.hook_register(2, _LABELS["hr_big_st"], lambda c: on.__setitem__(0, True), None)
     for _ in range(600):
         g.tick(1, False)
         if motor is not None:
-            motor.append(on[0])
+            motor.append((on[0], loop[0]))
+            loop[0] = 0
         # the player's four sprites always sit at the middle of the screen
         # (OAM y $50/$58, x $48/$50; the game sets them at $3B15)
         lit = any(g.m[0xFE03 + i * 4] & 0x10 for i in range(40)
@@ -284,10 +287,19 @@ def check_hit_pulse(control, rom):
         covered = all(any(s <= h < s + 4 for s, n in r) for h in hits)
         check(f"{name}: every pulse is 2 frames on the hit palette from a hit, then at least 2 normal; no hit goes unshown",
               len(r) > 20 and pulses_ok and gaps_ok and covered, f"{len(hits)} hits, {len(r)} pulses")
-        rm = runs(motor)
-        check(f"{name}: the rumble motor runs on exactly the frames the hit palette shows",
-              len(rm) > 20 and rm == r, f"{len(rm)} motor pulses, {len(r)} palette pulses"
-              + ("" if rm == r else f", first differences {[x for x in rm if x not in r][:3]} / {[x for x in r if x not in rm][:3]}"))
+        kick = 6                                         # HIT_KICK, counted in run-loop frames: a frame
+        due = set()                                      # the game drops (a menu being drawn) holds it on
+        for st, n in r:
+            done, f = 0, st
+            while done < kick and f < len(motor):
+                due.add(f)
+                done += motor[f][1] > 0
+                f += 1
+            due |= set(range(st, st + n))
+        on = {f for f, (x, _) in enumerate(motor) if x}
+        check(f"{name}: each hit runs the rumble motor solid for its first {kick} frames, and only then",
+              len(r) > 20 and on == {f for f in due if f < len(motor)},
+              f"{len(r)} pulses" + ("" if on == due else f", on but not due {sorted(on - due)[:4]}, due but off {sorted(due - on)[:4]}"))
 
 
 def check_save_cycle(rom):
@@ -834,8 +846,8 @@ def check_console_hops(rom):
 
 def check_motor_off(rom):
     """A hit just before the pause menu, a death or SAVE & QUIT must not leave
-    the rumble motor running. A death keeps the run loop going, so a pulse that
-    started with it plays out its four frames, as the flash does."""
+    the rumble motor running. A death keeps the run loop going, so a hit that
+    came with it plays out its 6-frame kick."""
     print("Rumble motor off outside play")
     for console in ("dmg", "cgb"):
         data = bytearray(open(rom, "rb").read())
@@ -867,8 +879,8 @@ def check_motor_off(rom):
         watch("pause menu", 60, lambda: g.m[0xFF4A] == 0)
         g.press("a", after=30)                           # RESUME
         g.m[0xD01D] = 4
-        g.m[0xC5DB] = 1                                  # and a death on the same frame: the pulse
-        watch("game over", 300, lambda: g.m[0xC5B5] != 0, grace=4)   # plays out, as the flash does
+        g.m[0xC5DB] = 1                                  # and a death on the same frame: the hit's
+        watch("game over", 300, lambda: g.m[0xC5B5] != 0, grace=8)   # 6-frame kick plays out
         for _ in range(3):
             g.press("start", after=60)                   # store, difficulty, weapon, into a run
         until_live(g)
@@ -879,7 +891,7 @@ def check_motor_off(rom):
         g.press("down", after=10)
         g.pb.button_press("a")
         watch("SAVE & QUIT", 400, lambda: g.m[0xFF4A] == 0 or not g.m[0xFF40] & 0x80 or g.m[0xFF40] == 0xC1)
-        check(f"{console}: the motor is off in menus, after a death's last pulse and through SAVE & QUIT, even right after a hit",
+        check(f"{console}: the motor is off in menus, after a death's last hit kick and through SAVE & QUIT, even right after a hit",
               started and not bad, ", ".join(bad) if bad else "a hit started it each time")
 
 
