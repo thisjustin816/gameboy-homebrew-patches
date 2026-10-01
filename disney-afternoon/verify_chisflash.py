@@ -6,18 +6,35 @@
 PyBoy has no ChisFlash CPLD, so the menu and the games are checked apart:
 
 1. The image is exactly what chisflash.py makes. The menu ROM's header is valid
-   and says MBC5, and each slot holds its game, changed only in the header.
+   and says MBC5, and each slot holds its game, changed only in the header and,
+   in TaleSpin, the bank-switch patch.
 2. The menu ROM, run as an MBC5 cart, shows the splash and all four menu screens
    as built, PRESS START blinks and the cursor wraps, as in verify.py.
 3. Picking each game leaves the launch stub in HRAM with that game's slot, and the
    stub makes the writes the cart's CPLD takes as "reset into this slot".
 4. Each game, converted to MBC5 and run as its own cart, matches the stock ROM on
    every frame of the same scripted play as verify.py, on a DMG and on a Game Boy
-   Color.
+   Color. TaleSpin is matched against the stock ROM with the same patch, which on
+   MBC1 only changes timing: MBC1 turns bank 0 into bank 1 itself.
+5. TaleSpin's level-data read at $0E9D takes its bank from $CD9C, which can be 0.
+   PyBoy's scripted play doesn't reach that case, so the check sets $CD9C to 0
+   before one read and makes sure bank 1 is mapped there, as MBC1 maps it. As a
+   control, TaleSpin converted without its patch must show bank 0 there.
+6. Each game, padded to its slot as on the cart, and the menu ROM come up the same
+   whatever bank the mapper holds at power-on: with bank 0, 2, 3 or 4 to 9 at $4000
+   instead of bank 1, the first POWER_ON_FRAMES frames match a start with bank 1.
+   After the reset into a slot a game gets whatever bank the cart's MBC5 mapper
+   holds, and the menu's last bank write is one of its own, 4 to 9. As a control,
+   DuckTales 2 with its first bank write taken out must start differently.
 """
-import sys
+import hashlib, multiprocessing, os, queue, shutil, sys, tempfile
 import build, chisflash, mbundle, verify
+from pyboy import PyBoy
 from verify import check, emu, done, press
+
+POWER_ON_BANKS = (0, 2, 3, 4, 5, 6, 7, 8, 9)
+POWER_ON_FRAMES = 1500        # through each game's title screen
+DT2_FIRST_BANK_WRITE = 0x02A1 # DuckTales 2's first ld ($2000),a, for the control
 
 STUB = [0x3E, 0x40, 0xEA, 0x00, 0x40,           # ld a,$40 / ld ($4000),a   arm
         0x3E, None, 0xEA, 0x00, 0xB0,           # ld a,slot / ld ($B000),a  pick the slot
@@ -41,6 +58,9 @@ def static_checks(image, roms, art):
         base = chisflash.slot_offset(slot)
         game = image[base:base + len(rom)]
         allowed = {0x147, 0x14D, 0x14E, 0x14F}
+        if g['key'] == 'talespin':
+            allowed |= set(range(chisflash.TS_PATCH, chisflash.TS_PATCH + len(chisflash.TS_PATCH_BYTES)))
+            allowed |= set(range(chisflash.TS_ROUTINE, chisflash.TS_ROUTINE + 3))
         diff = [i for i in range(len(rom)) if game[i] != rom[i] and i not in allowed]
         check(not diff and game[0x147] == chisflash.MBC5 and game[0x14D] == build.header_checksum(game),
               f"slot {slot} holds {g['label']} as MBC5, otherwise unchanged"
@@ -77,8 +97,117 @@ def play_checks(cgb, games):
             check(False, f'{tag} {name}: the converted game hung')
             continue
         bad = [f for f in range(10, verify.PLAY_FRAMES) if got[f] != want[f]]
-        check(not bad, f'{tag} {name}: {verify.PLAY_FRAMES - 10} frames of play match stock'
+        check(not bad, f'{tag} {name}: {verify.PLAY_FRAMES - 10} frames of play match'
                        + (f'; first mismatch at frame {bad[0]}' if bad else ''))
+
+
+def _bank0_probe(rom, q):
+    """Play to the title, then make TaleSpin's next level-data read ask for bank 0
+    and report the first 16 bytes the switchable bank shows at the read."""
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, 'rom.gb')
+    open(path, 'wb').write(rom)
+    pb = PyBoy(path, window='null', sound_emulated=False)
+    state = {'armed': False, 'forced': False, 'bank': None}
+    def at_load(_):                       # ld a,($CD9C): the bank about to be switched in
+        if state['armed'] and not state['forced']:
+            pb.memory[chisflash.TS_READ_BANK] = 0
+            state['forced'] = True
+    def at_read(_):                       # ld b,(hl): the switchable bank is now in place
+        if state['forced'] and state['bank'] is None:
+            state['bank'] = bytes(pb.memory[0x4000 + i] for i in range(16))
+    pb.hook_register(0, chisflash.TS_READ - 6, at_load, None)
+    pb.hook_register(0, chisflash.TS_READ, at_read, None)
+    by_frame = {}
+    for f, b, n in verify.input_script(1002):
+        by_frame.setdefault(f, []).append((b, n))
+    for f in range(verify.PLAY_FRAMES):
+        state['armed'] = f >= 600
+        for b, n in by_frame.get(f, []):
+            pb.button(b, n)
+        pb.tick(1, False)
+        if state['bank'] is not None:
+            break
+    pb.stop(save=False)
+    shutil.rmtree(d, ignore_errors=True)
+    q.put(state['bank'])
+
+
+def bank0_probe(rom):
+    ctx = multiprocessing.get_context('fork')
+    q = ctx.Queue()
+    p = ctx.Process(target=_bank0_probe, args=(rom, q))
+    p.start()
+    try:
+        return q.get(timeout=verify.SESSION_TIMEOUT)
+    except queue.Empty:
+        return None
+    finally:
+        p.kill()
+        p.join()
+
+
+def talespin_read_checks(stock, converted):
+    bank0, bank1 = stock[0:16], stock[0x4000:0x4010]
+    got = bank0_probe(converted)
+    check(got == bank1, 'TALESPIN: a level-data read that asks for bank 0 gets bank 1, as on MBC1'
+                        + ('' if got == bank1 else f" (got {'bank 0' if got == bank0 else got!r})"))
+    plain = bytearray(stock)
+    plain[0x147] = chisflash.MBC5
+    plain[0x14D] = build.header_checksum(plain)
+    got = bank0_probe(bytes(plain))
+    check(got == bank0, 'TALESPIN without its patch gets bank 0 there instead, as it should'
+                        + ('' if got == bank0 else f' (got {got!r})'))
+
+
+def _boot(rom, bank, q):
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, 'rom.gb')
+    open(path, 'wb').write(rom)
+    pb = PyBoy(path, window='null', sound_emulated=False)
+    if bank is not None:
+        pb.memory[0x2000] = bank          # the bank the mapper holds when the game starts
+    frames = []
+    for _ in range(POWER_ON_FRAMES):
+        pb.tick(1, True)
+        frames.append(hashlib.md5(pb.screen.image.tobytes()).digest())
+    pb.stop(save=False)
+    shutil.rmtree(d, ignore_errors=True)
+    q.put(frames)
+
+
+def boot(rom, bank):
+    """Frame hashes of a cold start with bank at $4000, or None if it got stuck."""
+    ctx = multiprocessing.get_context('fork')
+    q = ctx.Queue()
+    p = ctx.Process(target=_boot, args=(rom, bank, q))
+    p.start()
+    try:
+        return q.get(timeout=verify.SESSION_TIMEOUT)
+    except queue.Empty:
+        return None
+    finally:
+        p.kill()
+        p.join()
+
+
+def power_on_checks(image):
+    parts = [(g['label'], image[chisflash.slot_offset(s):chisflash.slot_offset(s) + chisflash.slot_size(s)])
+             for s, g in enumerate(build.GAMES)]
+    parts.append(('the menu', image[:chisflash.MENU_SIZE]))
+    for name, rom in parts:
+        want = boot(rom, None)
+        differ = [b for b in POWER_ON_BANKS if boot(rom, b) != want]
+        check(not differ, f'{name} starts the same with bank 0, 2, 3 or 4 to 9 at power-on'
+                          + (f' (differs with {differ})' if differ else ''))
+    # the control: DuckTales 2 with its first bank write, at $02A1, taken out
+    dt2 = bytearray(parts[1][1])
+    assert dt2[DT2_FIRST_BANK_WRITE:DT2_FIRST_BANK_WRITE + 3] == bytes([0xEA, 0x00, 0x20]), 'ld ($2000),a not at $02A1'
+    dt2[DT2_FIRST_BANK_WRITE:DT2_FIRST_BANK_WRITE + 3] = bytes(3)
+    want = boot(bytes(dt2), None)
+    differ = [b for b in POWER_ON_BANKS if boot(bytes(dt2), b) != want]
+    check(bool(differ), 'DUCKTALES 2 without its first bank write starts differently, as it should'
+                        + (f' (with {differ})' if differ else ''))
 
 
 def main():
@@ -92,10 +221,16 @@ def main():
     menu = image[:chisflash.MENU_SIZE]
     verify.menu_checks(menu, build.screens(roms, art))
     launch_checks(menu, chisflash.build_code()[2]['go'])
+    power_on_checks(image)
     games = []
     for slot, (g, rom) in enumerate(zip(build.GAMES, roms)):
         base = chisflash.slot_offset(slot)
-        games.append((g['label'], rom, image[base:base + len(rom)]))
+        converted = image[base:base + len(rom)]
+        if g['key'] == 'talespin':
+            talespin_read_checks(rom, converted)
+            games.append((g['label'] + ' against stock with the same patch', chisflash.patch_talespin(rom), converted))
+        else:
+            games.append((g['label'] + ' against stock', rom, converted))
     for cgb in (False, True):
         play_checks(cgb, games)
     print(f'\n{len(verify.failures)} failure(s)' if verify.failures else '\nall checks pass')
