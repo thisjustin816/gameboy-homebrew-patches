@@ -65,8 +65,7 @@ PALBUF      = $D020             ; BG palette 0, then OBJ palettes 0 and 1: 24 by
 V_KEEP      = $D038             ; three bytes: the game's shades while the screen is dark
 V_DARK      = $D03B             ; 1 from CONTINUE or NEW RUN, 2 once the store is asked for
 V_BOOT      = $D03C             ; two bytes: $C0A0-$C0A1 kept over a restore
-V_RUMBLE    = $D03E             ; frames left of a solid rumble (a death, a boss)
-V_DIED      = $D03F             ; 1 once a death has rumbled
+V_RUMBLE    = $D03E             ; frames left of a boss's solid rumble
 V_BOSSN     = $D040             ; bosses in play last frame
 S_PAL       = $A014             ; the theme, and its check byte
 THEME_COUNT = 16
@@ -1706,30 +1705,15 @@ wh_other:   xor a                   ; not the run loop: no rumble, just the
             call motor_off
             jp oam_build
 
-; A death and a boss's entrance run the motor solid: 30 and 20 frames. A death
-; is the game-over flag going up; a boss entrance is one more slot in the loot
-; table, which only bosses fill.
-big_rumble: ld a,($C5DB)
-            or a
-            jr nz,br_dead
-            ld (V_DIED),a
-            jr br_boss
-br_dead:    ld a,(V_DIED)
-            or a
-            jr nz,br_boss
-            inc a
-            ld (V_DIED),a
-            ld a,30
-            ld (V_RUMBLE),a
-br_boss:    call boss_count
+; Rumble stands in for the sound effects the game has none of, so it marks
+; events in play, not ones that open a screen. A boss's entrance runs the motor
+; solid for 20 frames: one more slot in the loot table, which only bosses fill.
+big_rumble: call boss_count
             ld hl,V_BOSSN
             cp (hl)
             ld (hl),a
             jr z,br_run
             jr c,br_run
-            ld a,(V_RUMBLE)
-            cp 20
-            jr nc,br_run
             ld a,20
             ld (V_RUMBLE),a
 br_run:     ld a,(V_RUMBLE)

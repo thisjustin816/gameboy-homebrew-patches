@@ -821,8 +821,8 @@ def check_console_hops(rom):
 
 def check_motor_off(rom):
     """A hit just before the pause menu, a death or SAVE & QUIT must not leave
-    the rumble motor running. A death keeps the run loop going, so its own
-    half-second rumble plays out on the game-over screen, then stops."""
+    the rumble motor running. A death keeps the run loop going, so a pulse that
+    started with it plays out its four frames, as the flash does."""
     print("Rumble motor off outside play")
     for console in ("dmg", "cgb"):
         data = bytearray(open(rom, "rb").read())
@@ -854,8 +854,8 @@ def check_motor_off(rom):
         watch("pause menu", 60, lambda: g.m[0xFF4A] == 0)
         g.press("a", after=30)                           # RESUME
         g.m[0xD01D] = 4
-        g.m[0xC5DB] = 1                                  # and a death on the same frame: its
-        watch("game over", 300, lambda: g.m[0xC5B5] != 0, grace=34)  # half-second rumble plays out
+        g.m[0xC5DB] = 1                                  # and a death on the same frame: the pulse
+        watch("game over", 300, lambda: g.m[0xC5B5] != 0, grace=4)   # plays out, as the flash does
         for _ in range(3):
             g.press("start", after=60)                   # store, difficulty, weapon, into a run
         until_live(g)
@@ -866,14 +866,14 @@ def check_motor_off(rom):
         g.press("down", after=10)
         g.pb.button_press("a")
         watch("SAVE & QUIT", 400, lambda: g.m[0xFF4A] == 0 or not g.m[0xFF40] & 0x80 or g.m[0xFF40] == 0xC1)
-        check(f"{console}: the motor is off in menus, after a death's rumble and through SAVE & QUIT, even right after a hit",
+        check(f"{console}: the motor is off in menus, after a death's last pulse and through SAVE & QUIT, even right after a hit",
               started and not bad, ", ".join(bad) if bad else "a hit started it each time")
 
 
 def check_big_rumble(rom):
-    """A death runs the motor solid for half a second and a boss's entrance for
-    a third; a continued run with a boss already in play does not rumble."""
-    print("Rumble on a death and a boss's entrance")
+    """A boss's entrance runs the motor solid for a third of a second; a
+    continued run with a boss already in play does not rumble."""
+    print("Rumble on a boss's entrance")
     for console in ("dmg", "cgb"):
         data = bytearray(open(rom, "rb").read())
         if console == "dmg":
@@ -926,14 +926,6 @@ def check_big_rumble(rom):
         longest = max((len(r) for r in "".join("#" if x else "." for x in quiet).split(".")), default=0)
         check(f"{console}: continuing a run with a boss in play does not rumble beyond hit pulses",
               any(g.m[a] for a in range(0xC14A, 0xC15A)) and longest <= 2, f"longest run {longest} frames")
-        death = []
-        g.m[0xC5DB] = 1                                  # what a fatal hit sets
-        for _ in range(90):
-            g.tick(1)
-            death.append(on[0])
-        runs_ = [len(r) for r in "".join("#" if x else "." for x in death).split(".") if r]
-        check(f"{console}: a death runs the motor for half a second, then stops",
-              death[1] and runs_ and 29 <= runs_[0] <= 32 and len(runs_) == 1, f"motor runs {runs_}")
 
 
 def check_vram_timing(rom):
