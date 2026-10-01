@@ -695,8 +695,9 @@ def check_menu_screens(rom):
 
 
 def check_cross_console(rom):
-    """A run saved on one kind of console and continued on the other: the
-    restart after the next SAVE & QUIT must still know which console it is on."""
+    """A run saved on one kind of console and continued on the other: the run
+    must draw its sprites the way this console does, and the restart after the
+    next SAVE & QUIT must still know which console it is on."""
     print("Continuing on the other kind of console")
     data = bytearray(open(rom, "rb").read())
     data[0x143] = 0
@@ -721,11 +722,18 @@ def check_cross_console(rom):
         g.press("start", after=30)
         g.press("a", after=200)
         live = g.m[0xFF40] == 0xE3
+        g.tick(30)
+        page = g.m[0xFF92]
+        player = (g.m[0xC090], g.m[0xC091])
+        oam = [(g.m[0xFE00 + 4 * i], g.m[0xFE01 + 4 * i]) for i in range(40)]
+        sprites = page == (0xDA if continued_on == "cgb" else 0xC0) and player in oam
         g.press("start", after=40)
         g.press("down", after=10)
         g.press("a", after=600)
         colors = len(g.screen().getcolors(256) or ())
         cgb = g.m[0xD011]
+        check(f"saved on {saved_on}, continued on {continued_on}: the run's sprites come from the game's table",
+              live and sprites, f"continued {live}, DMA page ${page:02X}, player {'in' if player in oam else 'not in'} OAM")
         check(f"saved on {saved_on}, continued on {continued_on}: SAVE & QUIT comes back to a visible title "
               "on the right console", live and colors > 1 and cgb == (continued_on == "cgb"),
               f"continued {live}, {colors} colors, color flag {cgb}")

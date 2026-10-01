@@ -1427,7 +1427,11 @@ copy8:      ld a,(de)
 
 oam_build:  ld a,(V_CGB)            ; only with double speed: on an original Game Boy the
             or a                    ; copy costs more frame time than the stock game has
-            ret z                   ; to spare, so the table stays as the game builds it
+            jr nz,ob_cgb            ; to spare, so the table stays as the game builds it
+            ld a,$C0                ; and the DMA reads the game's own page, even after
+            ldh ($92),a             ; restoring a snapshot made on a color console
+            ret
+ob_cgb:
             ld hl,OAMBUF
             ld de,$C090
             call copy8

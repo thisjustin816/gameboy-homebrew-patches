@@ -11,11 +11,11 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `e79844ebcba50ed3f13e39a2a98ce5df` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `5c73937cfa0c02c58054c47485e34808` |
 
 ## Versions
 
-- **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
+- **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other, with its sprites, and without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
 - **v1.0:** the first release.
 
 ## Changes
@@ -132,8 +132,9 @@ checks:
   while the picture is drawn, and the music, which keeps playing behind the
   menu, shifts that write by a line);
 - a snapshot with a damaged byte is not offered;
-- a run saved on one kind of console and continued on the other comes back to
-  a visible title after the next SAVE & QUIT, on the console it is running on;
+- a run saved on one kind of console and continued on the other draws its
+  sprites from the game's table and comes back to a visible title after the next
+  SAVE & QUIT, on the console it is running on;
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
 - stock shows the hit palette for one frame per hit, and the patched game shows
