@@ -11,14 +11,14 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below except rumble. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible, for carts that only do MBC1. | `d8ac8d5d8ce2d01c62436769ae37550c` |
-| `LegionOfEvil-rumble.ips` | The same patch with rumble: the header says MBC5+RUMBLE+RAM+BATTERY, for a rumble cart. | `57d2cf87768f7f8be5c389103d9f59ce` |
+| `LegionOfEvil-save.ips` | Everything below except rumble. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible, for carts that only do MBC1. | `6c669473c4f351885b04139be7d33565` |
+| `LegionOfEvil-rumble.ips` | The same patch with rumble: the header says MBC5+RUMBLE+RAM+BATTERY, for a rumble cart. | `d084ccadf47d9f6fdecde212cd587f7b` |
 
 The two differ only in the cartridge type in the header (and its checksum).
 
 ## Versions
 
-- **v1.2:** a second patch, `LegionOfEvil-rumble.ips`, where the rumble motor runs solid for 6 frames from each hit, long enough for a motor to spin up, and for a third of a second when a boss comes in. Its header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register; `LegionOfEvil-save.ips` stays MBC1. Both map bank 1 before its start-up runs, so a flash cart whose mapper powers up on another bank no longer hangs on a white screen. A run saved by v1.1 is not offered; upgrades and money carry over.
+- **v1.2:** a second patch, `LegionOfEvil-rumble.ips`, where the rumble motor runs solid for 6 frames from each hit, long enough for a motor to spin up, and for a second when a boss comes in. Its header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register; `LegionOfEvil-save.ips` stays MBC1. Both map bank 1 before its start-up runs, so a flash cart whose mapper powers up on another bank no longer hangs on a white screen. A run saved by v1.1 is not offered; upgrades and money carry over.
 - **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other, with its sprites, and without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
 - **v1.0:** the first release.
 
@@ -61,8 +61,8 @@ The two differ only in the cartridge type in the header (and its checksum).
 - **The player stays on screen.** The hardware draws the first ten sprites on a
   scanline, in table order. The game puts the player last, so a crowd hid part of
   the player. Now the player and weapon sprites come first and the enemies
-  follow in an order that shifts every frame, so a crowded line flickers
-  enemies instead of hiding the same ones. Color hardware only (see the frame
+  follow in an order that moves 7 of 16 places every frame, so on a crowded line
+  each enemy flickers about every other frame instead of the same ones hiding. Color hardware only (see the frame
   budget below).
 - **No tearing strip at the top.** The game changed the scroll registers while
   the picture was being drawn, which shifted the top few lines for a frame. The
@@ -72,12 +72,12 @@ The two differ only in the cartridge type in the header (and its checksum).
   and 2 frames normal, so being hit reads as a clear blink (and still does with
   frame blending). The damage and hit timing are the game's own.
 - **Rumble** (`LegionOfEvil-rumble.ips`). On a cartridge or emulator with a
-  rumble motor, the motor runs
-  solid for 6 frames from each hit, long enough for a motor to spin up, and for a
-  third of a second when a boss comes in. It stands in for sound effects, which the game has none of, so it
-  marks events in play and not the ones that open a screen. It is off in menus,
-  after a hit's last kick and through SAVE & QUIT, and a continued run with a
-  boss already in play does not rumble for it again.
+  rumble motor, the motor runs solid for 6 frames from each hit, long enough for
+  a motor to spin up, and for a second when a boss comes in. It stands in for
+  sound effects, which the game has none of, so it marks events in play and not
+  the ones that open a screen. It is off in menus, after a hit's last kick and
+  through SAVE & QUIT, and a continued run with a boss already in play does not
+  rumble for it again.
 - **No flashing between screens.** The menus draw with the LCD on, the way the
   game draws its own screens (a Game Boy Color shows an LCD-off frame as white):
   each video memory access waits until the LCD is not drawing a line, only the
@@ -161,7 +161,7 @@ checks:
 - on the rumble patch, the motor runs solid for the first 6 frames of each hit
   and at no other time in play, it is off in the pause menu, after a death's last
   hit kick and through SAVE & QUIT, even right after a hit, and a boss's entrance
-  (found by playing until one comes in) runs it for 20 frames while continuing a
+  (found by playing until one comes in) runs it for 60 frames while continuing a
   run with a boss in play does not, on both consoles;
 - on the other patch, every motor write leaves bank 2 mapped at `$4000`;
 - the stock game writes the scroll registers on visible lines and the patched

@@ -934,7 +934,7 @@ def check_motor_off(rom):
 
 
 def check_big_rumble(rom):
-    """A boss's entrance runs the motor solid for a third of a second; a
+    """A boss's entrance runs the motor solid for a second; a
     continued run with a boss already in play does not rumble."""
     print("Rumble on a boss's entrance")
     for console in ("dmg", "cgb"):
@@ -962,13 +962,17 @@ def check_big_rumble(rom):
             motor.append(on[0])
             if spawn is None and any(g.m[a] for a in range(0xC14A, 0xC15A)):
                 spawn = f
-            if spawn is not None and f > spawn + 40:
+            if spawn is not None and f > spawn + 90:
                 break
         for b in held:
             g.pb.button_release(b)
-        boss = spawn is not None and sum(motor[spawn:spawn + 20]) >= 19 and not any(motor[spawn + 22:spawn + 40])
-        check(f"{console}: a boss's entrance runs the motor for 20 frames",
-              boss, f"boss at frame {spawn}" if spawn is not None else "no boss in 20000 frames")
+        # BOSS_RUMBLE is 60 run-loop frames; a hit's kick or a dropped frame can
+        # carry it a few frames further, so the motor must stop within 70.
+        stop = next((f for f in range(spawn + 1, len(motor)) if not motor[f]), None) if spawn is not None else None
+        boss = spawn is not None and stop is not None and 60 <= stop - spawn <= 70
+        check(f"{console}: a boss's entrance runs the motor for a second",
+              boss, f"boss at frame {spawn}, motor on for {stop - spawn if stop else '?'} frames"
+              if spawn is not None else "no boss in 20000 frames")
         until_live(g)
         g.press("start", after=40)
         g.press("down", after=10)
@@ -1098,6 +1102,21 @@ def sprite_overflow(game, frames):
         over += hit
         dropped += lost
     return over, dropped
+
+
+def check_rotation(rom):
+    """On a Game Boy Color the enemy pairs start 7 places on each time the
+    sprite table is built (of 16: every start in turn), so on a crowded line an
+    enemy near the end one frame is near the front the next."""
+    print("Enemy order")
+    g = Game(rom, "rot")
+    starts = []
+    g.pb.hook_register(2, _LABELS["oam_build"], lambda c: starts.append(g.m[0xD010]), None)
+    start_run(g)
+    play(g, 300)
+    steps = {(b - a) % 16 for a, b in zip(starts, starts[1:])}
+    check("the enemy order moves 7 of 16 pairs each time the sprite table is built",
+          len(starts) > 200 and steps == {7}, f"{len(starts)} builds, steps {sorted(steps)}")
 
 
 def check_sprites(control, rom, frames=40000):
@@ -1307,6 +1326,7 @@ def main():
     check_cross_console(rompath)
     check_console_hops(rompath)
     check_vram_timing(rompath)
+    check_rotation(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
     check_color(stock, rompath)

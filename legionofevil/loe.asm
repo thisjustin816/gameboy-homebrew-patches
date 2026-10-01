@@ -80,6 +80,8 @@ HRAM_CODE   = $FF99             ; the VBlank hook
 
 RUMBLE      = $08               ; MBC5: bit 3 of the RAM bank register drives the motor
 HIT_KICK    = 6                 ; frames of solid rumble at the start of a hit
+BOSS_RUMBLE = 60                ; frames of solid rumble when a boss comes in
+ROT_STEP    = 7                 ; enemy pairs the sprite order moves on each frame (odd: all 16 orders)
 F_SAVE      = $01               ; an upgrade save exists
 F_RUN       = $02               ; a run snapshot exists
 F_PEND_STORE = $04              ; open the store when the run loop starts
@@ -1401,7 +1403,8 @@ rg_clr:     xor a
 ; player. On a Game Boy Color each frame this builds the table the DMA reads in a
 ; better order:
 ; the player's four sprites, the weapon's four, then the enemies' sixteen pairs
-; starting one pair later each frame, so what a crowded line drops changes.
+; starting ROT_STEP pairs later each frame, so what a crowded line drops changes
+; every other frame.
 ;   $C000-$C07F enemies (pairs of slots)   $C080 weapon   $C090 player
 ; Two sprites. The attribute bytes also get bit 0 set from bit 4, which picks
 ; the color palette on a Game Boy Color the way bit 4 picks OBP1 on the old
@@ -1466,9 +1469,9 @@ ob_loop:    ld a,(V_ROT)
             call copy8
             dec c
             jr nz,ob_loop
-            ld a,(V_ROT)
-            inc a
-            and $0F
+            ld a,(V_ROT)            ; 7 pairs on each frame: an enemy near the end of
+            add a,ROT_STEP          ; the order one frame is near the front the next,
+            and $0F                 ; so a crowded line flickers every other frame
             ld (V_ROT),a
             ld a,$DA                ; OAMBUF >> 8
             ldh ($92),a             ; the game's OAM DMA reads its source page from HRAM
@@ -1723,14 +1726,14 @@ wh_other:   xor a                   ; not the run loop: no rumble, just the
 
 ; Rumble stands in for the sound effects the game has none of, so it marks
 ; events in play, not ones that open a screen. A boss's entrance runs the motor
-; solid for 20 frames: one more slot in the loot table, which only bosses fill.
+; solid for a second: one more slot in the loot table, which only bosses fill.
 big_rumble: call boss_count
             ld hl,V_BOSSN
             cp (hl)
             ld (hl),a
             jr z,br_run
             jr c,br_run
-            ld a,20
+            ld a,BOSS_RUMBLE
             ld (V_RUMBLE),a
 br_run:     ld a,(V_RUMBLE)
             or a
