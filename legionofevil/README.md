@@ -11,10 +11,11 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `5c73937cfa0c02c58054c47485e34808` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC5+RUMBLE+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `95069a863a8d64feac4f4cb082764731` |
 
 ## Versions
 
+- **v1.2:** the rumble motor runs with the hit flash, 2 frames on and 2 off per hit. The header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register. A run saved by v1.1 is not offered; upgrades and money carry over.
 - **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other, with its sprites, and without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
 - **v1.0:** the first release.
 
@@ -67,6 +68,9 @@ when the camera scrolls.
   sprite palette for a single frame. Each hit now shows 2 frames on that palette
   and 2 frames normal, so being hit reads as a clear blink (and still does with
   frame blending). The damage and hit timing are the game's own.
+- **Rumble.** On a cartridge or emulator with a rumble motor, the motor runs on
+  the same frames as the hit flash. It is off in menus, on the game-over screen
+  once the last pulse ends and through SAVE & QUIT.
 - **No flashing between screens.** The menus draw with the LCD on, the way the
   game draws its own screens (a Game Boy Color shows an LCD-off frame as white):
   each video memory access waits until the LCD is not drawing a line, only the
@@ -144,7 +148,10 @@ checks:
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
 - stock shows the hit palette for one frame per hit, and the patched game shows
-  2 frames on and 2 off per hit, on both consoles;
+  2 frames on and 2 off per hit, on both consoles, and the rumble motor runs on
+  exactly those frames;
+- the motor is off in the pause menu, after a death's last pulse and through SAVE
+  & QUIT, even right after a hit, on both consoles;
 - the stock game writes the scroll registers on visible lines and the patched
   game's registers never change between VBlanks;
 - no menu, page or CONTINUE change turns the LCD off (the stock game never does
@@ -184,11 +191,12 @@ What this does not show:
 The stock cartridge has no mapper, but the game already writes bank numbers to
 `$2000` (its music player selects a bank). Stock asks for bank 2, which a plain
 ROM ignores; the patch points all seven calls at bank 1 and uses bank 2 for new
-code.
+code. It declares an MBC5 cartridge, which takes those bank numbers the same
+way and has a rumble motor on bit 3 of its RAM bank register.
 
 | Where | What |
 |---|---|
-| Header | `$143` = `$80` (color compatible), `$147` = `$03` (MBC1+RAM+BATTERY), `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
+| Header | `$143` = `$80` (color compatible), `$147` = `$1E` (MBC5+RUMBLE+RAM+BATTERY), `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
 | Bank 0 stubs (`$0048`, `$00CE`, `$01E1`) | Small routines in bytes the game never reads that switch to bank 2, run a hook and switch back |
 | Bank 2 (`$4000`) | The save, menus, pause, snapshot, sprite order, palette and theme code (about 3.3 KB) |
 | HRAM `$FF99` | The VBlank hook; copied from bank 2 at boot |
@@ -245,7 +253,7 @@ named after the ROM.
 Python 3 only:
 
 ```
-python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.1].gbc" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.2].gbc" --ips LegionOfEvil-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -254,5 +262,5 @@ instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
 `pip install pyboy pillow`:
 
 ```
-python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.1].gbc"
+python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.2].gbc"
 ```

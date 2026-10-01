@@ -3,9 +3,10 @@
 
 The stock cartridge is a plain 32 KB ROM with no save RAM. This patch:
 
-  1. Grows the ROM to 64 KB and marks the header MBC1+RAM+BATTERY with 8 KB of
-     RAM, then repairs both checksums. The game already writes bank numbers to
-     $2000, so an MBC1 board takes them.
+  1. Grows the ROM to 64 KB and marks the header MBC5+RUMBLE+RAM+BATTERY with
+     8 KB of RAM, then repairs both checksums. The game already writes bank
+     numbers to $2000, which an MBC5 board takes, and the rumble motor is bit 3
+     of its RAM bank register.
   2. Points the seven music-player calls at bank 1. Stock passes bank 2, which
      a plain ROM ignores but a banked cartridge or emulator would map.
   3. Puts the new code in bank 2, reached through small stubs in bank 0's
@@ -44,8 +45,8 @@ ROM_PROFILES = {
         "name": "Legion of Evil (Rev 1)",
         "rom_size": 0x10000,
         "code_bank": 2,
-        # (offset, stock, patched): MBC1 -> +RAM+BATTERY, 32 KB -> 64 KB, no RAM -> 8 KB
-        "header": [(0x143, 0x00, 0x80), (0x147, 0x00, 0x03), (0x148, 0x00, 0x01), (0x149, 0x00, 0x02)],
+        # (offset, stock, patched): ROM only -> MBC5+RUMBLE+RAM+BATTERY, 32 KB -> 64 KB, no RAM -> 8 KB
+        "header": [(0x143, 0x00, 0x80), (0x147, 0x00, 0x1E), (0x148, 0x00, 0x01), (0x149, 0x00, 0x02)],
         # Bank 0 bytes the game never reads: (start, end, md5 of the stock bytes)
         "filler": [
             (0x0048, 0x0080, "74444b7e7b01632f3277365c8ca35ec2"),
@@ -265,7 +266,7 @@ def patch(rom_bytes, verbose=True):
     rom[OFF_HDR_SUM] = header_checksum(rom)
     g = global_checksum(rom)
     rom[OFF_GLOBAL_SUM], rom[OFF_GLOBAL_SUM + 1] = g >> 8, g & 0xFF
-    say(f"header: MBC1+RAM+BATTERY, 64 KB, 8 KB RAM; checksums repaired (global {g:#06x})")
+    say(f"header: MBC5+RUMBLE+RAM+BATTERY, 64 KB, 8 KB RAM; checksums repaired (global {g:#06x})")
     return bytes(rom)
 
 

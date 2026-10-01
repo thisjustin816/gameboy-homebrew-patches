@@ -76,6 +76,7 @@ SH_OBP0     = $97
 SH_OBP1     = $98
 HRAM_CODE   = $FF99             ; the VBlank hook
 
+RUMBLE      = $08               ; MBC5: bit 3 of the RAM bank register drives the motor
 F_SAVE      = $01               ; an upgrade save exists
 F_RUN       = $02               ; a run snapshot exists
 F_PEND_STORE = $04              ; open the store when the run loop starts
@@ -172,7 +173,8 @@ th_on:      ld hl,$C7D0
 
 ; ==== org bank2 ====
 ; ---------------------------------------------------------------- helpers
-sram_on:    ld a,$0A
+sram_on:    call motor_off          ; RAM bank 0, and the motor off
+            ld a,$0A
             ld ($0000),a
             ret
 sram_off:   xor a
@@ -1360,6 +1362,7 @@ bo_obst:    ldh ($6B),a
 
 ; Start the game over, as if the console had just been switched on.
 reset_game: di
+            call motor_off
             xor a
             ldh ($0F),a
             ldh ($FF),a
@@ -1601,6 +1604,8 @@ hp_on:      set 4,(hl)
             inc l
             dec b
             jr nz,hp_on
+            ld a,RUMBLE             ; the motor runs while the palette is lit
+hr_on_st:   ld ($4000),a
             ret
 hp_off:     res 4,(hl)
             inc l
@@ -1609,6 +1614,8 @@ hp_off:     res 4,(hl)
             inc l
             dec b
             jr nz,hp_off
+motor_off:  xor a
+hr_off_st:  ld ($4000),a
             ret
 
 ; ---------------------------------------------------------------- frame hooks
@@ -1663,10 +1670,10 @@ wait_hook:  call ready
             ld l,a
             ld a,h
             cp $58
-            jp nz,oam_build         ; not the run loop: just the sprite table
+            jr nz,wh_other
             ld a,l
             cp $B8
-            jp nz,oam_build
+            jr nz,wh_other
             ld a,(V_DARK)
             cp 2
             call z,undark
@@ -1688,6 +1695,8 @@ wh_cont:    ld a,(V_FLAGS)
             bit 3,a
             ret z
             jp restore_run
+wh_other:   call motor_off          ; not the run loop: no hit pulse, just the
+            jp oam_build            ; sprite table
 
 ; The run loop's next wait after it asked for the store comes once the store is
 ; drawn: bring the shades back.

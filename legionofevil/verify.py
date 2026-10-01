@@ -167,8 +167,8 @@ def build_control(stock):
 def check_rom(stock, rom, ips_path):
     print("ROM")
     check("stock ROM is the profiled release", hashlib.md5(stock).hexdigest() == STOCK_MD5)
-    check("patched ROM is 64 KB MBC1+RAM+BATTERY with 8 KB RAM and the color flag",
-          len(rom) == 0x10000 and rom[0x147] == 3 and rom[0x148] == 1 and rom[0x149] == 2 and rom[0x143] == 0x80)
+    check("patched ROM is 64 KB MBC5+RUMBLE+RAM+BATTERY with 8 KB RAM and the color flag",
+          len(rom) == 0x10000 and rom[0x147] == 0x1E and rom[0x148] == 1 and rom[0x149] == 2 and rom[0x143] == 0x80)
     check("header checksum is valid", patcher.header_checksum(rom) == rom[0x14D])
     g = patcher.global_checksum(rom)
     check("global checksum is valid", g == (rom[0x14E] << 8 | rom[0x14F]))
@@ -208,9 +208,11 @@ def check_held_start(control, rom):
                   and g.m[0xFF4A] == 0x80)
 
 
-def hit_pattern(path, cgb):
+def hit_pattern(path, cgb, motor=None):
     """Frames with the player on the hit palette, as the hardware's sprite table
-    holds them, next to the frames the game registered a hit."""
+    holds them, next to the frames the game registered a hit. With a list in
+    motor, also whether the rumble motor is on in each frame (the patch's two
+    writes to the RAM bank register)."""
     data = bytearray(open(path, "rb").read())
     if not cgb and data[0x143]:
         data[0x143] = 0
@@ -223,8 +225,14 @@ def hit_pattern(path, cgb):
     g.tick(1200)                                        # the enemies reach a player standing still
     shown, hits = [], []
     g.pb.hook_register(1, 0x4ACC, lambda c: hits.append(len(shown)), None)   # the game's non-fatal hit
+    on = [False]
+    if motor is not None:
+        g.pb.hook_register(2, _LABELS["hr_on_st"], lambda c: on.__setitem__(0, True), None)
+        g.pb.hook_register(2, _LABELS["hr_off_st"], lambda c: on.__setitem__(0, False), None)
     for _ in range(600):
         g.tick(1, False)
+        if motor is not None:
+            motor.append(on[0])
         # the player's four sprites always sit at the middle of the screen
         # (OAM y $50/$58, x $48/$50; the game sets them at $3B15)
         lit = any(g.m[0xFE03 + i * 4] & 0x10 for i in range(40)
@@ -254,13 +262,18 @@ def check_hit_pulse(control, rom):
     check("stock shows the hit palette only on the frames with a hit, one frame each (the control)",
           len(hits) > 20 and lit == set(hits), f"{len(hits)} hits, {len(lit)} lit frames")
     for cgb, name in ((False, "original Game Boy"), (True, "Game Boy Color")):
-        shown, hits = hit_pattern(rom, cgb)
+        motor = []
+        shown, hits = hit_pattern(rom, cgb, motor)
         r = runs(shown)
         pulses_ok = all(n == 2 and s in hits for s, n in r)
         gaps_ok = all(b[0] - (a[0] + a[1]) >= 2 for a, b in zip(r, r[1:]))
         covered = all(any(s <= h < s + 4 for s, n in r) for h in hits)
         check(f"{name}: every pulse is 2 frames on the hit palette from a hit, then at least 2 normal; no hit goes unshown",
               len(r) > 20 and pulses_ok and gaps_ok and covered, f"{len(hits)} hits, {len(r)} pulses")
+        rm = runs(motor)
+        check(f"{name}: the rumble motor runs on exactly the frames the hit palette shows",
+              len(rm) > 20 and rm == r, f"{len(rm)} motor pulses, {len(r)} palette pulses"
+              + ("" if rm == r else f", first differences {[x for x in rm if x not in r][:3]} / {[x for x in r if x not in rm][:3]}"))
 
 
 def check_save_cycle(rom):
@@ -805,6 +818,56 @@ def check_console_hops(rom):
               not problems, ", ".join(problems) if problems else f"{len(chain) - 1} continues")
 
 
+def check_motor_off(rom):
+    """A hit just before the pause menu, a death or SAVE & QUIT must not leave
+    the rumble motor running. A death keeps the run loop going, so a pulse that
+    started with it plays out its four frames, as the flash does."""
+    print("Rumble motor off outside play")
+    for console in ("dmg", "cgb"):
+        data = bytearray(open(rom, "rb").read())
+        if console == "dmg":
+            data[0x143] = 0
+            fix_header(data)
+        p = os.path.join(WORK, f"mo-{console}.gb")
+        open(p, "wb").write(data)
+        g = Game(p, "mo")
+        on = [False]
+        g.pb.hook_register(2, _LABELS["hr_on_st"], lambda c: on.__setitem__(0, True), None)
+        g.pb.hook_register(2, _LABELS["hr_off_st"], lambda c: on.__setitem__(0, False), None)
+        start_run(g)
+        until_live(g)
+        g.tick(30)
+        bad = []
+
+        def watch(name, frames, after_up=lambda: True, grace=0):
+            for f in range(frames):
+                g.tick(1)
+                if f >= grace and after_up() and on[0]:
+                    bad.append(f"{name} frame {f}")
+                    return
+        g.m[0xD01D] = 4                                  # a hit starts a pulse
+        g.tick(1)
+        started = on[0]
+        g.press("start", after=0)
+        watch("pause menu", 60, lambda: g.m[0xFF4A] == 0)
+        g.press("a", after=30)                           # RESUME
+        g.m[0xD01D] = 4
+        g.m[0xC5DB] = 1                                  # and a death on the same frame: the pulse
+        watch("game over", 300, lambda: g.m[0xC5B5] != 0, grace=4)   # plays out, as the flash does
+        for _ in range(3):
+            g.press("start", after=60)                   # store, difficulty, weapon, into a run
+        until_live(g)
+        g.tick(30)
+        g.m[0xD01D] = 4
+        g.tick(1)
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.pb.button_press("a")
+        watch("SAVE & QUIT", 400, lambda: g.m[0xFF4A] == 0 or not g.m[0xFF40] & 0x80 or g.m[0xFF40] == 0xC1)
+        check(f"{console}: the motor is off in menus, after a death's last pulse and through SAVE & QUIT, even right after a hit",
+              started and not bad, ", ".join(bad) if bad else "a hit started it each time")
+
+
 def check_vram_timing(rom):
     """PyBoy lets the CPU reach video memory while the LCD is drawing a line;
     the hardware does not (the write is dropped, the read gives $FF). So every
@@ -1095,6 +1158,7 @@ def main():
     check_held_start(control, rompath)
     check_save_cycle(rompath)
     check_hit_pulse(control, rompath)
+    check_motor_off(rompath)
     check_erase(rompath)
     check_pause(rompath)
     check_continue(rompath)
