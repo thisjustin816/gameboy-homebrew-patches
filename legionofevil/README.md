@@ -11,11 +11,11 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC5+RUMBLE+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `292cb01877ff793151a199281fdeb8b9` |
+| `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC5+RUMBLE+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `561bdc4d6dffe3b16f1df5a48f907f76` |
 
 ## Versions
 
-- **v1.2:** the rumble motor runs with the hit flash, 2 frames on and 2 off per hit, and for a third of a second when a boss comes in. The header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register. A run saved by v1.1 is not offered; upgrades and money carry over.
+- **v1.2:** the rumble motor runs with the hit flash, 2 frames on and 2 off per hit, and for a third of a second when a boss comes in. The header says MBC5+RUMBLE+RAM+BATTERY, so the motor is bit 3 of the RAM bank register. The game maps bank 1 before its start-up runs, so a flash cart whose mapper powers up on another bank no longer hangs on a white screen. A run saved by v1.1 is not offered; upgrades and money carry over.
 - **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other, with its sprites, and without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
 - **v1.0:** the first release.
 
@@ -123,6 +123,8 @@ checks:
 - the header, both checksums, the music-bank change and that the IPS rebuilds
   the ROM;
 - START with nothing saved starts a run straight away;
+- the title comes up when the mapper powers up with bank 0, 2 or 3 at `$4000`
+  instead of bank 1, on both consoles;
 - dying banks the money, the battery RAM holds the upgrades with a valid check,
   a power cycle (a new emulator on the same save file) brings them back, and a
   store purchase is written at once;
@@ -204,6 +206,7 @@ way and has a rumble motor on bit 3 of its RAM bank register.
 |---|---|
 | Header | `$143` = `$80` (color compatible), `$147` = `$1E` (MBC5+RUMBLE+RAM+BATTERY), `$148` = `$01` (64 KB), `$149` = `$02` (8 KB RAM); both checksums repaired |
 | Bank 0 stubs (`$0048`, `$00CE`, `$01E1`) | Small routines in bytes the game never reads that switch to bank 2, run a hook and switch back |
+| Entry (`$0100`) | Jumps to a stub that maps bank 1 and then starts the game. The start-up calls `$7B08` and `$7FEB` before it writes a bank number, which a plain ROM always has mapped, but a mapper's power-on bank is not guaranteed to be 1 |
 | Bank 2 (`$4000`) | The save, menus, pause, snapshot, sprite order, palette and theme code (about 3.3 KB) |
 | HRAM `$FF99` | The VBlank hook; copied from bank 2 at boot |
 | Hooks | boot, the joypad read on the title and in the run loop, the store's buy routine, the game-over screen, the non-fatal hit at `$4ACC`, and the frame wait at `$7AF8` |

@@ -159,6 +159,13 @@ t_wait:     push af
             ret
 
 ; ==== org stub_c ====
+; The cartridge entry. The game's start-up calls into $4000-$7FFF before it
+; picks a bank, so bank 1 must be mapped first: a flash cart's mapper can power
+; up with another bank there, and the game then hangs on a white screen. A and B
+; still hold the console type from the boot ROM.
+t_entry:    ld hl,$2000
+            ld (hl),1
+            jp $0157
 ; Bank 2 is mapped while the reset runs, so switch before the game's start.
 t_reset:    ld a,1
             ld ($2000),a

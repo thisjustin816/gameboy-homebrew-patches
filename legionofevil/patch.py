@@ -8,7 +8,9 @@ The stock cartridge is a plain 32 KB ROM with no save RAM. This patch:
      numbers to $2000, which an MBC5 board takes, and the rumble motor is bit 3
      of its RAM bank register.
   2. Points the seven music-player calls at bank 1. Stock passes bank 2, which
-     a plain ROM ignores but a banked cartridge or emulator would map.
+     a plain ROM ignores but a banked cartridge or emulator would map. The
+     cartridge entry maps bank 1 too, as the start-up runs code there before
+     it picks a bank and a mapper may power up on another.
   3. Puts the new code in bank 2, reached through small stubs in bank 0's
      unused bytes, and hooks the boot, the title, the main loop's frame wait,
      the store and the run loop.
@@ -73,6 +75,8 @@ ROM_PROFILES = {
         ],
         # The VBlank handler's "call $FF80" (the OAM DMA routine)
         "vblank_dma": (0x00A4, "cd80ff"),
+        # The cartridge entry's "jr $0157", which becomes a jump to the stub
+        "entry": (0x0100, "1855ff", "t_entry"),
         "hooks": [
             ("boot: after the WRAM defaults copy", 0x01B0, "cdeb7f", "t_boot"),
             ("title: joypad read", 0x57C5, "cdb27b", "t_joy"),
@@ -258,6 +262,13 @@ def patch(rom_bytes, verbose=True):
     check_bytes(rom_bytes, at, bytes.fromhex(old), "VBlank handler's OAM DMA call")
     rom[at + 1], rom[at + 2] = labels["isr_ext"] & 0xFF, labels["isr_ext"] >> 8
     say(f"VBlank handler's OAM DMA call -> call ${labels['isr_ext']:04X} isr_ext (HRAM)")
+    at, old, label = profile["entry"]
+    old = bytes.fromhex(old)
+    check_bytes(rom_bytes, at, old, "cartridge entry")
+    check_no_branches_into(rom_bytes, at, len(old), "cartridge entry")
+    target = labels[label]
+    rom[at:at + len(old)] = bytes([OP_JP, target & 0xFF, target >> 8])
+    say(f"cartridge entry: {at:#06x} -> jp ${target:04X} {label}")
 
     for at, was, now in profile["header"]:
         if rom_bytes[at] != was:

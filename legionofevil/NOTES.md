@@ -45,7 +45,7 @@ banks the run's money, so it is also a clean way to end a run in a test.
 
 | Address | What |
 |---|---|
-| `$0100`, `$0150` | entry; `$0150` reloads A and B from `$C0A0`/`$C0A1` and runs the start-up again (a soft reset) |
+| `$0100`, `$0150` | entry (`jr $0157`); `$0150` reloads A and B from `$C0A0`/`$C0A1` and runs the start-up again (a soft reset). The start-up calls `$7B08` and `$7FEB`, in the `$4000` window, before the music player first writes `$2000` |
 | `$0182` | copies the OAM DMA routine to `$FF80` (`$28` is its wait count) |
 | `$009C` | VBlank handler: counter, `call $FF80` at `$00A4`, then sets `$FF91` |
 | `$56B7` | title; its loop waits for START at `$57B9`-`$57CE` |

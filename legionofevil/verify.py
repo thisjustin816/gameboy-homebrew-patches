@@ -191,6 +191,19 @@ def check_no_save_start(rom):
           g.m[0xFF40] == 0xE3 and g.m[0xC5B5] == 0 and g.m[0xC0D9] != a)
 
 
+def check_power_on_bank(rom, label=""):
+    print(label + "A mapper that powers up on another bank")
+    up = []
+    for bank in (0, 2, 3):
+        g = Game(rom, f"bank{bank}")
+        g.m[0x2000] = bank
+        g.tick(200)
+        up.append(g.m[0xD000] == 0xA5 and g.m[0xD001] == 0x5A and g.m[0xFF40] & 0x80 != 0)
+        g.stop()
+    check(label + "the title shows with bank 0, 2 or 3 mapped at $4000 at power-on", all(up),
+          f"banks 0, 2, 3: {up}")
+
+
 def check_held_start(control, rom):
     print("START held from the title")
     for name, path in (("stock", control), ("patched", rom)):
@@ -1215,6 +1228,7 @@ def main():
 
     check_rom(stock, rom, ips)
     check_no_save_start(rompath)
+    check_power_on_bank(rompath)
     check_held_start(control, rompath)
     check_save_cycle(rompath)
     check_hit_pulse(control, rompath)
@@ -1229,6 +1243,7 @@ def main():
     fix_header(data)
     open(dmgpath, "wb").write(data)
     check_continue(dmgpath, label="dmg: ")
+    check_power_on_bank(dmgpath, label="dmg: ")
     check_glyphs(rompath)
     check_new_run_confirm(rompath)
     check_no_flash(control, rompath)
