@@ -13,6 +13,11 @@ when the camera scrolls.
 |---|---|---|
 | `LegionOfEvil-save.ips` | Everything below in one patch. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `e79844ebcba50ed3f13e39a2a98ce5df` |
 
+## Versions
+
+- **v1.1:** nothing of the title, its wipe or the run shows between the title menu and the store or a continued run, and SAVE & QUIT keeps the run hidden and restarts as at power-on. Menu pages go on screen in one step with their cursor. A run saved on one kind of console now continues on the other without a black screen after the next SAVE & QUIT. A run saved by v1.0 is not offered; upgrades and money carry over.
+- **v1.0:** the first release.
+
 ## Changes
 
 - **Upgrades are saved.** The money banked when a run ends, every purchase in
@@ -233,7 +238,7 @@ named after the ROM.
 Python 3 only:
 
 ```
-python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.0].gbc" --ips LegionOfEvil-save.ips
+python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.1].gbc" --ips LegionOfEvil-save.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
@@ -242,5 +247,5 @@ instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
 `pip install pyboy pillow`:
 
 ```
-python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.0].gbc"
+python3 verify.py "Legion of Evil (Rev 1).gb" "Legion of Evil (Rev 1) [Save & color patch by thisJUSTin816 v1.1].gbc"
 ```
