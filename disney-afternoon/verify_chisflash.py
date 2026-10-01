@@ -11,7 +11,10 @@ PyBoy has no ChisFlash CPLD, so the menu and the games are checked apart:
 2. The menu ROM, run as an MBC5 cart, shows the splash and all four menu screens
    as built, PRESS START blinks and the cursor wraps, as in verify.py.
 3. Picking each game leaves the launch stub in HRAM with that game's slot, and the
-   stub makes the writes the cart's CPLD takes as "reset into this slot".
+   stub opens with the writes the cart's CPLD takes as "switch to this slot".
+   Launched from the menu, with the test putting the slot's ROM in place as the
+   CPLD's switch does, each game matches its reference on every frame of the same
+   scripted play, after the start-up delay the warm start adds.
 4. Each game, converted to MBC5 and run as its own cart, matches the stock ROM on
    every frame of the same scripted play as verify.py, on a DMG and on a Game Boy
    Color. TaleSpin is matched against the stock ROM with the same patch, which on
@@ -23,8 +26,9 @@ PyBoy has no ChisFlash CPLD, so the menu and the games are checked apart:
 6. Each game, padded to its slot as on the cart, and the menu ROM come up the same
    whatever bank the mapper holds at power-on: with bank 0, 2, 3 or 4 to 9 at $4000
    instead of bank 1, the first POWER_ON_FRAMES frames match a start with bank 1.
-   After the reset into a slot a game gets whatever bank the cart's MBC5 mapper
-   holds, and the menu's last bank write is one of its own, 4 to 9. As a control,
+   A CPLD that resets the console into the slot leaves whatever bank the cart's
+   MBC5 mapper holds, and the menu's last bank write is one of its own, 4 to 9,
+   unless the stub's write of bank 1 comes first. As a control,
    DuckTales 2 with its first bank write taken out must start differently.
 """
 import hashlib, multiprocessing, os, queue, shutil, sys, tempfile
@@ -36,15 +40,19 @@ POWER_ON_BANKS = (0, 2, 3, 4, 5, 6, 7, 8, 9)
 POWER_ON_FRAMES = 1500        # through each game's title screen
 DT2_FIRST_BANK_WRITE = 0x02A1 # DuckTales 2's first ld ($2000),a, for the control
 
-STUB = [0x3E, 0x40, 0xEA, 0x00, 0x40,           # ld a,$40 / ld ($4000),a   arm
-        0x3E, None, 0xEA, 0x00, 0xB0,           # ld a,slot / ld ($B000),a  pick the slot
-        0x3E, 0x01, 0xEA, 0x00, 0xA0,           # ld a,1 / ld ($A000),a     switch to it
-        0xAF, 0xEA, 0x00, 0x40,                 # xor a / ld ($4000),a      reset
-        0x18, 0xFE]                             # jr $                      wait for it
+# The writes the stub opens with, as the cart's CPLD sees them (see chis_stub.asm).
+STUB_WRITES = [0x3E, 0x50, 0xEA, 0x00, 0x40,    # $4000 = $50     arm
+               0x3E, None, 0xEA, 0x00, 0xB0,    # $B000 = slot    pick the slot
+               0x3E, 0x01, 0xEA, 0x00, 0x20,    # $2000 = 1       bank 1 at $4000
+               0xAF, 0xEA, 0x00, 0x30,          # $3000 = 0
+               0x3C, 0xEA, 0x00, 0xA0,          # $A000 = 1       switch to the slot
+               0xAF, 0xEA, 0x00, 0x40]          # $4000 = 0       disarm
 
 
 def stub_for(slot):
-    return bytes(slot if b is None else b for b in STUB)
+    stub = chisflash.launch_stub(slot)
+    assert stub[:len(STUB_WRITES)] == bytes(slot if b is None else b for b in STUB_WRITES)
+    return stub
 
 
 def static_checks(image, roms, art):
@@ -71,7 +79,7 @@ def launch_checks(menu, go):
     for sel, g in enumerate(build.GAMES):
         pb = emu(menu)
         hit = []
-        pb.hook_register(build.MENU_BANK, go, lambda c: hit.append(bytes(pb.memory[build.LAUNCH:build.LAUNCH + len(STUB)])), None)
+        pb.hook_register(build.MENU_BANK, go, lambda c: hit.append(bytes(pb.memory[build.LAUNCH:build.LAUNCH + len(stub_for(sel))])), None)
         pb.tick(verify.BOOT_WAIT, True)
         press(pb, 'start', 30)
         for _ in range(sel):
@@ -83,7 +91,95 @@ def launch_checks(menu, go):
                 break
         done(pb)
         check(bool(hit) and hit[0] == stub_for(sel),
-              f"picking {g['label']} readies a reset into slot {sel}")
+              f"picking {g['label']} readies the switch to slot {sel}")
+
+
+def cart_view(image):
+    """The menu slot as PyBoy runs it: MBC5, padded to 2 MiB so that a game's banks
+    fit once the test switches the cart to the game's slot."""
+    view = bytearray(image[:chisflash.MENU_SIZE]) + bytes([0xFF]) * (2 * chisflash.MIB - chisflash.MENU_SIZE)
+    view[0x148] = 0x06
+    view[0x14D] = build.header_checksum(view)
+    return bytes(view)
+
+
+def start_chis(view, game, sel, go, cgb):
+    """Pick game sel from the menu, then do what the CPLD does on the stub's $A000
+    write: put the slot's ROM where the menu's was. The stub then spends about five
+    frames clearing WRAM in HRAM, so the frame the menu reaches go in is early enough."""
+    pb = emu(view, cgb)
+    hit = []
+    pb.hook_register(build.MENU_BANK, go, lambda c: hit.append(1), None)
+    pb.tick(verify.BOOT_WAIT, True)
+    press(pb, 'start', 30)
+    for _ in range(sel):
+        press(pb, 'down')
+    pb.button('a', 3)
+    for _ in range(600):
+        pb.tick(1, True)
+        if hit:
+            pb.hook_deregister(build.MENU_BANK, go)
+            assert pb.register_file.PC >= build.LAUNCH, 'not in the stub yet'
+            for b in range(len(game) // build.BANK):
+                base = 0x4000 if b else 0
+                for i in range(build.BANK):
+                    pb.memory[b, base + i] = game[b * build.BANK + i]
+            return pb
+    raise SystemExit('menu never launched a game')
+
+
+def chis_session(view, game, sel, go, cgb, script, frames, offset=0):
+    pb = start_chis(view, game, sel, go, cgb)
+    hashes = verify.play(pb, script, frames, offset)
+    done(pb)
+    return hashes
+
+
+def _child(q, args):
+    q.put(chis_session(*args))
+
+
+def run_chis(*args):
+    ctx = multiprocessing.get_context('fork')
+    q = ctx.Queue()
+    p = ctx.Process(target=_child, args=(q, args))
+    p.start()
+    try:
+        return q.get(timeout=verify.SESSION_TIMEOUT)
+    except queue.Empty:
+        return None
+    finally:
+        p.kill()
+        p.join()
+
+
+def menu_play_checks(image, games, go, cgb):
+    """Each game launched from the menu matches its reference on every frame, after the
+    start-up delay the warm start adds, as in verify.py."""
+    view = cart_view(image)
+    tag = 'CGB' if cgb else 'DMG'
+    for sel, (name, ref, game) in enumerate(games):
+        name = f'{tag} {name} from the menu'
+        want = verify.run(ref, None, 0, cgb, [], verify.ALIGN_FRAMES)
+        probe = run_chis(view, game, sel, go, cgb, [], verify.ALIGN_FRAMES + verify.ALIGN_WINDOW)
+        if probe is None:
+            check(False, f'{name}: hung')
+            continue
+        offsets = verify.delay(probe, want)
+        if len(offsets) != 1:
+            check(False, f'{name}: start-up delay not pinned down (fits: {offsets})')
+            continue
+        off = offsets[0]
+        script = verify.input_script(1000 + sel)
+        want = verify.run(ref, None, 0, cgb, script, verify.PLAY_FRAMES)
+        got = run_chis(view, game, sel, go, cgb, script, verify.PLAY_FRAMES + off, off)
+        if got is None:
+            check(False, f'{name}: hung during play')
+            continue
+        got = got[off:]
+        bad = [f for f in range(10, verify.PLAY_FRAMES) if got[f] != want[f]]
+        check(not bad, f'{name}: {verify.PLAY_FRAMES - 10} frames of play match (start-up delay {off} frames)'
+                       + (f'; first mismatch at frame {bad[0]}' if bad else ''))
 
 
 def play_checks(cgb, games):
@@ -231,8 +327,10 @@ def main():
             games.append((g['label'] + ' against stock with the same patch', chisflash.patch_talespin(rom), converted))
         else:
             games.append((g['label'] + ' against stock', rom, converted))
+    go = chisflash.build_code()[2]['go']
     for cgb in (False, True):
         play_checks(cgb, games)
+        menu_play_checks(image, games, go, cgb)
     print(f'\n{len(verify.failures)} failure(s)' if verify.failures else '\nall checks pass')
     sys.exit(1 if verify.failures else 0)
 
