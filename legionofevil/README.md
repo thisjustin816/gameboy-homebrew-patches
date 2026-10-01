@@ -126,15 +126,21 @@ checks:
 - the pause menu stops the game and offers RESUME and SAVE & QUIT, and RESUME
   carries on;
 - SAVE & QUIT, a power cycle and CONTINUE give a run identical to one that was
-  never interrupted: the same game memory, sprites and video memory for 900
-  frames, and the same screens apart from, on a frame or two, one tile edge that
-  the game draws a scanline earlier or later (its camera writes the background
-  while the picture is drawn, and the music, which keeps playing behind the
-  menu, shifts that write by a line);
+  never interrupted, on both consoles: the same game memory, sprites and video
+  memory for 900 frames, and the same screens apart from, on some frames, one or
+  two lines that the game draws a scanline earlier or later (its camera writes
+  the background while the picture is drawn, and the music, which keeps playing
+  behind the menu, shifts that write by a line);
 - a snapshot with a damaged byte is not offered;
 - a run saved on one kind of console and continued on the other draws its
   sprites from the game's table and comes back to a visible title after the next
   SAVE & QUIT, on the console it is running on;
+- one run saved and continued twice, through each of Game Boy > color > Game
+  Boy, color > Game Boy > color, Game Boy > Game Boy > color and color > color >
+  Game Boy, comes back each time with the same upgrades, weapons, run money and
+  maximum HP, with the color flag, sprite page, DMA wait and CPU speed this
+  console needs, keeps playing with the player drawn, and quits to a visible
+  title;
 - the stock game drops part of the player on crowded lines and the patched game
   never does (40000 frames);
 - stock shows the hit palette for one frame per hit, and the patched game shows

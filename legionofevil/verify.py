@@ -341,8 +341,8 @@ def check_pause(rom):
           g.m[0xC0D9] != tick and g.m[0xFF4A] == 0x80 and g.m[0xFF40] & 0x02 and g.m[0xC5B5] == 0)
 
 
-def check_continue(rom, tick_count=900):
-    print("Save and quit, continue")
+def check_continue(rom, tick_count=900, label=""):
+    print(f"Save and quit, continue{' (' + label.rstrip(': ') + ')' if label else ''}")
 
     def sync(g, target):
         for _ in range(1200):
@@ -396,10 +396,10 @@ def check_continue(rom, tick_count=900):
     sub.press("a", after=400)                           # SAVE & QUIT
     title_back = sub.m[0xFF40] == 0xC1
     ram = sub.stop()
-    check("SAVE & QUIT writes a snapshot and lands on the title", ram[0x16] == 0x5A and title_back)
+    check(label + "SAVE & QUIT writes a snapshot and lands on the title", ram[0x16] == 0x5A and title_back)
     sub2 = Game(rom, "sub", fresh=False)
     sub2.tick(200)
-    check("after a power cycle the title offers CONTINUE", sub2.m[0xD002] & 3 == 3)
+    check(label + "after a power cycle the title offers CONTINUE", sub2.m[0xD002] & 3 == 3)
     sub2.press("start", after=30)
     sub2.pb.button_press("a")
     sub2.tick(1)
@@ -407,9 +407,9 @@ def check_continue(rom, tick_count=900):
     sync(sub2, (t0 + 25) & 0xFF)
     rec_sub = record(sub2, tick_count)
     # Game memory, the sprite table and video memory must match on every frame.
-    # Screens may differ only inside one tile over at most two adjacent lines:
-    # the game streams the camera's edge column into the background map while
-    # the picture is drawn, and the music player (the one state left out above,
+    # Screens may differ only on at most two adjacent lines: the game streams the
+    # camera's edge column or row into the background map while the picture is
+    # drawn, and the music player (the one state left out above,
     # since it keeps playing behind the menu) changes how long a frame's first
     # work takes, which can move that write by a scanline. Frames where a line
     # holds more than ten sprites are skipped, because the enemy order on such a
@@ -426,7 +426,7 @@ def check_continue(rom, tick_count=900):
             px = [k // 3 for k in range(0, len(a[0]), 3) if a[0][k:k + 3] != b[0][k:k + 3]]
             lines = sorted({p // 160 for p in px})
             xs = sorted({p % 160 for p in px})
-            if xs[-1] - xs[0] > 7 or lines[-1] - lines[0] > 1:  # wider than a tile, or over more than two lines
+            if lines[-1] - lines[0] > 1:                     # over more than two lines
                 screen_bad.append(i)
                 rows = sorted({p // 160 for p in px})
                 cols = sorted({p % 160 for p in px})
@@ -435,11 +435,11 @@ def check_continue(rom, tick_count=900):
             else:
                 slivers += 1
     bad = state_bad + screen_bad
-    check(f"a continued run is identical to an uninterrupted one for {tick_count} frames",
+    check(label + f"a continued run is identical to an uninterrupted one for {tick_count} frames",
           not bad, f"{len(state_bad)} frames with different memory, {len(screen_bad)} with different screens" if bad else
-          f"memory, sprites and video memory on every frame; {slivers} frame(s) differ inside one tile edge")
+          f"memory, sprites and video memory on every frame; {slivers} frame(s) differ on one or two lines")
     ram = sub2.stop()
-    check("CONTINUE uses the snapshot up", ram[0x16] == 0)
+    check(label + "CONTINUE uses the snapshot up", ram[0x16] == 0)
 
     # a damaged snapshot must not be offered
     sub3 = Game(rom, "sub3")
@@ -454,7 +454,7 @@ def check_continue(rom, tick_count=900):
     open(sub3.path + ".ram", "wb").write(ram)
     sub4 = Game(rom, "sub3", fresh=False)
     sub4.tick(200)
-    check("a damaged snapshot is not offered", sub4.m[0xD002] & 2 == 0 and sub4.m[0xD002] & 1 == 1)
+    check(label + "a damaged snapshot is not offered", sub4.m[0xD002] & 2 == 0 and sub4.m[0xD002] & 1 == 1)
 
 
 def font_tiles(text):
@@ -737,6 +737,72 @@ def check_cross_console(rom):
         check(f"saved on {saved_on}, continued on {continued_on}: SAVE & QUIT comes back to a visible title "
               "on the right console", live and colors > 1 and cgb == (continued_on == "cgb"),
               f"continued {live}, {colors} colors, color flag {cgb}")
+
+
+def check_console_hops(rom):
+    """One run saved and continued several times, moving between the two kinds
+    of console. At each stop the run must come back as it was saved, behave as
+    this console needs, keep playing, and quit to a visible title."""
+    print("A run moving between consoles")
+    data = bytearray(open(rom, "rb").read())
+    paths = {"cgb": os.path.join(WORK, "hop-cgb.gb"), "dmg": os.path.join(WORK, "hop-dmg.gb")}
+    open(paths["cgb"], "wb").write(data)
+    data[0x143] = 0
+    fix_header(data)
+    open(paths["dmg"], "wb").write(data)
+    fields = list(range(0xC5C1, 0xC5CD)) + [0xC5CF, 0xC5E5, 0xC5E6, 0xC0CB]     # upgrades, weapons, run money, max HP
+
+    def quit_run(g):
+        g.press("start", after=40)
+        g.press("down", after=10)
+        g.press("a", after=600)
+        return g.m[0xFF40] == 0xC1 and len(g.screen().getcolors(256) or ()) > 1
+
+    for chain in (("dmg", "cgb", "dmg"), ("cgb", "dmg", "cgb"), ("dmg", "dmg", "cgb"), ("cgb", "cgb", "dmg")):
+        name = " > ".join(chain)
+        g = Game(paths[chain[0]], "hop")
+        start_run(g)
+        play(g, 1500)
+        until_live(g)
+        g.tick(30)
+        saved = [g.m[a] for a in fields]
+        problems = [] if quit_run(g) else [f"{chain[0]}: SAVE & QUIT did not reach the title"]
+        ram = g.stop()
+        for console in chain[1:]:
+            g = Game(paths[console], "hop")
+            g.pb.stop(save=False)
+            open(g.path + ".ram", "wb").write(ram)
+            g = Game(paths[console], "hop", fresh=False)
+            g.tick(200)
+            g.press("start", after=30)
+            back = []                                    # read once the restore has copied everything back
+            g.pb.hook_register(2, _LABELS["rr_dma"], lambda ctx: back.extend(g.m[a] for a in fields), None)
+            g.press("a", after=60)
+            g.pb.hook_deregister(2, _LABELS["rr_dma"])
+            if back != saved:
+                print("    " + console + ": " + ", ".join(f"${a:04X} {x}->{y}" for a, x, y in zip(fields, saved, back) if x != y))
+            cgb = console == "cgb"
+            loops = [0]
+            g.pb.hook_register(1, 0x58B8, lambda ctx: loops.__setitem__(0, loops[0] + 1), None)
+            play(g, 600)
+            g.pb.hook_deregister(1, 0x58B8)
+            until_live(g)
+            g.tick(30)
+            oam = [(g.m[0xFE00 + 4 * i], g.m[0xFE01 + 4 * i]) for i in range(40)]
+            expect = {"the run as saved": back == saved,
+                      "the color flag": g.m[0xD011] == cgb,
+                      "the sprite page": g.m[0xFF92] == (0xDA if cgb else 0xC0),
+                      "the DMA wait": g.m[0xFF87] == (0x50 if cgb else 0x28),
+                      "double speed": (g.m[0xFF4D] & 0x80 != 0) == cgb,
+                      "playing on": loops[0] > 250 and g.m[0xFF40] == 0xE3,
+                      "the player drawn": (g.m[0xC090], g.m[0xC091]) in oam}
+            problems += [f"{console}: {k}" for k, ok in expect.items() if not ok]
+            saved = [g.m[a] for a in fields]
+            if not quit_run(g):
+                problems.append(f"{console}: SAVE & QUIT did not reach a visible title")
+            ram = g.stop()
+        check(f"a run saved and continued {name} comes back each time as saved and as this console needs",
+              not problems, ", ".join(problems) if problems else f"{len(chain) - 1} continues")
 
 
 def check_vram_timing(rom):
@@ -1032,12 +1098,19 @@ def main():
     check_erase(rompath)
     check_pause(rompath)
     check_continue(rompath)
+    dmgpath = os.path.join(WORK, "patched-dmg.gb")
+    data = bytearray(rom)
+    data[0x143] = 0
+    fix_header(data)
+    open(dmgpath, "wb").write(data)
+    check_continue(dmgpath, label="dmg: ")
     check_glyphs(rompath)
     check_new_run_confirm(rompath)
     check_no_flash(control, rompath)
     check_menu_exits(rompath)
     check_menu_screens(rompath)
     check_cross_console(rompath)
+    check_console_hops(rompath)
     check_vram_timing(rompath)
     check_sprites(control, rompath)
     check_scroll(control, rompath)
