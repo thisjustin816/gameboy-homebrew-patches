@@ -90,6 +90,15 @@ its 16 slots, so it doesn't need MBC1's mode 1:
   does. On a GBMake 32 MiB ChisFlash cart the menu came up, but every game went to a
   white screen: the stub's wait loop, with no reset coming.
 
+  With the current stub, picking a game on that cart brings the collection's splash
+  back instead. The stub runs to its end, but the cart never switches slots, so its
+  jump to `$0100` lands on the menu ROM's entry again. That cart's CPLD ignores the
+  multicart writes with either arm bit; FlashGBX lists it under the MAX profile, but
+  it most likely runs single-game MBC5 firmware. The build still needs trying on a
+  cart that runs ChisFlash's own 16-in-1 menu. Before flashing this image onto one,
+  check that the cart's own menu launches games, and keep a dump of that menu: if
+  its launch sequence differs from the one here, the dump shows how.
+
 The image ends after slot 3. Write it from the start of the flash; slots 4 to 15 are
 left as they were.
 
