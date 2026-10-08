@@ -3,9 +3,8 @@
 Patches for Game Boy and Game Boy Color homebrew games: save systems the games
 shipped without, and fixes for bugs that never got patched.
 
-> **Claude-assisted.** The patches, tools and documentation in this repo were
-> made with the help of Claude, Anthropic's AI assistant. Each patch's README
-> says how it was tested.
+> The patches and their tools were developed with Claude. Link Sustain was
+> developed with Codex. Each README says how it was tested.
 
 Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **There are no ROMs here.** Bring your own copy of the
@@ -23,6 +22,13 @@ comes as a build script instead of an IPS file.
 | Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Legion of Evil | [`legionofevil/`](legionofevil/) | Adds a battery save for upgrades and money, a title menu (continue, new run, erase save), and a pause menu that can save a run partway through and continue it later. On a Game Boy Color or ModRetro Chromatic it runs in color at double speed with 16 selectable themes, which removes most slowdown, and keeps the player sprite from disappearing in crowds. Hits flash the player and run a rumble motor where there is one. Also fixes a strip at the top of the screen that shifted when the camera scrolled. |
 | Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. Each game runs exactly as on its own cart. |
+
+## Diagnostic tools
+
+[Link Sustain](diagnostics/link-cable-test/) is a standalone Game Boy Color
+link-cable test. It continuously exchanges packets in both directions, checks
+CRCs and sequence numbers, and keeps the first failure after sync recovers.
+Its source and tests are included; building it requires GBDK-2020.
 
 ## Applying a patch
 
