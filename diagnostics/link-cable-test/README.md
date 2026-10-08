@@ -1,103 +1,155 @@
 # Link Sustain
 
-A 32 KiB Game Boy Color ROM for sustained link-cable testing. Both consoles
-send changing packets and check the received CRC, payload, and sequence.
-Errors and the first failure stay on screen after sync recovers.
+A 32 KiB Game Boy Color diagnostic for sustained link traffic, scene-ready
+barriers, uneven CPU workloads, and a shared ball simulation. Packet errors and
+the first failure remain visible after communication recovers. v1.1+ is a
+test build. Download [link-sustain.gbc](link-sustain.gbc) for both consoles.
 
-Build link-sustain.gbc with the command below, then load it on both consoles.
-The generated ROM is excluded from Git.
+## Run a test
 
-## First run
+Load the same ROM on both consoles. Connect them, choose PEER on one and HOST
+on the other, and match TEST and CLOCK. Start the peer first, then the host
+within two seconds. The host controls the traffic rate; the peer's rate setting
+is ignored. CPU settings can differ.
 
-1. Connect the consoles. Choose PEER on one and HOST on the other with
-   Left/Right. Leave 4 BYTE BURST and NORMAL 8192 selected.
-2. Press Start on the peer, then Start on the host within two seconds.
-3. Both GOOD counters should increase. Run for at least 10 minutes, or longer
-   than the game usually takes to disconnect. A clean run has zero CRC, SEQ,
-   DATA, GAPS, OV, and UN.
-4. Photograph both screens. Press B on both to stop and keep the results.
-5. Repeat with the clock roles swapped, keeping the same cable and power supply.
-
-Select freezes the display while transfers continue; Select again refreshes it.
-Start while stopped opens the menu. Starting a new test or powering off clears
-all results. The ROM has no SRAM log. Stopping only one console causes expected
-errors on the other.
-
-## Settings
-
-Left/Right changes the clock role. Up/Down changes the host's traffic schedule;
-the peer's rate setting is ignored. Select in the menu changes clock speed.
-Match clock speed on both consoles. Two hosts or two peers cannot run a valid test.
-
-| Setting | Traffic |
+| Menu button | Setting |
 | --- | --- |
-| 1 BYTE/FRAME | One byte per display frame, about 60 bytes/s before processing overhead |
-| 4 BYTE BURST | Four bytes followed by a VBlank wait, about 240 bytes/s before processing overhead |
-| CONTINUOUS | Transfers with a minimum 2 ms idle gap and no VBlank wait |
-| NORMAL 8192 | 8,192-bit/s wire clock, about 0.98 ms per byte |
-| CGB 262144 | 262,144-bit/s wire clock, about 0.031 ms per byte |
+| Left/Right | HOST or PEER |
+| Up/Down | Host traffic rate |
+| Select | Normal or CGB fast link clock |
+| A | Normal or double-speed CPU, applied when the test starts |
+| B | Test profile |
+| Start | Start a fresh test; clears previous results |
 
-CPU speed stays normal. Packet preparation and display updates add idle time.
-Fast mode increases the wire clock; the traffic schedule stays the same.
+Start with SUSTAIN, 4 BYTE BURST, normal clock, and normal CPU. Run for at least
+10 minutes. Then run ALL STRESS at the same rate with both CPUs in double speed.
+Repeat with host and peer swapped. Photograph the results on both consoles.
+
+During a test, Left/Right changes results pages. Select holds the display while
+the test continues; Select again refreshes it. B stops and retains results.
+Start while stopped returns to settings. Results are held in RAM and disappear
+when a new test starts or power is removed. There is no SRAM log.
+
+## Profiles
+
+| Test | Behavior |
+| --- | --- |
+| SUSTAIN | Changing patterns with CRC, role, payload, and sequence checks |
+| SCENE BARRIERS | Shared simulation with a scene-ready exchange every 32 commands; the peer delays readiness for six display frames |
+| UNEQUAL LOAD | Shared simulation with three frames of CPU work every eight commands, alternating between consoles; serial interrupts stay enabled |
+| SHARED BALL | Both consoles compute ball movement and compare the resulting state hash before the host issues another update |
+| ALL STRESS | Shared simulation, scene barriers, and alternating CPU work together |
+
+The host waits for an acknowledgement with the current command type, update
+number, and state hash. A gameplay reply cannot acknowledge a scene barrier,
+even if its number matches. The peer applies each command once; repeated
+requests repeat the reply without moving the ball again. The simulation uses
+original diagnostic code and contains no game assets or patched game routines.
+
+The ball page shows local simulation state. The host can be one pending update
+ahead of the peer while waiting for a reply. The test compares completed
+updates, not the timing of the two LCDs.
+
+## Traffic and clocks
+
+| Rate | Host schedule |
+| --- | --- |
+| 1 BYTE/FRAME | One byte, then a VBlank wait |
+| 4 BYTE BURST | Four bytes, then a VBlank wait |
+| CONTINUOUS | No VBlank wait; at least a nominal 2 ms idle gap between bytes |
+
+Packet preparation and screen updates add idle time. The gap compensates for
+double-speed CPU operation. Match the link clock setting on both consoles.
+The host's CPU speed determines the effective wire clock:
+
+| Clock setting | Normal host CPU | Double-speed host CPU |
+| --- | --- | --- |
+| Normal | 8,192 bit/s | 16,384 bit/s |
+| CGB fast | 262,144 bit/s | 524,288 bit/s |
+
+CPU and clock settings are separate controls, but changing host CPU speed also
+changes wire speed. For mixed CPU tests, repeat with each console as host.
 
 ## Results
 
+The first page retains the transport counters: GOOD, CRC, SEQ, DATA, GAPS,
+receive overrun OV, and transmit underrun UN. FIRST records the first error,
+AT SEC its elapsed time, and PKT the received sequence. A sequence error shows
+WANT; a CRC error shows calculated and received CRC values. Stress failures show
+expected and received hash, command/profile, or update number in hexadecimal. GOOD includes
+sequence errors, which are counted separately. GAPS includes initial failure
+to connect and episodes with no valid packet for about two seconds.
+
+The stress page adds:
+
 | Field | Meaning |
 | --- | --- |
-| SEC | Elapsed time from the nominal Game Boy frame clock |
-| GOOD | Packets with valid CRC, role, and payload; compare both screens |
-| CRC | Candidate packets with a bad CRC or end marker |
-| SEQ | Valid packets with unexpected sequence numbers: loss, duplicates, or a restarted peer |
-| DATA | CRC-valid packets with the wrong role or payload |
-| GAPS | Episodes with no valid packet for about two seconds, or a host serial hang |
-| OV / UN | Local receive-ring overflow / transmit-buffer underrun |
-| FIRST / AT SEC / PKT | First error, elapsed time, and received sequence; a timeout shows the next expected sequence |
-| CRC x>y | Calculated versus received CRC at the first bad packet, in hex |
-| WANT | Expected sequence at the first sequence error; PKT shows the received sequence, in hex |
+| UPDATES / SCENES | Accepted simulation updates and scene barriers |
+| STATE | CRC-valid replies or requests whose simulation hash differs |
+| BARRIER | Wrong command type, reply direction, or test profile |
+| ORDER | A future command or reply skips the required update |
+| OLD ACK | Old replies ignored by the host; expected with queued packets |
+| STEP / BALL X / BALL Y | Local update number and ball position |
 
-GOOD includes packets with an unexpected sequence; SEQ counts those separately.
-A damaged start marker can appear as a sequence error or gap without a CRC error.
-GAPS includes failure to establish the initial connection. FIRST stays latched
-while the receiver searches for the next valid packet and resumes the test.
+The timing page shows MAX ACK F (host request-to-valid-reply delay), MAX GAP F
+(longest interval between valid received packets after the first), RECOVER F
+(longest such interval that included a no-sync episode), and LATE UPD (commands
+that exceeded the reply budget). F means display frames, about 16.74 ms each.
+Reply budgets are 360, 120, and 60 frames for the three traffic rates. A command
+counts as late once, even if it stays pending. These budgets are diagnostic
+thresholds, not measurements of a game's frame deadlines. Timing counters are
+16-bit frame intervals; intervals beyond about 18 minutes wrap.
 
-Keep the host role, cable orientation, power supply, settings, duration, and
-both screens' results with each run. After swapping roles, try swapping cable
-ends, then a known-good cable. Change one variable per run. Use a separate run
-for an intentional unplug/replug test.
+For a clean stress run, UPDATES must continue increasing, SCENES must increase
+in barrier profiles, and transport and stress error counters should stay zero.
+OLD ACK is expected. LATE UPD reports delays separately from corrupted data.
+A mismatch is retained even if the next correct request or reply recovers.
 
-## Packet format
+Keep the settings, duration, cable orientation, power supply, and both screens'
+results with each run. Swap clock roles, then cable ends, then try a known-good
+cable. Change one variable per run. Use a separate intentional unplug/replug run.
+Stopping only one console causes expected errors on the other.
 
-Each direction sends 16-byte packets: two-byte magic, role, 32-bit little-endian
-sequence, six pattern bytes, CRC-16/CCITT-FALSE over bytes 0-12, and an end marker.
-Patterns include 00/FF, 55/AA, walking bits, and sequence-dependent values.
-The peer re-arms in its serial interrupt. The host leaves at least 2 ms before
-the next byte to allow the peer to load its transmit register.
+## Packets
+
+Both formats use 16 bytes: two-byte magic, role, 32-bit little-endian sequence,
+six payload bytes, CRC-16/CCITT-FALSE over bytes 0-12, and an end marker. SUSTAIN
+patterns include 00/FF, 55/AA, walking bits, and sequence-dependent values.
+Stress packets mark the role's high bit and carry command type, 16-bit update
+number, 16-bit state hash, and profile. The update number wraps after 65,536
+commands. The peer re-arms in its serial interrupt.
 
 ## Build and checks
 
-Set GBDK_HOME to the GBDK-2020 installation:
-
 ```sh
-make GBDK_HOME=/path/to/gbdk
+make GBDK_HOME=/path/to/gbdk/
 python3 tests/protocol.py
+python3 tests/stress.py
 python3 tests/smoke.py
+python3 tests/features.py
 python3 tests/paired.py
+python3 tests/paired.py --stress
 ```
 
-The protocol check requires a host C compiler. It checks the known CRC vector,
-sequence boundaries, roles, every single-bit corruption of representative
-packets, and a CRC-valid incorrect payload. Smoke checks use PyBoy to run the
-ROM's menu, disconnected host/peer, display hold, stop, and restart controls.
+Use GBDK-2020 and Python with PyBoy and Pillow. Protocol and stress checks also
+need a host C compiler. They compile the cartridge's C routines, check every
+single-bit corruption of representative packets, exercise update-number wrap,
+and reject state, order, and acknowledgement-type faults. An injected missing
+type guard confirms that the scene acknowledgement check detects that defect.
 
-Paired checks require PyBoy with its Python sources and a system supporting
-multiprocessing fork. They run two copies of the ROM with clean traffic,
-corruption, and an all-FF interruption. The harness copies the installed
-emulator sources into build/ and adjusts its synthetic link timing, leaving
-the installation untouched.
+Native PyBoy checks cover boot, settings, CPU switching, results pages, stop,
+restart, a CRC-valid state mismatch and recovery, and the six-frame scene-ready
+delay. Paired checks need PyBoy's Python sources and multiprocessing fork. They
+run two ROMs with clean traffic, corruption, and an all-FF interruption. Stress
+pairs cover each profile and both normal and double CPU settings. Barrier pairs
+seed both simulations just before a scene boundary to keep the test bounded.
+The harness uses a synthetic byte link and does not establish physical serial
+timing, fast-clock operation, or cable behavior. Screenshots and JSON results
+are written under build/; test artifacts are excluded from Git. The verified
+standalone diagnostic ROM is included in this directory.
 
-These checks cover software behavior. Physical cable timing, fast clock, bit
-alignment, and loss of external clock remain unverified. The ROM also uses a
-different protocol and interrupt load from Serve Sisters. Clean results narrow
-the hardware investigation but cannot rule out game-specific timing problems.
+These tests use a different protocol and interrupt load from any commercial
+game. A clean run narrows the hardware investigation but cannot rule out a
+game-specific timing problem. Physical console checks remain to be done.
 
 The ROM, tests, and documentation were written with AI assistance (Codex).

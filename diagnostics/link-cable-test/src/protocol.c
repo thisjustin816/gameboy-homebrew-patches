@@ -21,16 +21,20 @@ uint8_t packet_pattern(uint32_t seq, uint8_t role, uint8_t index) {
     default: return (uint8_t)~(s * 37u + role * 83u);
     }
 }
-void packet_make(uint8_t *p, uint32_t seq, uint8_t role) {
+void packet_wrap(uint8_t *p, uint32_t seq, uint8_t role) {
     uint8_t i;
     uint16_t c;
     p[0] = 0xd3; p[1] = 0x91; p[2] = role;
     for (i = 0; i != 4; ++i) p[3+i] = (uint8_t)(seq >> (8u*i));
-    for (i = 0; i != 6; ++i) p[7+i] = packet_pattern(seq, role, i);
     c = packet_crc(p, 13);
     p[13] = (uint8_t)c; p[14] = (uint8_t)(c >> 8); p[15] = 0x5a;
 }
-uint8_t packet_check(const uint8_t *p, uint8_t peer_role, uint32_t *seq) {
+void packet_make(uint8_t *p, uint32_t seq, uint8_t role) {
+    uint8_t i;
+    for (i = 0; i != 6; ++i) p[7+i] = packet_pattern(seq, role, i);
+    packet_wrap(p, seq, role);
+}
+uint8_t packet_envelope(const uint8_t *p, uint8_t peer_role, uint32_t *seq) {
     uint8_t i;
     uint16_t c;
     if (p[0] != 0xd3 || p[1] != 0x91) return 1;
@@ -39,6 +43,11 @@ uint8_t packet_check(const uint8_t *p, uint8_t peer_role, uint32_t *seq) {
     if (p[2] != peer_role) return 2;
     *seq = 0;
     for (i = 0; i != 4; ++i) *seq |= (uint32_t)p[3+i] << (8u*i);
+    return 0;
+}
+uint8_t packet_check(const uint8_t *p, uint8_t peer_role, uint32_t *seq) {
+    uint8_t i, result = packet_envelope(p, peer_role, seq);
+    if (result) return result;
     for (i = 0; i != 6; ++i)
         if (p[7+i] != packet_pattern(*seq, peer_role, i)) return 3;
     return 0;

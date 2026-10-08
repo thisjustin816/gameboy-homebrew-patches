@@ -1,6 +1,8 @@
 # Never commit the game itself - only the patch that modifies it.
 *.gb
 *.gbc
+# Standalone diagnostic written for this repository.
+!diagnostics/link-cable-test/link-sustain.gbc
 # Emulator save files
 *.ram
 *.srm
