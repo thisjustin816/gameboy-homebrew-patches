@@ -1,6 +1,6 @@
 # Changelog
 
-## Screens
+## v1.2 test build
 
 - The settings are a framed list with a cursor: Up/Down pick ROLE, TEST, RATE,
   LINK or CPU, Left/Right change the value, Start begins. A note under the box

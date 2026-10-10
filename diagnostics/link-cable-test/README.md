@@ -2,7 +2,7 @@
 
 A 32 KiB Game Boy Color diagnostic for sustained link traffic, scene-ready
 barriers, uneven CPU workloads, and a shared ball simulation. Packet errors and
-the first failure remain visible after communication recovers. v1.1+ is a
+the first failure remain visible after communication recovers. v1.2 is a
 test build. Download [link-sustain.gbc](link-sustain.gbc) for both consoles.
 
 ## Run a test
@@ -185,10 +185,12 @@ and reject state, order, and acknowledgement-type faults. An injected missing
 type guard confirms that the scene acknowledgement check detects that defect.
 
 Native PyBoy checks cover boot, the settings cursor, CPU switching, results
-pages, stop, restart, a CRC-valid state mismatch and recovery, the six-frame
-scene-ready delay, and the verdict: red after an error on every page of a stopped
-run, green once a run with no error passes 10 minutes, and a stopped test that
-keeps its STOPPED row when the page changes. Paired checks need PyBoy's Python sources and multiprocessing fork. They copy
+pages, stop, restart, a CRC-valid state mismatch and recovery, and the six-frame
+scene-ready delay. They also check the verdict. It turns red after an error on
+every page of a stopped run, and an error before the first packet replaces the
+wait for the other console. It turns green once a run with no error passes 10
+minutes, and a stopped test keeps its STOPPED row when the page changes.
+Paired checks need PyBoy's Python sources and multiprocessing fork. They copy
 the sources into build/ and patch that copy, because PyBoy's pure-Python CPU
 reads an instruction that starts at $3FFE or $3FFF as $FF. They run two ROMs with clean traffic, corruption, and an all-FF interruption. Stress
 pairs cover each profile and both normal and double CPU settings. Barrier pairs

@@ -92,6 +92,22 @@ with tempfile.TemporaryDirectory() as temp:
         lib.stress_next(c.byref(host), 1); inject(host, ack=True); p.tick(12, True)
         assert get("updates", 4) == 2 and get("lost") == 0
         assert get("max_recovery", 2) >= 120 and get("first_code") == 10
+        # A real error replaces the wait for the other console and shows in the verdict.
+        press("b"); press("start")
+        configure(get, press, host=True, test=0, rate=1, cpu=0)
+        press("start"); p.tick(130, True)
+        assert get("good", 4) == 0 and get("first_code") == 5
+        assert not has_color(screen_row(p, 3), is_red)
+        bad = [0xd3, 0x91, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x5a]
+        index = get("wr")
+        for byte in bad:
+            p.memory[symbols["_ring"] + index] = byte; index = (index + 1) & 127
+        p.memory[symbols["_wr"]] = index
+        p.tick(4, True)
+        assert get("crc_errors", 4) == 1 and get("first_code") == 1
+        assert get("first_received_crc", 2) == 0 and get("first_expected_crc", 2) != 0
+        p.tick(40, True)
+        assert has_color(screen_row(p, 3), is_red)
         # A run with no error and ten minutes behind it reads PASS in green.
         press("b"); press("start")
         configure(get, press, host=True, test=0, rate=1, cpu=0)

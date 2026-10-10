@@ -47,9 +47,11 @@ def fix_rom_boundary(cpu_source):
     """
     text = cpu_source.read_text()
     broken = "elif (not self.mb.bootrom_enabled) and self.PC + 2 < 0x8000:"
+    fixed = "elif (not self.mb.bootrom_enabled) and 0x4000 <= self.PC and self.PC + 2 < 0x8000:"
     if broken in text:
-        cpu_source.write_text(text.replace(
-            broken, "elif (not self.mb.bootrom_enabled) and 0x4000 <= self.PC and self.PC + 2 < 0x8000:"))
+        cpu_source.write_text(text.replace(broken, fixed))
+    elif fixed not in text:
+        raise RuntimeError(f"{cpu_source} has changed; update fix_rom_boundary before trusting paired runs")
 
 
 def worker(role, buffer, fault, rate, profile, cpu, output):

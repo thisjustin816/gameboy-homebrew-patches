@@ -4,7 +4,7 @@ Patches for Game Boy and Game Boy Color homebrew games: save systems the games
 shipped without, and fixes for bugs that never got patched.
 
 > The patches and their tools were developed with Claude. Link Sustain was
-> developed with Codex. Each README says how it was tested.
+> developed with Codex, and its screens were redesigned with Claude. Each README says how it was tested.
 
 Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **There are no ROMs here.** Bring your own copy of the

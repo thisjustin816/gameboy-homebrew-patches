@@ -84,8 +84,11 @@ void serial_isr(void) {
     done = 1;
 }
 
+/* The NO SYNC before the first packet is the wait for the other console; a real error replaces it. */
+uint8_t first_error_open(void) { return !first_code || (first_code == 5 && !good); }
+
 void latch(uint8_t code, uint32_t seq) {
-    if (!first_code) {
+    if (first_error_open() && code != first_code) {
         first_code = code;
         first_sec = elapsed_seconds;
         first_wanted_seq = expected;
@@ -150,9 +153,11 @@ void stress_receive(const uint8_t *payload, uint32_t sequence) {
     accept_update(payload, sequence);
 }
 
+uint16_t reply_budget(void) { return rate_mode == 0 ? 360u : (rate_mode == 1 ? 120u : 60u); }
+
 void stress_service(void) {
     uint16_t now = frame_now();
-    uint16_t budget = rate_mode == 0 ? 360u : (rate_mode == 1 ? 120u : 60u);
+    uint16_t budget = reply_budget();
     if (scene_pending && (uint16_t)(now - scene_started) >= 6u) {
         scene_pending = 0; accept_update(pending_payload, pending_sequence);
     }
@@ -209,7 +214,7 @@ void receive(void) {
             : packet_check(candidate, host ? 2u : 1u, &seq);
         if (code) {
             if (code == 1) ++crc_errors; else ++data_errors;
-            if (!first_code) {
+            if (first_error_open()) {
                 first_expected_crc = packet_crc(candidate, 13);
                 first_received_crc = candidate[13] | ((uint16_t)candidate[14] << 8);
                 seq = (uint32_t)candidate[3] | ((uint32_t)candidate[4] << 8)
@@ -291,6 +296,7 @@ void row(uint8_t y, const char *s) {
 }
 /* CGB attribute bytes pick the palette; the icon and words say the same thing. */
 void row_palette(uint8_t y, uint8_t palette) {
+    if (_cpu != CGB_TYPE) return;
     memset(attrs, palette, 20);
     VBK_REG = VBK_BANK_1;
     set_bkg_tiles(0, y, 20, 1, attrs);
@@ -350,10 +356,10 @@ void put_time(uint8_t end, uint32_t seconds) {
     line[end - 1u] = '0' + (uint8_t)(seconds % 10u);
 }
 void count_row(uint8_t y, const char *label, uint32_t n) {
-    blank(); put(0, label); put_count(16, n); row(y, line);
+    blank(); put(0, label); put_right(20, n, 10); row(y, line);
 }
 void pair_row(uint8_t y, const char *a, uint32_t an, const char *b, uint32_t bn) {
-    blank(); put(0, a); put_count(8, an); put(11, b); put_count(19, bn); row(y, line);
+    blank(); put(0, a); put_count(10, an); put(11, b); put_count(20, bn); row(y, line);
 }
 
 /* The first NO SYNC while no packet has ever arrived is the wait for the other console. */
@@ -416,7 +422,7 @@ void draw_detail(uint8_t y) {
             tag = first_test_mismatch ? "TEST " : "CMD "; want = first_kind; got = first_got_kind;
         } else { tag = "STEP "; want = first_wanted_epoch; got = first_got_epoch; }
         put(0, tag); x = put_n(strlen(tag), want, 16); line[x] = '>'; put_n(x + 1u, got, 16);
-    } else if (first_code) {
+    } else if (first_code == 1) {
         put(0, "CRC "); x = put_n(4, first_expected_crc, 16); line[x] = '>';
         put_n(x + 1u, first_received_crc, 16);
     }
@@ -455,7 +461,7 @@ void draw_stress_page(void) {
         count_row(8, "STATE ERRORS", state_errors);
         count_row(9, "BAD BARRIERS", barrier_errors);
         count_row(10, "SKIPPED STEPS", epoch_errors);
-        blank(); put(0, "OLD ACKS"); put_count(16, stale_replies); put(17, "OK"); row(11, line);
+        blank(); put(0, "OLD ACKS"); put_count(17, stale_replies); put(18, "OK"); row(11, line);
         row(12, "");
         blank(); put(0, "STEP"); put_right(16, shown.epoch, 10); row(13, line);
         blank(); put(0, "BALL"); i = put_n(5, shown.x, 10); put_n(i + 1u, shown.y, 10); row(14, line);
@@ -484,7 +490,7 @@ void draw_timing_page(void) {
     }
     row(12, "");
     blank();
-    if (host) { put(0, "REPLY BUDGET"); put_count(18, rate_mode == 0 ? 360u : (rate_mode == 1 ? 120u : 60u)); put(19, "F"); }
+    if (host) { put(0, "REPLY BUDGET"); put_count(18, reply_budget()); put(19, "F"); }
     else put(0, "HOST SETS BUDGET");
     row(13, line);
     row(14, "F IS ONE FRAME 17 MS");
@@ -493,7 +499,6 @@ void draw_timing_page(void) {
 }
 
 void draw_ball_page(void) {
-    row(15, "");
     blank(); put(0, "STEP"); put_n(5, simulation.epoch, 10); row(15, line);
     draw_footer("BALL");
 }
@@ -516,7 +521,7 @@ void draw(void) {
 
 void set_cpu_speed(void) {
     uint8_t mask;
-    if (!!(KEY1_REG & 0x80u) == !!double_cpu) return;
+    if (_cpu != CGB_TYPE || !!(KEY1_REG & 0x80u) == !!double_cpu) return;
     mask = IE_REG;
     disable_interrupts(); IE_REG = 0; IF_REG = 0; P1_REG = 0x30u;
     /* Preserve the read-only speed bit when requesting the STOP switch. */
@@ -623,7 +628,7 @@ void menu(void) {
     uint8_t previous = 0, keys, pressed, r, dirty = 1, blink = 2, phase;
     HIDE_SPRITES;
     clear_screen();
-    row(0, "LINK SUSTAIN v1.1+");
+    row(0, "LINK SUSTAIN v1.2");
     draw_box(2, 8);
     while (joypad() & J_START) vsync();
     for (;;) {
