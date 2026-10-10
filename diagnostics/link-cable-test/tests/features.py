@@ -34,8 +34,10 @@ with tempfile.TemporaryDirectory() as temp:
     inject.sequence = -1
     try:
         p.tick(150, True)
+        assert get("profile") == 4 and get("page") == 0
         configure(get, press, host=False, test=1, cpu=1)
         press("start")
+        assert get("page") == 3
         assert p.memory[0xff4d] & 0x80
         assert get("running") == 1
         peer = State(); lib.stress_init(c.byref(peer))
@@ -55,12 +57,13 @@ with tempfile.TemporaryDirectory() as temp:
         p.tick(6, True)
         assert get("scene_pending") == 0 and get("simulation", 2) == 32
         assert get("barriers", 4) == 1 and get("crc_errors", 4) == 0
+        assert get("page") == 3
+        p.screen.image.save(ROOT / "build" / "ball-view.png")
+        press("right"); assert get("page") == 0
         press("right"); assert get("page") == 1
         p.screen.image.save(ROOT / "build" / "stress-results.png")
         press("right"); assert get("page") == 2
         p.screen.image.save(ROOT / "build" / "timing-results.png")
-        press("right"); assert get("page") == 3
-        p.screen.image.save(ROOT / "build" / "ball-view.png")
         press("b"); assert get("running") == 0
         assert get("first_code") == 9
         # The verdict stays on every page after a stop, in red with the FAIL text.

@@ -22,8 +22,10 @@ peer's RATE row reads SET BY HOST. CPU can differ.
 A two-line note under the box explains the row under the cursor and its current
 value. Arrows beside the value show that Left/Right change it.
 
-Start with SUSTAIN, 4 BYTE BURST, NORMAL link and NORMAL CPU. Run for at least
-10 minutes. Then run ALL STRESS at the same rate with both CPUs in DOUBLE.
+The settings open on ALL STRESS, 4 BYTE BURST, NORMAL link and NORMAL CPU, and a
+stress test opens on the BALL page. Run for at least 10 minutes. Then run it
+again at the same rate with both CPUs in DOUBLE. SUSTAIN, which opens on the LINK
+page, is the plain packet check to fall back on.
 Repeat with host and peer swapped. Photograph the results on both consoles.
 
 CPU DOUBLE takes effect when the test starts. LINK CGB FAST selects the fast

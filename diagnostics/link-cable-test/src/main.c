@@ -20,7 +20,7 @@ uint32_t timeouts, first_sec, first_seq, first_wanted_seq, elapsed_seconds, seco
 uint16_t old_time, last_good, last_draw, first_expected_crc, first_received_crc;
 uint8_t first_code, first_kind, first_got_kind, first_test_mismatch;
 uint16_t first_wanted_epoch, first_got_epoch, first_wanted_hash, first_got_hash;
-uint8_t profile, double_cpu, page, waiting, deadline_latched, scene_pending;
+uint8_t profile = 4, double_cpu, page, waiting, deadline_latched, scene_pending;
 uint8_t pending_payload[6], outgoing_payload[6];
 stress_state simulation;
 uint16_t wait_started, scene_started, last_load, max_reply, max_gap, max_recovery;
@@ -534,7 +534,9 @@ void start_test(void) {
     elapsed_seconds = second_phase = first_sec = first_seq = first_wanted_seq = 0;
     overflow = underrun = first_expected_crc = first_received_crc = 0;
     wr = rd = active = txpos = done = 0;
-    have_seq = window_len = window_pos = first_code = lost = frozen = page = 0;
+    have_seq = window_len = window_pos = first_code = lost = frozen = 0;
+    /* A stress test opens on the ball, which shows both consoles still agreeing. */
+    page = profile ? 3u : 0u;
     first_kind = first_got_kind = first_test_mismatch = 0;
     first_wanted_epoch = first_got_epoch = first_wanted_hash = first_got_hash = 0;
     waiting = deadline_latched = scene_pending = 0;

@@ -9,6 +9,7 @@
   clock, run state, CPU speed and elapsed time, then a verdict in color and
   words. FAIL names the first error and when it happened. PASS needs 10 minutes
   without an error, and a progress bar on the first page counts to it.
+- The settings default to ALL STRESS, and a stress test opens on the BALL page.
 - Counters are grouped and right-aligned. SUSTAIN no longer shows stress and
   ball pages full of zeros, and the peer shows -- for the host-only timing rows.
 - A stopped test keeps its STOPPED state and verdict when the page changes, and

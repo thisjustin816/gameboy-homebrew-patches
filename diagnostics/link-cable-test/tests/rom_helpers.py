@@ -36,7 +36,7 @@ def configure(get, press, host=True, test=0, rate=1, link=0, cpu=0):
 
 
 def configure_from_power_on(press, host=True, test=0, rate=1, link=0, cpu=0):
-    """Menu presses for a fresh boot (cursor on ROLE; HOST, SUSTAIN, 4 BYTE BURST, NORMAL).
+    """Menu presses for a fresh boot (cursor on ROLE; HOST, ALL STRESS, 4 BYTE BURST, NORMAL).
 
     The paired harness cannot read the cartridge's memory before its run ends, so it
     presses blind, in the order of the rows.
@@ -44,7 +44,7 @@ def configure_from_power_on(press, host=True, test=0, rate=1, link=0, cpu=0):
     if not host:
         press("left")
     press("down")
-    for _ in range(test):
+    for _ in range((test - 4) % 5):
         press("right")
     press("down")
     for _ in range((rate - 1) % 3):
