@@ -12,7 +12,7 @@ import importlib.util
 import tempfile
 import argparse
 import hashlib
-from rom_helpers import load_symbols, read_value
+from rom_helpers import configure_from_power_on, load_symbols, read_value
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = 384
@@ -32,7 +32,24 @@ def source_emulator():
                 target = destination / file.relative_to(source)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(file, target)
+    fix_rom_boundary(destination / "core" / "cpu.py")
     sys.path.insert(0, str(parent))
+
+
+def fix_rom_boundary(cpu_source):
+    """Make the private emulator copy fetch an instruction that starts below $4000 correctly.
+
+    PyBoy's pure-Python CPU reads the opcode of any instruction with PC + 2 >= $4000
+    from the switchable bank at PC - $4000, which is negative below $4000, so an
+    instruction that starts at $3FFE or $3FFF runs as $FF (RST $38). A cartridge with
+    code across that boundary crashes in the harness and not on hardware or in the
+    compiled emulator.
+    """
+    text = cpu_source.read_text()
+    broken = "elif (not self.mb.bootrom_enabled) and self.PC + 2 < 0x8000:"
+    if broken in text:
+        cpu_source.write_text(text.replace(
+            broken, "elif (not self.mb.bootrom_enabled) and 0x4000 <= self.PC and self.PC + 2 < 0x8000:"))
 
 
 def worker(role, buffer, fault, rate, profile, cpu, output):
@@ -61,10 +78,7 @@ def worker(role, buffer, fault, rate, profile, cpu, output):
     p.tick(150)
     def press(button):
         p.button_press(button); p.tick(8); p.button_release(button); p.tick(8)
-    if role == "peer": press("left")
-    for _ in range((rate - 1) % 3): press("up")
-    for _ in range(profile): press("b")
-    if cpu: press("a")
+    configure_from_power_on(press, host=role == "host", test=profile, rate=rate, cpu=int(bool(cpu)))
     if profile in (1, 4):
         seeded = [False]
         def before_first_update(_):

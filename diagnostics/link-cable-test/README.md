@@ -7,35 +7,69 @@ test build. Download [link-sustain.gbc](link-sustain.gbc) for both consoles.
 
 ## Run a test
 
-Load the same ROM on both consoles. Connect them, choose PEER on one and HOST
-on the other, and match TEST and CLOCK. Start the peer first, then the host
-within two seconds. The host controls the traffic rate; the peer's rate setting
-is ignored. CPU settings can differ.
+Load the same ROM on both consoles and connect them. The settings screen lists
+five rows: ROLE, TEST, RATE, LINK and CPU. Pick PEER on one console and HOST on
+the other, and give both the same TEST and LINK. Press Start on the peer first,
+then on the host within two seconds. The host controls the traffic rate; the
+peer's RATE row reads SET BY HOST. CPU can differ.
 
-| Menu button | Setting |
+| Button | Settings screen |
 | --- | --- |
-| Left/Right | HOST or PEER |
-| Up/Down | Host traffic rate |
-| Select | Normal or CGB fast link clock |
-| A | Normal or double-speed CPU, applied when the test starts |
-| B | Test profile |
+| Up/Down | Move the cursor between rows |
+| Left/Right | Change the value of the row under the cursor |
 | Start | Start a fresh test; clears previous results |
 
-Start with SUSTAIN, 4 BYTE BURST, normal clock, and normal CPU. Run for at least
-10 minutes. Then run ALL STRESS at the same rate with both CPUs in double speed.
+A two-line note under the box explains the row under the cursor and its current
+value. Arrows beside the value show that Left/Right change it.
+
+Start with SUSTAIN, 4 BYTE BURST, NORMAL link and NORMAL CPU. Run for at least
+10 minutes. Then run ALL STRESS at the same rate with both CPUs in DOUBLE.
 Repeat with host and peer swapped. Photograph the results on both consoles.
 
-During a test, Left/Right changes results pages. Select holds the display while
-the test continues; Select again refreshes it. B stops and retains results.
-Start while stopped returns to settings. Results are held in RAM and disappear
-when a new test starts or power is removed. There is no SRAM log.
+CPU DOUBLE takes effect when the test starts. LINK CGB FAST selects the fast
+serial clock.
+
+| Button | During a test |
+| --- | --- |
+| Left/Right | Change page |
+| Select | Hold the display while the test continues; again to refresh it |
+| B | Stop and keep the results |
+| Start | After a stop, return to the settings |
+
+Results are held in RAM and disappear when a new test starts or power is
+removed. There is no SRAM log.
+
+## Reading the screen
+
+The top five rows are the same on every page:
+
+| Row | Content |
+| --- | --- |
+| 1 | Role and test |
+| 2 | Traffic rate (host) and link clock |
+| 3 | RUNNING, HELD or STOPPED, CPU speed and elapsed time |
+| 4 | Verdict |
+| 5 | Note: when the first error happened, the number of late updates, or the 10-minute target |
+
+The verdict is in color and in words, with an icon in front:
+
+| Verdict | Meaning |
+| --- | --- |
+| WAITING FOR PEER / HOST (amber) | No valid packet has arrived yet |
+| NO ERRORS YET / STOPPED EARLY (amber) | Packets are arriving and nothing has failed, or the run was stopped before 10 minutes |
+| PASS: NO ERRORS (green) | At least 10 minutes with no retained error |
+| FAIL and the first error (red) | Any error was recorded, even if the link recovered |
+
+The bottom rows show the page name between arrows, four dots for the four
+pages, and the button that does something now. A bar on the first page fills
+over the 10 minutes. A stopped test keeps its verdict on every page.
 
 ## Profiles
 
 | Test | Behavior |
 | --- | --- |
 | SUSTAIN | Changing patterns with CRC, role, payload, and sequence checks |
-| SCENE BARRIERS | Shared simulation with a scene-ready exchange every 32 commands; the peer delays readiness for six display frames |
+| SCENE WAIT | Shared simulation with a scene-ready exchange every 32 commands; the peer delays readiness for six display frames |
 | UNEQUAL LOAD | Shared simulation with three frames of CPU work every eight commands, alternating between consoles; serial interrupts stay enabled |
 | SHARED BALL | Both consoles compute ball movement and compare the resulting state hash before the host issues another update |
 | ALL STRESS | Shared simulation, scene barriers, and alternating CPU work together |
@@ -72,38 +106,49 @@ changes wire speed. For mixed CPU tests, repeat with each console as host.
 
 ## Results
 
-The first page retains the transport counters: GOOD, CRC, SEQ, DATA, GAPS,
-receive overrun OV, and transmit underrun UN. FIRST records the first error,
-AT SEC its elapsed time, and PKT the received sequence. A sequence error shows
-WANT; a CRC error shows calculated and received CRC values. Stress failures show
-expected and received hash, command/profile, or update number in hexadecimal. GOOD includes
-sequence errors, which are counted separately. GAPS includes initial failure
-to connect and episodes with no valid packet for about two seconds.
+The first page (LINK) shows the transport counters: GOOD, CRC, SEQ, DATA, GAPS,
+receive overrun OV, and transmit underrun UN. FIRST names the first error and
+PKT the received sequence in hexadecimal. A sequence error shows WANT; a CRC
+error shows the calculated and received CRC values. Stress failures show
+expected and received hash, command/profile, or update number in hexadecimal.
+GOOD includes sequence errors, which are counted separately. GAPS includes the
+initial failure to connect and episodes with no valid packet for about two
+seconds. An initial wait for the other console is not a failure; the same gap
+after the first packet is. If the other console started more than two seconds
+late, the first page says STARTED LATE? REDO. Counts stop growing on screen at
+99999.
 
-The stress page adds:
+The STRESS page (profiles other than SUSTAIN; SUSTAIN shows NOT USED):
 
 | Field | Meaning |
 | --- | --- |
 | UPDATES / SCENES | Accepted simulation updates and scene barriers |
-| STATE | CRC-valid replies or requests whose simulation hash differs |
-| BARRIER | Wrong command type, reply direction, or test profile |
-| ORDER | A future command or reply skips the required update |
-| OLD ACK | Old replies ignored by the host; expected with queued packets |
-| STEP / BALL X / BALL Y | Local update number and ball position |
+| STATE ERRORS | CRC-valid replies or requests whose simulation hash differs (shown as BAD STATE in the verdict) |
+| BAD BARRIERS | Wrong command type, reply direction, or test profile |
+| SKIPPED STEPS | A future command or reply skips the required update |
+| OLD ACKS | Old replies ignored by the host; expected with queued packets |
+| STEP / BALL | Local update number and ball position |
 
-The timing page shows MAX ACK F (host request-to-valid-reply delay), MAX GAP F
-(longest interval between valid received packets after the first), RECOVER F
-(longest such interval that included a no-sync episode), and LATE UPD (commands
-that exceeded the reply budget). F means display frames, about 16.74 ms each.
-Reply budgets are 360, 120, and 60 frames for the three traffic rates. A command
-counts as late once, even if it stays pending. These budgets are diagnostic
-thresholds, not measurements of a game's frame deadlines. Timing counters are
-16-bit frame intervals; intervals beyond about 18 minutes wrap.
+The TIMING page shows the CPU speed and the wire rate, then SLOWEST REPLY
+(host request to valid reply), LONGEST GAP (longest interval between valid
+received packets after the first), RECOVERY (longest such interval that
+included a no-sync episode) and LATE UPDATES (commands that exceeded the reply
+budget). The reply rows are host-only and show -- on the peer. F means display
+frames, about 16.74 ms each. Reply budgets are 360, 120, and 60 frames for the
+three traffic rates. A command counts as late once, even if it stays pending.
+These budgets are diagnostic thresholds, not measurements of a game's frame
+deadlines. Timing counters are 16-bit frame intervals; intervals beyond about 18
+minutes wrap.
+
+The BALL page shows the local simulation in a frame and the step number. The
+host can be one pending update ahead of the peer while waiting for a reply. The
+test compares completed updates, not the timing of the two LCDs.
 
 For a clean stress run, UPDATES must continue increasing, SCENES must increase
 in barrier profiles, and transport and stress error counters should stay zero.
-OLD ACK is expected. LATE UPD reports delays separately from corrupted data.
-A mismatch is retained even if the next correct request or reply recovers.
+OLD ACKS is expected. Late updates are reported next to the verdict and do not
+fail the run, because they are delays and not corrupted data. A mismatch is
+retained even if the next correct request or reply recovers.
 
 Keep the settings, duration, cable orientation, power supply, and both screens'
 results with each run. Swap clock roles, then cable ends, then try a known-good
@@ -137,10 +182,13 @@ single-bit corruption of representative packets, exercise update-number wrap,
 and reject state, order, and acknowledgement-type faults. An injected missing
 type guard confirms that the scene acknowledgement check detects that defect.
 
-Native PyBoy checks cover boot, settings, CPU switching, results pages, stop,
-restart, a CRC-valid state mismatch and recovery, and the six-frame scene-ready
-delay. Paired checks need PyBoy's Python sources and multiprocessing fork. They
-run two ROMs with clean traffic, corruption, and an all-FF interruption. Stress
+Native PyBoy checks cover boot, the settings cursor, CPU switching, results
+pages, stop, restart, a CRC-valid state mismatch and recovery, the six-frame
+scene-ready delay, and the verdict: red after an error on every page of a stopped
+run, green once a run with no error passes 10 minutes, and a stopped test that
+keeps its STOPPED row when the page changes. Paired checks need PyBoy's Python sources and multiprocessing fork. They copy
+the sources into build/ and patch that copy, because PyBoy's pure-Python CPU
+reads an instruction that starts at $3FFE or $3FFF as $FF. They run two ROMs with clean traffic, corruption, and an all-FF interruption. Stress
 pairs cover each profile and both normal and double CPU settings. Barrier pairs
 seed both simulations just before a scene boundary to keep the test bounded.
 The harness uses a synthetic byte link and does not establish physical serial
@@ -153,3 +201,4 @@ game. A clean run narrows the hardware investigation but cannot rule out a
 game-specific timing problem. Physical console checks remain to be done.
 
 The ROM, tests, and documentation were written with AI assistance (Codex).
+The settings and results screens were redesigned with Claude.

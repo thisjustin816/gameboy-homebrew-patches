@@ -5,7 +5,7 @@ import json
 import shutil
 import tempfile
 from pyboy import PyBoy
-from rom_helpers import load_symbols, read_value
+from rom_helpers import configure, has_color, is_green, is_red, load_symbols, read_value, screen_row
 from stress_helpers import State, build_library
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,9 +34,8 @@ with tempfile.TemporaryDirectory() as temp:
     inject.sequence = -1
     try:
         p.tick(150, True)
-        press("b"); assert get("profile") == 1
-        press("a"); assert get("double_cpu") == 1
-        press("left"); press("start")
+        configure(get, press, host=False, test=1, cpu=1)
+        press("start")
         assert p.memory[0xff4d] & 0x80
         assert get("running") == 1
         peer = State(); lib.stress_init(c.byref(peer))
@@ -64,10 +63,16 @@ with tempfile.TemporaryDirectory() as temp:
         p.screen.image.save(ROOT / "build" / "ball-view.png")
         press("b"); assert get("running") == 0
         assert get("first_code") == 9
+        # The verdict stays on every page after a stop, in red with the FAIL text.
+        stopped = screen_row(p, 2, 7)
+        assert has_color(screen_row(p, 3), is_red)
+        for _ in range(4):
+            press("right")
+            assert screen_row(p, 2, 7) == stopped
+            assert has_color(screen_row(p, 3), is_red)
         press("start"); assert get("running") == 0
         p.tick(30, True)
-        press("a"); assert get("double_cpu") == 0
-        press("right"); assert get("host") == 1
+        configure(get, press, host=True, test=1, cpu=0)
         press("start")
         assert not (p.memory[0xff4d] & 0x80)
         assert get("running") == 1 and get("state_errors", 4) == 0
@@ -84,6 +89,18 @@ with tempfile.TemporaryDirectory() as temp:
         lib.stress_next(c.byref(host), 1); inject(host, ack=True); p.tick(12, True)
         assert get("updates", 4) == 2 and get("lost") == 0
         assert get("max_recovery", 2) >= 120 and get("first_code") == 10
+        # A run with no error and ten minutes behind it reads PASS in green.
+        press("b"); press("start")
+        configure(get, press, host=True, test=0, rate=1, cpu=0)
+        press("start"); p.tick(5, True)
+        assert get("running") == 1 and get("first_code") == 0
+        assert not has_color(screen_row(p, 3), is_green)
+        p.memory[symbols["_good"]:symbols["_good"] + 4] = [1, 0, 0, 0]
+        p.memory[symbols["_elapsed_seconds"]:symbols["_elapsed_seconds"] + 4] = [0x58, 0x02, 0, 0]
+        p.tick(40, True)
+        assert get("first_code") == 0
+        assert has_color(screen_row(p, 3), is_green)
+        p.screen.image.save(ROOT / "build" / "pass.png")
     finally:
         p.stop(save=False)
 ROOT.joinpath("build", "feature-results.json").write_text(json.dumps({

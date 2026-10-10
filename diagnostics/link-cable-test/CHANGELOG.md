@@ -1,5 +1,23 @@
 # Changelog
 
+## Screens
+
+- The settings are a framed list with a cursor: Up/Down pick ROLE, TEST, RATE,
+  LINK or CPU, Left/Right change the value, Start begins. A note under the box
+  explains the row and its value, and the peer's RATE row reads SET BY HOST.
+- Every results page opens with the same header: role and test, rate and link
+  clock, run state, CPU speed and elapsed time, then a verdict in color and
+  words. FAIL names the first error and when it happened. PASS needs 10 minutes
+  without an error, and a progress bar on the first page counts to it.
+- Counters are grouped and right-aligned. SUSTAIN no longer shows stress and
+  ball pages full of zeros, and the peer shows -- for the host-only timing rows.
+- A stopped test keeps its STOPPED state and verdict when the page changes, and
+  a serial hang now redraws the screen.
+- Fixed `=` and `,` drawing as blanks, and the cut-off "ACK TIMING: HOST ONLY".
+- SCENE BARRIERS is SCENE WAIT, and STATE MISMATCH is BAD STATE, to fit the verdict.
+- The paired tests patch their private PyBoy copy so an instruction that starts at
+  $3FFE or $3FFF is fetched correctly.
+
 ## v1.1+ test build
 
 - Added SCENE BARRIERS, UNEQUAL LOAD, SHARED BALL, and ALL STRESS profiles.

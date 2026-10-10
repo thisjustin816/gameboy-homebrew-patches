@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 from pyboy import PyBoy
-from rom_helpers import load_symbols, read_value
+from rom_helpers import configure, load_symbols, read_value
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT.joinpath("build").mkdir(exist_ok=True)
@@ -28,10 +28,13 @@ for role in ("host", "peer"):
         assert get("running") == 0
         if role == "host":
             p.screen.image.save(str(ROOT / "build" / "menu.png"))
-            press("select"); assert get("fast") == 1
-            press("select"); assert get("fast") == 0
-            press("up"); assert get("rate_mode") == 2
-            press("down"); assert get("rate_mode") == 1
+            press("down"); press("down")
+            press("right"); assert get("rate_mode") == 2
+            press("left"); assert get("rate_mode") == 1
+            press("down")
+            press("right"); assert get("fast") == 1
+            press("left"); assert get("fast") == 0
+            press("up"); press("up"); press("up")
         else: press("left")
         assert get("host") == (role == "host")
         press("start"); p.tick(240)
