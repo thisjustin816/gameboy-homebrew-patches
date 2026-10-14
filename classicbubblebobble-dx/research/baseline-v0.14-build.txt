@@ -1,0 +1,6 @@
+bank0 decoded 6949 mapper 92 upper edges 61 targets 54 jp hl ['0xcb7', '0x29e2', '0x80b', '0x2c7e']
+banked back edges 188 targets 24 rsts []
+palette sites fixed/banked 19 22
+host 0x1665 - 0x1fdf 2427 bytes
+wrote /workspace/scratch/classic-bubble-bobble-dx/verified-output/baseline-v0.14.gbc md5 85ad58cbabcc52e53cb250b2abaddcd6
+variant=baseline-v0.14

@@ -1,0 +1,62 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+stock   11c49d405eef2174d9c14682204bb458
+patched b093fd9aa903453c1b30703738159a49
+
+footprint
+   ok   the stock ROM is the release the patch is made for
+   ok   the patched ROM is exactly what patch.py builds from the stock one
+   ok   the 254-byte IPS patch turns the stock ROM into the patched one
+   ok   same size, MBC1+RAM+BATTERY with 8 KB of RAM in the header, and the rest of the header intact
+   ok   212 stock bytes differ, all at the patch's own sites (stray: [])
+the filler the code goes over
+   ok   zeroing bank 0 $0061-$00FF and bank 3 $771B-$7EFF changes none of 6300 frames of password entry and play
+   ok   control: breaking the VBlank vector changes 6300 of them
+the WRAM byte the patch borrows
+   ok   the stock game leaves $D780 at 0 through three runs of play (saw [0])
+the routines on their own (PyBoy)
+   ok   save_round writes b0 b1 29 0c 90 and leaves the SRAM disabled
+   ok     and returns HL = $DC80, as the instruction it replaces, with every other register and flag kept
+   ok   pf_init with round 2 saved: SLOT = 0 as stock, VGL1 from the game's encoder, pending set, SRAM disabled
+   ok     and returns A = 0 with B, C, D, E and HL kept
+   ok   pf_init with a bad checksum: clears pending, leaves SHOWN alone, SRAM disabled
+   ok   pf_step with nothing pending: returns A = PW_FLAGS and changes nothing
+   ok   pf_step pending: fills the buffer, SLOT = 3, the hand on END, pending cleared
+   ok     and returns A = PW_FLAGS with B, C, D, E and HL kept
+with nothing usable saved
+   ok   a fresh cartridge: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+   ok   SRAM full of $FF: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+   ok   random SRAM: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+   ok   a valid signature with a bad checksum: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+   ok   a bad signature: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+   ok   round 101, past the last: the PASSWORD screen opens empty and every frame and its state match stock's, typing included
+saving the round
+   ok   a new game saves round 1 with no flags: b0b10000a5
+   ok   and its first 1500 frames match stock's
+   ok   after each round cleared, the save holds the round being played: 3, 4, 5, 6
+   ok   typing a password and clearing 4 rounds looks the same as stock over 8100 frames
+   ok   KLL1 typed on the patched game starts round 3 and saves it: b0b10200a7
+   ok   after a power cycle KLL1 is on the PASSWORD screen, and A takes it to round 3
+the pre-filled PASSWORD screen
+   ok   round 2, flags 0: VGL1 (the known password VGL1), which the stock game takes as round 2 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 1, flags 8: VLT1 (the known password VLT1), which the stock game takes as round 1 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 3, flags 0: KLL1 (the known password KLL1), which the stock game takes as round 3 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 8, flags 4: JGLV, which the stock game takes as round 8 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 25, flags 4: 4LLV, which the stock game takes as round 25 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 49, flags 12: 1LTK, which the stock game takes as round 49 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 74, flags 0: XGL3, which the stock game takes as round 74 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 99, flags 8: KLTD, which the stock game takes as round 99 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 100, flags 0: KGLD, which the stock game takes as round 100 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   round 80, flags 0: GGL3, which the stock game takes as round 80 with the same flags
+   ok     and the screen, hand, marker and moving away from END match typing it on the stock game
+   ok   control: a build that leaves the hand's grid column unset looks the same but moves off from END differently
+
+all checks passed

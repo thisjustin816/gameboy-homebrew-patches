@@ -1,0 +1,39 @@
+diff --git a/libgambatte/src/cpu.cpp b/libgambatte/src/cpu.cpp
+index 0fb6199..eb0b66d 100644
+--- a/libgambatte/src/cpu.cpp
++++ b/libgambatte/src/cpu.cpp
+@@ -21,0 +22 @@
++#include <cstdio>
+@@ -519,0 +521,32 @@ void CPU::process(unsigned long const cycles) {
++            struct Trace { unsigned pc, sp, op, a, hl, bc, de, bank, logical, word; };
++            static Trace ring[8192];
++            static unsigned pos = 0;
++            static bool dumped = false;
++            if (mem_.read(0xFFF9, cycleCounter) == 0x5A) {
++                Trace t = {pc, sp, mem_.read(pc, cycleCounter), a, hl(), bc(), de(),
++                    mem_.read(0xFFD3, cycleCounter), mem_.read(0xFFD6, cycleCounter),
++                    mem_.read(sp, cycleCounter) | (mem_.read((sp+1)&0xFFFF, cycleCounter)<<8)};
++                static bool seenRead[0x4000] = {};
++                unsigned src = 0xFFFF;
++                switch (t.op) {
++                    case 0x0A: src = bc(); break;
++                    case 0x1A: src = de(); break;
++                    case 0x2A: case 0x3A: case 0x7E:
++                    case 0x46: case 0x4E: case 0x56: case 0x5E:
++                    case 0x66: case 0x6E: src = hl(); break;
++                }
++                if (t.bank == 0x40 && pc >= 0x4000 && pc < 0x8000 && src < 0x4000 && !seenRead[pc-0x4000]) {
++                    seenRead[pc-0x4000] = true;
++                    fprintf(stderr,"LOWREAD pc=%04X src=%04X op=%02X value=%02X log=%02X\n",pc,src,t.op,mem_.read(src,cycleCounter),t.logical);
++                }
++                ring[pos++ % 8192] = t;
++                if (pc == 0x4150 && t.bank == 0x40 && !dumped) {
++                    dumped = true;
++                    fprintf(stderr, "TRACE startup edge\n");
++                    for (unsigned i = pos > 8192 ? pos - 8192 : 0; i < pos; ++i) {
++                        Trace q = ring[i % 8192];
++                        fprintf(stderr,"pc=%04X sp=%04X op=%02X a=%02X hl=%04X bc=%04X de=%04X bank=%02X log=%02X top=%04X\n",
++                            q.pc,q.sp,q.op,q.a,q.hl,q.bc,q.de,q.bank,q.logical,q.word);
++                    }
++                }
++            }

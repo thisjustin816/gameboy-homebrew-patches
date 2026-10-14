@@ -1,0 +1,22 @@
+{
+  "baseline-v0.14": {
+    "md5": "85ad58cbabcc52e53cb250b2abaddcd6",
+    "sha256": "546d9ac6c56904e9690bc6acbe33ee0a1266e0e84367e8e93230e1e6c9731fb6",
+    "size": 2097152
+  },
+  "edgeprobe18b": {
+    "md5": "e6366b183a86b300bffe9916318ce090",
+    "sha256": "1b67b73cbd2e4b6e30614ccfc2544c0a10011c69766f41b94d419e059a894b69",
+    "size": 2097152
+  },
+  "control-fix": {
+    "md5": "5498e80fe9dcc7ce69e87ec5a40fc917",
+    "sha256": "e681b364b3f718ec7cad7e87a41a7df668c4d2b1527cde671366bd8df983dd4b",
+    "size": 2097152
+  },
+  "graphics-experiment": {
+    "md5": "1838fe3b3ff265302efcf904ae1b493c",
+    "sha256": "af45a5c06c5251079ebda9e0abbbad66f00062b55cb2a9e4b21590b7f1b20284",
+    "size": 2097152
+  }
+}

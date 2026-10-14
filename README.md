@@ -30,10 +30,11 @@ link-cable test. It continuously exchanges packets in both directions, checks
 CRCs and sequence numbers, and keeps the first failure after sync recovers.
 Its source and tests are included; building it requires GBDK-2020.
 
-## Paused work
+## Work in progress
 
-[Classic Bubble Bobble DX](classicbubblebobble-dx/) preserves the edgeprobe18b
-source and research handoff for later work. It is an experimental checkpoint.
+[Classic Bubble Bobble DX](classicbubblebobble-dx/) includes the edgeprobe18b
+handoff and editable diagnostic sources. BB1 round-start relocation fixes are
+under test; graphics remain incomplete.
 
 ## Applying a patch
 

@@ -1,0 +1,87 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+stock   8bbb9ba0d72548706e4e5eba1b3a9fe1
+patched f2ef3b62b6859cc89bbb8494bb4057b2
+
+footprint
+   ok   the stock ROM is the release the patch is made for
+   ok   the patched ROM is exactly what patch.py builds from the stock one
+   ok   the 617-byte IPS patch turns the stock ROM into the patched one
+   ok   256 KB, MBC1+RAM+BATTERY with 8 KB of RAM in the header, and the rest of the header intact
+   ok   the new banks are $FF apart from the patch's own code
+   ok   215 stock bytes differ, all at the patch's own sites (stray: [])
+the filler the code goes over
+   ok   filling it with $FF changes nothing over 1500 frames of play
+   ok   control: filling the VBlank vector with $FF does change the frames
+the HRAM the patch borrows
+   ok   the stock game never writes $FFA2-$FFA4 over 3000 frames of play
+the injected routines
+   ok   RST $08, LCD on: stores SCY and marks it pending; the hardware is untouched
+   ok     and every register and flag comes back as it went in, with the stack balanced
+   ok   RST $10, LCD on: the same for SCX
+   ok   RST $08, LCD off: writes SCY at once and drops any pending SCY
+   ok   RST $10, LCD off: the same for SCX
+   ok   scroll copy, LCD on: both shadows pending, hardware untouched
+   ok     it returns A = the SCY shadow, as the original does, with the flags and other registers kept
+   ok   scroll copy, LCD off: writes both at once and clears both pending bits
+   ok   VBlank copy with pending bits 0x00: SCX/SCY become 0x10/0x20, bits cleared
+   ok   VBlank copy with pending bits 0x01: SCX/SCY become 0x10/0xa2, bits cleared
+   ok   VBlank copy with pending bits 0x02: SCX/SCY become 0xa3/0x20, bits cleared
+   ok   VBlank copy with pending bits 0x03: SCX/SCY become 0xa3/0xa2, bits cleared
+tearing
+   ok   seed 1: stock changes the scroll on a visible line 49 times (lines 4-85)
+   ok   seed 1: patched does it 1 times, all from the one-time resets it leaves alone
+   ok   seed 2: stock changes the scroll on a visible line 362 times (lines 13-139)
+   ok   seed 2: patched does it 0 times, all from the one-time resets it leaves alone
+   ok   seed 3: stock changes the scroll on a visible line 58 times (lines 4-96)
+   ok   seed 3: patched does it 1 times, all from the one-time resets it leaves alone
+the scrolling transitions
+   ok   state $0B24 from SCY 0x70 SCX 0x20: same states and scroll every frame as stock (93 scroll positions); stock tears 108 times, patched 0
+   ok   state $0B5A from SCY 0x40 SCX 0x00: same states and scroll every frame as stock (100 scroll positions); stock tears 100 times, patched 0
+   ok   state $0B5A from SCY 0x00 SCX 0x20: same states and scroll every frame as stock (100 scroll positions); stock tears 116 times, patched 0
+   ok   state $0B7C from SCY 0x30 SCX 0x20: same states and scroll every frame as stock (61 scroll positions); stock tears 77 times, patched 0
+   ok   state $0BC4 from SCY 0x60 SCX 0x20: same states and scroll every frame as stock (100 scroll positions); stock tears 116 times, patched 0
+   ok   state $15D0 from SCY 0x30 SCX 0x20: same states and scroll every frame as stock (40 scroll positions); stock tears 56 times, patched 0
+   ok   state $15D0 from SCY 0x00 SCX 0x00: same states and scroll every frame as stock (64 scroll positions); stock tears 64 times, patched 0
+direct writes the patch leaves alone
+   ok   over 18000 frames, 4 of the unconverted scroll writes ran, and none landed while a deferred value was pending (clashes: [])
+power-on
+   ok   with HRAM full of $FF when the game starts, the patched title never leaves scroll 0,0, like stock
+   ok   control: without the boot clear, one frame gets scroll 255,255
+everything but the tearing is as stock
+   ok   seed 1: the game's memory and sprites match stock at each of the first 1300 VBlanks
+   ok   seed 1: over those frames, 48 pictures differ, each on or beside one of stock's 48 torn frames (stray: [])
+   ok   seed 2: the game's memory and sprites match stock at each of the first 1298 VBlanks
+   ok   seed 2: over those frames, 192 pictures differ, each on or beside one of stock's 192 torn frames (stray: [])
+   ok   seed 4: the game's memory and sprites match stock at each of the first 1300 VBlanks
+   ok   seed 4: over those frames, 22 pictures differ, each on or beside one of stock's 22 torn frames (stray: [])
+   ok   seed 6: the game's memory and sprites match stock at each of the first 681 VBlanks
+   ok   seed 6: over those frames, 18 pictures differ, each on or beside one of stock's 18 torn frames (stray: [])
+   ok   control: a patch that never applies the scroll differs from stock on 90 frames that aren't torn
+saving the last stage
+   ok   a fresh cartridge: the PASSWORD screen opens empty and looks the same as stock's
+   ok   SRAM full of $FF: the PASSWORD screen opens empty and looks the same as stock's
+   ok   random SRAM: the PASSWORD screen opens empty and looks the same as stock's
+   ok   a valid signature with a bad checksum: the PASSWORD screen opens empty and looks the same as stock's
+   ok   a new game saves stage 1's password: b0 b2 04 08 0a 24 9f
+   ok   the game leaves the SRAM disabled afterwards
+   ok   the emulator wrote an 8 KB battery file
+   ok   after a power cycle the PASSWORD screen has [4, 8, 10, 36] in its buffer and tiles ['0x24', '0x28', '0x2a', '0x19'] drawn
+   ok   and it looks exactly like typing those symbols on the stock game, cursor blink included
+   ok   control: a build that draws slot 0 at $9880 fills the buffer but puts the symbols in the wrong place
+   ok   pressing A retypes the last slot and leaves the others
+   ok   typing world 2, stage 19's password starts stage 39 (the test gave 39)
+   ok   stage 39's password is saved: b0 b2 10 12 17 12 ee
+   ok   after a power cycle it is offered on the PASSWORD screen
+   ok   and START on that screen continues from stage 39
+   ok   the copied encoder, the game's own and the hand-worked one agree on 40 stages
+   ok   pf_begin with a saved password fills the buffer and cursor, and leaves the SRAM disabled; registers and flags kept
+   ok   pf_begin with a bad checksum leaves the buffer empty and draws nothing
+   ok   pf_step draws slot 0 through the game's tile queue: address $9886, tile for symbol 4
+   ok   pf_step draws slot 3 last: address $988C, tile for symbol 36
+   ok   pf_step waits while the game's tile queue is busy
+   ok   pf_step with nothing to draw does nothing
+   ok   save_stage writes the world 3, stage 7 password (b0 b2 0c 19 0e 1e f4) and disables the SRAM
+   ok   far8 runs the routine and puts CE73 and the mapped bank back
+   ok   the stage-load trampoline saves the stage, leaves A = the world as the replaced instruction did, and keeps the bank
+
+all checks passed

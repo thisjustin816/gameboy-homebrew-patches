@@ -1,0 +1,21 @@
+{
+  "rom": "edgeprobe18b.gbc",
+  "first_failure": {
+    "frame": 2094,
+    "round_index": 2,
+    "marker": 196,
+    "scheduler": [
+      30,
+      30
+    ]
+  },
+  "scheduler_states": 4,
+  "samples": []
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_kll1.py", line 57, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_kll1.py", line 52, in main
+    assert first_failure is None, "round-start reset or startup trap reproduced"
+           ^^^^^^^^^^^^^^^^^^^^^
+AssertionError: round-start reset or startup trap reproduced

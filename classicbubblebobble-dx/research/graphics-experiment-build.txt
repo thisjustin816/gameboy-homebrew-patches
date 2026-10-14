@@ -1,0 +1,6 @@
+bank0 decoded 7675 mapper 92 upper edges 63 targets 56 jp hl ['0xcb7', '0x29e2', '0x2c7e', '0x80b']
+banked back edges 226 targets 32 rsts []
+palette sites fixed/banked 19 22
+host 0x1665 - 0x21d2 2926 bytes
+wrote /workspace/scratch/classic-bubble-bobble-dx/verified-output/graphics-experiment.gbc md5 1838fe3b3ff265302efcf904ae1b493c
+variant=graphics-experiment

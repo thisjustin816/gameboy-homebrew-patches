@@ -1,0 +1,6 @@
+{
+  "frame": 2094,
+  "stack": "0xdffd",
+  "captured": "0x41b1",
+  "actual": "0x41b1"
+}

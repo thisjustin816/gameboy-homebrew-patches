@@ -1,0 +1,84 @@
+stock   4bc8467ed91a94ba23648706b551cef5
+patched 2c4c0b9cc0c106051fb195e4ed3365d9
+
+footprint
+   ok   the stock ROM is the release the patch is made for
+   ok   the patched ROM is exactly what patch.py builds from the stock one
+   ok   the 791-byte IPS patch turns the stock ROM into the patched one
+   ok   same size, MBC5+RAM+BATTERY with 8 KB of RAM in the header, and the rest of the header intact
+   ok   626 stock bytes differ, all at the patch's own sites (stray: [])
+the space and WRAM the patch borrows
+   ok   filling bank 2 $6D1B-$7FFF and bank 0 $1665-$3FFF with $FF changes none of 2490 frames of password entry and play
+   ok   control: breaking the VBlank vector changes 2490 of them
+   ok   the stock game never changes $CEC0 or $CEC1 or $CEC2, starting from 0 or from $FF
+physics (px per frame, from round 1)
+   ok   a jump rises 42 px (stock 40), stays at the top 10 frames (stock 6) and lasts 51 frames (stock 65), as on the Master System (42, 10, about 48)
+   ok   both catch the ledge 5 tiles up and neither catches the platform 6 tiles up, so the patched jump reaches the same ledges as stock
+   ok   a jump leaves the ground 0 or 1 frames after the press, by when the game reads it (stock 2 or 3, Master System 0)
+   ok   frames within 0, 1, 2 and 4 px of the top: [10, 12, 14, 18], as the Master System's [10, 12, 14, 18] (stock [6, 10, 10, 14])
+   ok   jumping off a ledge, Bub falls 1.25 px a frame once he is below where he started, as on the Master System
+   ok   a jump locked to one side moves 1.125 holding that way, 0.75 letting go and 0.375 pushing back (stock 0.5, 0.5, 0.5)
+   ok   a jump straight up steers at 0.312 (stock 0.0)
+   ok   walking off a ledge falls 1.25 and drifts 0.5 (stock 0.5, 1.0)
+   ok   walking is stock speed, 1.0
+the shot
+   ok   normally, the shot ends 40 px right and 41 px left of Bub, as stock, after 13 frames against stock's 27
+   ok   with the longer-range item, the shot ends 70 px right and 46 px left of Bub, as stock, after 23 frames against stock's 47
+   ok   a second shot fires 22 frames after the first at the soonest, as on the Master System (stock 28)
+landing on bubbles
+   ok   a bounce carries Bub upwards on the tick he touches the bubble, where stock sinks for one more
+   ok   jumping up into a bubble with jump held never bounces off it on the way up (rise 42 px, 0 bounces)
+   ok   Bub bounces anywhere in a 23 px span over a bubble, as on the Master System (stock 13 px)
+   ok   at the top's first half, and standing, a bubble he is in pops and one 1-2 px into his feet is left (in a jump, until the top's second half bounces him off it), as on the Master System: ppppppppppppppBB, pppppppppppppp.. (stock BBBBBBBBBBBBBBBB, BBBBBBBBBBBBBBBB)
+   ok   coming down, he bounces off a bubble up to 5 px into his feet, bounces and pops it at 6-7 and pops it deeper, as on the Master System: pppppppppXXBBBBB (stock bounces at every depth: BBBBBBBBBBBBBBBB)
+trapping enemies
+   ok   seeded play traps 16 enemies in 18000 frames (stock 15)
+landing and bouncing in play
+   ok   over 6889 frames standing, in rounds 5 to 60, Bub always stands on the tile grid
+   ok   bubble and enemy bounces still start jumps: 6 (stock 170)
+on an original Game Boy
+   ok   in DMG mode round 1 starts, and a jump reaches the ledge above
+the save routines on their own
+   ok   save_round writes b0 b1 02 2d 8a and leaves the SRAM disabled
+   ok     and returns A = ROUND, as the load it replaces, with B, C, D, E and HL kept
+   ok   pf_init with a good save: the encoder fills the four letters, the cursor on END, pending set, SRAM disabled
+   ok     and it puts the live round back, with B, C, D, E and HL kept
+   ok   pf_init with a bad checksum: SLOT = 0 as stock, pending cleared, the letters left alone
+   ok   pf_step with nothing pending returns A = SLOT with B, C, D, E and HL kept
+   ok   pf_step pending: clears pending, returns A = SLOT with B, C, D, E and HL kept (the screen checks below cover the drawing)
+with nothing usable saved
+   ok   a fresh cartridge: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   SRAM full of $FF: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   random SRAM: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   a valid signature with a bad checksum: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   a bad signature: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   route 4, past the last: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   round 61, past the last: the PASSWORD screen opens empty, and it and typing on it look the same as stock
+   ok   the same with $FF in the pending flag at power-on, as a console's WRAM can hold
+saving the round
+   ok   a new game saves route 1, round 1: b0 b1 00 00 a5, and the SRAM is left disabled
+   ok   clearing it saves round 2 of the route it goes on to: b0 b1 01 01 a7
+   ok   the emulator writes an 8 KB battery file
+   ok   taking round 1's door to the second route saves that route's round 2: b0 b1 01 01 a7 (seed 5)
+   ok   GFBC typed on the patched game starts round 20 and saves it: b0 b1 00 13 b6
+   ok   after a power cycle GFBC is in the four slots, drawn, with the cursor on END, and the screen over the cursor's blink matches typing it on the stock game
+   ok   and A on END starts round 20 again
+   ok   control: a build that draws the letters one tile to the left fills the entry the same but looks different
+   ok   EXIT from the pre-filled screen, then START, begins round 1 and saves that
+the pre-filled PASSWORD screen against the known passwords
+   ok   round 1: the pre-filled screen is BBBB, and looks as it does typed on the stock game
+   ok   round 5: the pre-filled screen is GGBB, and looks as it does typed on the stock game
+   ok   round 10: the pre-filled screen is MBMB, and looks as it does typed on the stock game
+   ok   round 20: the pre-filled screen is GFBC, and looks as it does typed on the stock game
+   ok   round 30: the pre-filled screen is TRCC, and looks as it does typed on the stock game
+   ok   round 40: the pre-filled screen is NCDK, and looks as it does typed on the stock game
+   ok   round 50: the pre-filled screen is HFCC, and looks as it does typed on the stock game
+   ok   round 60: the pre-filled screen is SBFP, and looks as it does typed on the stock game
+   ok   route 1, round 38 saved: KHBD is pre-filled as typed, and A on END starts route 1, round 38
+   ok   route 3, round 9 saved: NDBL is pre-filled as typed, and A on END is turned down, as it is typed
+   ok   route 2, round 59 saved: SCFN is pre-filled as typed, and A on END is turned down, as it is typed
+   ok   route 3, round 31 saved: WCSD is pre-filled as typed, and A on END starts route 3, round 31
+   ok   route 3, round 38 saved: MDHD is pre-filled as typed, and A on END is turned down, as it is typed
+   ok   route 1, round 39 saved: LJBD is pre-filled as typed, and A on END starts route 1, round 39
+
+all checks passed

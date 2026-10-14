@@ -1,0 +1,6 @@
+bank0 decoded 6949 mapper 92 upper edges 61 targets 54 jp hl ['0xcb7', '0x29e2', '0x80b', '0x2c7e']
+banked back edges 188 targets 24 rsts []
+palette sites fixed/banked 19 22
+host 0x1665 - 0x20bd 2649 bytes
+wrote /workspace/scratch/classic-bubble-bobble-dx/verified-output/edgeprobe18b.gbc md5 e6366b183a86b300bffe9916318ce090
+variant=edgeprobe18b

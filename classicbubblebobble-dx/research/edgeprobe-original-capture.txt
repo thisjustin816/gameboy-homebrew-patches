@@ -1,0 +1,13 @@
+{
+  "frame": 2094,
+  "stack": "0xdffd",
+  "captured": "0xb1",
+  "actual": "0x41b1"
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_probe_capture.py", line 36, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_probe_capture.py", line 32, in main
+    assert captured == actual, "stack capture lost or misplaced a byte"
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: stack capture lost or misplaced a byte
