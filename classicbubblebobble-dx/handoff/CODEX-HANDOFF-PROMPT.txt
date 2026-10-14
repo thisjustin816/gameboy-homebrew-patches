@@ -1,0 +1,13 @@
+Continue Classic Bubble Bobble DX from the attached edgeprobe18b checkpoint.
+
+Read GB-DEVELOPMENT-PROJECT-INSTRUCTIONS first and load the GB development and ROM-hacking skills from agents-main.zip. Treat STATUS-HANDOFF.md as authoritative.
+
+BB2 v0.22 remains frozen. BB1 v0.14 remains promoted. Work from edgeprobe18b/v0.18b only as unpromoted diagnostic scaffolding.
+
+Latest proven result: the deterministic Stable-Retro/Gambatte KLL1 run reaches relocated startup $4150 at frame 2094 with edge-probe marker $C4 (startup_fallback). The $C1 host_context_ret discriminator did not fire, and the $C2 host_indirect_jp discriminator did not fire. Therefore those two routes are eliminated for this failure. $C200 remains 2 at the trap, so the destructive startup clear has not yet run.
+
+The probe's attempted two-word stack capture produced oddly byte-split values (00B1 / 4100); verify/fix that diagnostic before using it as evidence. The earlier simple startup probe reported SP=$DFFD with top stack word $41B1.
+
+Immediate task: identify the actual control edge that reaches relocated startup $4150 when neither host_context_ret nor host_indirect_jp is responsible. Prioritize remaining direct CALL/JP, RST $00 / host_rst00, RET/RETI, interrupt/VBlank, host-wrapper return rewriting, guest pointer corruption, or WRAM/self-modified control paths. Instrument first; do not patch the startup clear or guess-patch candidate addresses.
+
+Use Stable-Retro/Gambatte for KLL1 round-start. Once fixed, require old-fails/new-passes KLL1 round start and rerun all v0.14 title/menu/save regressions before promotion. Any promoted ROM must have matching recoverable source, hashes, and an updated handoff. Do not include ROMs, saves, emulator states, objects, or temporary build outputs in source snapshots.
