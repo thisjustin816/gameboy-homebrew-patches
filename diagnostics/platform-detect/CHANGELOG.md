@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1
+
+- Fix a blank white screen on real CGB hardware and emulators that start with
+  white palettes: the ROM now sets its own black-on-white text palette.
+- The smoke test now checks that the text contrasts with the background.
+
 ## v1.0
 
 - Add DMG, MGB, SGB, CGB, and GBA/CGB hardware reporting.

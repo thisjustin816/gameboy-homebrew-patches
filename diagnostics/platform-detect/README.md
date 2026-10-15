@@ -59,7 +59,7 @@ The ROM shows:
 Example on a CGB-like emulator:
 
 ```text
-PLATFORM DETECT 1.0
+PLATFORM DETECT 1.1
 HW: CGB
 HOST: CGB-LIKE
 72 00 5A>5A A5>A5 OK
@@ -89,13 +89,13 @@ in each, checks that neither screen is blank, and reports the FF72/FF73 values.
 PyBoy 2.8.1 follows the CGB-like path in CGB mode and the ROM skips the probe in
 DMG mode.
 
-Verified build v1.0:
+Verified build v1.1:
 
 - Size: 32 KiB
 - Header title: `PLATDETECT`
 - CGB flag: CGB compatible (`80`)
-- MD5: `084ff7cc4c81deb2e7366acd1a1990c6`
-- SHA-256: `5466638a310f657060d9a0a7f6503fa7b62a36a50487f8d5ce3b42b5de69de90`
+- MD5: `eb82e2dbe3f89d5b3f422dd7d2a2da46`
+- SHA-256: `99caa2b35d26dbbaee9dc453b9742f9155a5eff31df4a4cc71e511bb933e52d8`
 
 The binjgb verdict is supported by source inspection of current binjgb's I/O
 register table and default unknown-I/O read behavior. The ROM has not yet been

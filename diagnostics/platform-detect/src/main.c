@@ -1,4 +1,5 @@
 #include <gbdk/platform.h>
+#include <gb/cgb.h>
 #include <gb/sgb.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -77,9 +78,15 @@ void main(void) {
     for (uint8_t i = 4u; i != 0u; --i) vsync();
     DISPLAY_ON;
 
+    /* GBDK leaves the CGB palettes at their power-on white, so set them. */
+    if (_cpu == CGB_TYPE) {
+        static const palette_color_t text_palette[4] = {RGB_WHITE, RGB(21, 21, 21), RGB(10, 10, 10), RGB_BLACK};
+        set_bkg_palette(0, 1, text_palette);
+    }
+
     is_sgb = sgb_check();
 
-    printf("PLATFORM DETECT 1.0\n");
+    printf("PLATFORM DETECT 1.1\n");
     print_hardware(is_sgb);
 
     if (_cpu != CGB_TYPE) {

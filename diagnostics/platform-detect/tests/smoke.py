@@ -12,8 +12,13 @@ def boot_mode(cgb: bool) -> tuple[int, int]:
     try:
         pyboy.tick(240, True)
         image = pyboy.screen.image.convert("RGB")
-        if image.getbbox() is None:
-            raise AssertionError(f"{'CGB' if cgb else 'DMG'} screen is blank")
+        colors = sorted(image.getcolors(maxcolors=65536), reverse=True)
+        mode = "CGB" if cgb else "DMG"
+        if len(colors) < 2:
+            raise AssertionError(f"{mode} screen is a single color")
+        background, text = colors[0][1], colors[1][1]
+        if abs(sum(background) - sum(text)) < 300:
+            raise AssertionError(f"{mode} text does not contrast with the background")
         return pyboy.memory[0xFF72], pyboy.memory[0xFF73]
     finally:
         pyboy.stop(save=False)
