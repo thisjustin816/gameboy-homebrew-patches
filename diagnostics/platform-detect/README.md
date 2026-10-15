@@ -1,90 +1,104 @@
 # Platform Detect
 
-A small Game Boy Color diagnostic for distinguishing current binjgb behavior
-from CGB-compatible hardware and emulators that implement the undocumented CGB
-registers at FF72 and FF73.
+A Game Boy Color diagnostic that reports the hardware class, then looks for
+behavior a Nintendo Game Boy Color never shows. When it finds some, it says the
+host is likely an emulator and, where the pattern is known, names it.
 
-The ROM reports the normal Game Boy hardware class first, then runs a reversible
-FF72/FF73 probe only in CGB mode. It is intended for feature gating and debugging,
-not for identifying a ModRetro Chromatic by name.
-
-## What the probe does
-
-FF72 and FF73 are undocumented CGB registers whose eight bits are readable and
-writable on Game Boy Color hardware. The diagnostic saves each original value,
-writes two patterns, reads them back, and restores the original value.
-
-The current binjgb source does not implement FF72 or FF73 in its I/O register
-list. Its fallback for an unrecognized I/O read is FF. As a result, the two
-round-trip tests fail with FF reads. The ModRetro Chromatic FPGA source used by
-its compiled Game Boy core explicitly implements FF72 and FF73 as read/write
-registers, so it follows the CGB-like path.
-
-The result names are intentionally conservative:
-
-- `BINJGB-LIKE`: both registers fail both patterns and return FF.
-- `CGB-LIKE`: both registers round-trip both patterns.
-- `OTHER/QUIRK`: the CGB probe produces some other combination.
-- `N/A`: the ROM is not running in CGB mode, so the CGB-only probe is skipped.
-
-`BINJGB-LIKE` means this fingerprint, not every browser emulator. Another web
-emulator can implement the CGB registers correctly, and another emulator can
-share binjgb's missing-register behavior. If a web wrapper is under application
-control, an explicit wrapper-to-ROM signature is stronger than emulator
-fingerprinting.
-
-## Emulator tells
-
-On CGB the ROM also prints `SGB PROBE:` and `EMU:`. A real Game Boy Color never
-answers the Super Game Boy packet probe, and its FF72/FF73 registers always
-round-trip. So the ROM reports `EMU: LIKELY` when either contradiction shows up:
-the SGB probe answers on a CGB, or the FF72/FF73 verdict is not `CGB-LIKE`.
-Otherwise it reports `EMU: NO TELLS`.
-
-`NO TELLS` does not mean real hardware. An emulator that gets both checks right
-looks the same. `LIKELY` is the only conclusive result, and even it only says
-the host departs from real CGB behavior. It does not name the emulator.
-
-From manual testing, not on hardware: Press Any shows
-`HW: CGB` and `HOST: CGB-LIKE`. PlayTiles, which appears to be a modified
-binjgb-family emulator, answers the SGB probe and shows `CGB-LIKE`, so v1.1
-printed `HW: SGB1`. Since v1.2 that case reads `HW: CGB` with `EMU: LIKELY`.
-
-## Why this is useful
-
-A game can use the same probe at startup and remember the host class. Features
-that do not make sense in a binjgb web build can then be hidden or disabled. For
-example, a game that can beam a puzzle over the Game Boy Color infrared port can
-avoid offering that action when the host is `BINJGB-LIKE` while still offering
-it on compatible physical hardware.
-
-Do not use the probe to claim `Chromatic`. Public Chromatic FPGA and boot-ROM
-sources do not expose a supported cartridge-visible Chromatic identity register,
-and the boot ROM deliberately hands control to games with the standard CGB/GBA
-register conventions.
+It is meant for feature gating and debugging. A game can run the same checks at
+startup and hide features that make no sense in a web emulator, such as beaming
+over the infrared port.
 
 ## Screen
 
-The ROM shows:
-
-- detected hardware class: DMG, MGB, SGB1, SGB2, CGB, or GBA/CGB;
-- host verdict;
-- SGB probe result and an emulator-likelihood verdict, in CGB mode;
-- original FF72/FF73 values;
-- the two write/read results for each register;
-- `OK` or `FAIL` for each register.
-
-Example on a CGB-like emulator:
+This is the screen in mGBA:
 
 ```text
-PLATFORM DETECT 1.2
-HW: CGB
-HOST: CGB-LIKE
-SGB PROBE: NO
-EMU: NO TELLS
-72 00 5A>5A A5>A5 OK
-73 00 3C>3C C3>C3 OK
+ PLATFORM DETECT
+
+ EMU    LIKELY
+ MATCH  MGBA
+
+-- SYSTEM ----------
+ HW     CGB
+ HOST   OTHER
+ SGB    NO
+
+-- FF72 FF73 -------
+ 72 5A>00 A5>00  NO
+ 73 3C>00 C3>00  NO
+
+-- TELLS -----------
+ 5 OF 12 FAILED
+ 72 74 75 6C 56
+               V1.3
 ```
+
+`EMU` is `LIKELY` when any tell fails or a known emulator's signature matches,
+and `NO TELLS` otherwise. `MATCH` names the signature, or reads `UNKNOWN` (tells
+failed, no known signature), `MISTER FPGA` or `NONE`. On CGB the verdicts are
+also colored: green for what a Game Boy Color does, red for what it doesn't.
+
+`HW` is DMG, MGB, SGB1, SGB2, CGB or GBA/CGB. A CGB CPU wins over the SGB packet
+probe, because a real Super Game Boy never reports one. In DMG mode the screen
+shows `HW` and `SGB` only, with `HOST N/A` and `TELLS CGB ONLY`.
+
+`NO TELLS` is not proof of hardware. SameBoy passes every check, because it
+behaves like a CGB-E on all of them.
+
+## Host probe
+
+FF72 and FF73 are undocumented CGB registers whose eight bits are readable and
+writable. The ROM writes two patterns to each, reads them back, and restores the
+original value. `HOST` reads:
+
+- `CGB-LIKE`: both registers return both patterns.
+- `BINJGB-LIKE`: both return FF, as binjgb does, which leaves them out of its
+  register table.
+- `OTHER`: anything else. mGBA ignores the writes and returns 00.
+
+## Tells
+
+Each tell is a register read where SameBoy and Gambatte, the two cores here
+most tested against hardware, agree on the Game Boy Color value. The table lists
+the emulators that differ, measured with each one's default CGB setup.
+
+| Code | Check | Game Boy Color | Differs in |
+|---|---|---|---|
+| 72 | FF72 and FF73 round-trip | written value | mGBA, binjgb |
+| 74 | FF74 round-trips | written value | mGBA, binjgb |
+| 75 | FF75 bits 4-6 round-trip | 8F, then FF | mGBA, binjgb |
+| 6C | OPRI after writing 00 | FE | mGBA, binjgb, VBA-M |
+| 76 | PCM12 and PCM34 with the APU idle | 00 | binjgb |
+| 56 | RP after writing 00 | 2E or 3E | mGBA, binjgb, VBA-M, Gearboy, PyBoy |
+| 4F | VBK after writing 00 | FE | GameBoy-Online (from its source) |
+| 4D | KEY1 bits 1-6 | set | PyBoy |
+| 4C | KEY0 after boot | FF | PyBoy |
+| 01 | SB after writing 00 | 00 | PyBoy |
+| UN | FF4E and FF57 after writing 00 | FF | VBA-M, Gearboy |
+| SGB | SGB packet probe on a CGB | no answer | none by default |
+
+RP reads 02 on the MiSTer Game Boy core, which the ModRetro Chromatic's FPGA
+core is built from. That value counts as hardware, so it passes the 56 tell and
+shows `MATCH MISTER FPGA` when every other check passes. It comes from the
+published FPGA source and has not been run here.
+
+The ROM leaves OPRI at 00 after its check, not at the value read first. VBA-M
+reads OPRI as FF, and writing that back sets bit 0, which VBA-M takes as a
+switch to the DMG palette.
+
+## Signatures
+
+`MATCH` checks these in order:
+
+| Match | Signature |
+|---|---|
+| BINJGB | FF72/FF73 and PCM12/PCM34 read FF |
+| MGBA | FF72 keeps its old value after both writes, FF75 reads 8F after writing FF |
+| PYBOY | KEY0 reads FB |
+| GEARBOY | FF57 keeps a written value |
+| VBA-M | FF4E keeps a written value |
+| GAMBATTE | FEA0-FEA3 read 08 01 EF DE, from the fixed OAM dump its no-BIOS start loads |
+| GB ONLINE | VBK reads 00 after writing 00 (from its source) |
 
 ## Build
 
@@ -96,6 +110,11 @@ make GBDK_HOME=/path/to/gbdk
 
 The output is `platform-detect.gbc`.
 
+SDCC drops a volatile read that follows a write to the same address and reuses
+the written value, so each write and read-back runs in a small asm routine.
+Builds before 1.3 compiled the FF72/FF73 probe that way and reported `CGB-LIKE`
+on every host.
+
 ## Checks
 
 With PyBoy installed:
@@ -104,26 +123,29 @@ With PyBoy installed:
 python3 tests/smoke.py
 ```
 
-The smoke test cold-boots the ROM in forced CGB and DMG modes, renders 240 frames
-in each, checks that neither screen is blank, and reports the FF72/FF73 values.
-PyBoy 2.8.1 follows the CGB-like path in CGB mode and the ROM skips the probe in
-DMG mode.
+The smoke test cold-boots the ROM in forced CGB and DMG modes, renders 240
+frames in each, checks the text contrasts with the background, and reads the
+screen back from the tile map. In CGB mode it expects `EMU LIKELY`,
+`MATCH PYBOY` and both FF72/FF73 rows `OK`, and the 1.2 ROM fails it. In DMG
+mode it expects `HW DMG` and `CGB ONLY`.
 
-Verified build v1.2:
+The tells and signatures were measured by running a register dump ROM and this
+build headless in SameBoy 26a56bd, Gambatte-Speedrun core 5a41a68, mGBA 143adf5,
+binjgb 1662111, VBA-M f95b39e and Gearboy 4975fa5 through their libretro cores
+or C APIs, and in PyBoy 2.8.1. GameBoy-Online values come from reading its
+source. None of this has run on a Game Boy Color or a Chromatic.
+
+Verified build v1.3:
 
 - Size: 32 KiB
 - Header title: `PLATDETECT`
 - CGB flag: CGB compatible (`80`)
-- MD5: `90a3dff34c02377fa8f2c7e5b9533fae`
-- SHA-256: `286ebda47cb956438a78ef8fa0cd9b2359ee4f48c10b9da4e78ee6397c3b71c5`
-
-The binjgb verdict is supported by source inspection of current binjgb's I/O
-register table and default unknown-I/O read behavior. The ROM has not yet been
-run in binjgb or on physical hardware in this build.
+- MD5: `06c750fd9607c8285a99cc4135d52c6c`
+- SHA-256: `fd03ee5baa5224a149fe84eacb28e918c8d3dfeb81b88cda45f4990293aefb16`
 
 ## References
 
 - Pan Docs, undocumented CGB registers: https://gbdev.io/pandocs/CGB_Registers.html
+- SameBoy: https://github.com/LIJI32/SameBoy
 - binjgb emulator core: https://github.com/binji/binjgb/blob/main/src/emulator.c
 - ModRetro Chromatic FPGA core: https://github.com/ModRetro/oss-chromatic-console-fpga/blob/main/esp32t/src/rtl/EMU/CORE/gb.v
-- ModRetro Chromatic CGB boot ROM: https://github.com/ModRetro/oss-chromatic-console-fpga/blob/main/esp32t/src/rtl/EMU/CORE/BootROMs/cgb_boot.asm
