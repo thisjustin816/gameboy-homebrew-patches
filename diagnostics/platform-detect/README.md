@@ -33,6 +33,23 @@ share binjgb's missing-register behavior. If a web wrapper is under application
 control, an explicit wrapper-to-ROM signature is stronger than emulator
 fingerprinting.
 
+## Emulator tells
+
+On CGB the ROM also prints `SGB PROBE:` and `EMU:`. A real Game Boy Color never
+answers the Super Game Boy packet probe, and its FF72/FF73 registers always
+round-trip. So the ROM reports `EMU: LIKELY` when either contradiction shows up:
+the SGB probe answers on a CGB, or the FF72/FF73 verdict is not `CGB-LIKE`.
+Otherwise it reports `EMU: NO TELLS`.
+
+`NO TELLS` does not mean real hardware. An emulator that gets both checks right
+looks the same. `LIKELY` is the only conclusive result, and even it only says
+the host departs from real CGB behavior. It does not name the emulator.
+
+From manual testing, not on hardware: Press Any shows
+`HW: CGB` and `HOST: CGB-LIKE`. PlayTiles, which appears to be a modified
+binjgb-family emulator, answers the SGB probe and shows `CGB-LIKE`, so v1.1
+printed `HW: SGB1`. Since v1.2 that case reads `HW: CGB` with `EMU: LIKELY`.
+
 ## Why this is useful
 
 A game can use the same probe at startup and remember the host class. Features
@@ -52,6 +69,7 @@ The ROM shows:
 
 - detected hardware class: DMG, MGB, SGB1, SGB2, CGB, or GBA/CGB;
 - host verdict;
+- SGB probe result and an emulator-likelihood verdict, in CGB mode;
 - original FF72/FF73 values;
 - the two write/read results for each register;
 - `OK` or `FAIL` for each register.
@@ -59,9 +77,11 @@ The ROM shows:
 Example on a CGB-like emulator:
 
 ```text
-PLATFORM DETECT 1.1
+PLATFORM DETECT 1.2
 HW: CGB
 HOST: CGB-LIKE
+SGB PROBE: NO
+EMU: NO TELLS
 72 00 5A>5A A5>A5 OK
 73 00 3C>3C C3>C3 OK
 ```
@@ -89,13 +109,13 @@ in each, checks that neither screen is blank, and reports the FF72/FF73 values.
 PyBoy 2.8.1 follows the CGB-like path in CGB mode and the ROM skips the probe in
 DMG mode.
 
-Verified build v1.1:
+Verified build v1.2:
 
 - Size: 32 KiB
 - Header title: `PLATDETECT`
 - CGB flag: CGB compatible (`80`)
-- MD5: `eb82e2dbe3f89d5b3f422dd7d2a2da46`
-- SHA-256: `99caa2b35d26dbbaee9dc453b9742f9155a5eff31df4a4cc71e511bb933e52d8`
+- MD5: `90a3dff34c02377fa8f2c7e5b9533fae`
+- SHA-256: `286ebda47cb956438a78ef8fa0cd9b2359ee4f48c10b9da4e78ee6397c3b71c5`
 
 The binjgb verdict is supported by source inspection of current binjgb's I/O
 register table and default unknown-I/O read behavior. The ROM has not yet been

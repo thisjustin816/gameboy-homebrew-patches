@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2
+
+- A CGB CPU now wins over the SGB probe, so an emulator that answers the probe
+  no longer reports `HW: SGB1`.
+- On CGB, print `SGB PROBE:` and `EMU: LIKELY` or `EMU: NO TELLS`. LIKELY means
+  the SGB probe answered on a CGB or FF72/FF73 are not CGB-like.
+
 ## v1.1
 
 - Fix a blank white screen on real CGB hardware and emulators that start with

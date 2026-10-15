@@ -40,7 +40,8 @@ static void print_hex8(uint8_t value) {
 static void print_hardware(uint8_t is_sgb) {
     printf("HW: ");
 
-    if (is_sgb) {
+    /* A real SGB reports a DMG/MGB CPU, never CGB, so CGB wins over the probe. */
+    if (is_sgb && _cpu != CGB_TYPE) {
         if (_cpu == MGB_TYPE) printf("SGB2\n");
         else printf("SGB1\n");
     } else if (_cpu == DMG_TYPE) {
@@ -74,6 +75,8 @@ void main(void) {
     ProbeResult ff72;
     ProbeResult ff73;
     uint8_t binjgb_like;
+    uint8_t cgb_like;
+    uint8_t sgb_answered;
 
     for (uint8_t i = 4u; i != 0u; --i) vsync();
     DISPLAY_ON;
@@ -84,9 +87,10 @@ void main(void) {
         set_bkg_palette(0, 1, text_palette);
     }
 
-    is_sgb = sgb_check();
+    sgb_answered = sgb_check();
+    is_sgb = sgb_answered;
 
-    printf("PLATFORM DETECT 1.1\n");
+    printf("PLATFORM DETECT 1.2\n");
     print_hardware(is_sgb);
 
     if (_cpu != CGB_TYPE) {
@@ -101,9 +105,16 @@ void main(void) {
                        ff72.first == 0xFFu && ff72.second == 0xFFu &&
                        ff73.first == 0xFFu && ff73.second == 0xFFu);
 
+        cgb_like = ff72.passed && ff73.passed;
+
         if (binjgb_like) printf("HOST: BINJGB-LIKE\n");
-        else if (ff72.passed && ff73.passed) printf("HOST: CGB-LIKE\n");
+        else if (cgb_like) printf("HOST: CGB-LIKE\n");
         else printf("HOST: OTHER/QUIRK\n");
+
+        /* A real CGB never answers the SGB probe and always has read/write FF72/73. */
+        printf("SGB PROBE: %s\n", sgb_answered ? "ANSWERED" : "NO");
+        if (sgb_answered || !cgb_like) printf("EMU: LIKELY\n");
+        else printf("EMU: NO TELLS\n");
 
         print_probe("72", &ff72, 0x5Au, 0xA5u);
         print_probe("73", &ff73, 0x3Cu, 0xC3u);
