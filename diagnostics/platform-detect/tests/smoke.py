@@ -42,7 +42,7 @@ def boot_mode(cgb: bool) -> tuple[int, int]:
         if cgb:
             # PyBoy is an emulator with known tells, so the ROM must say so.
             expect(rows, "EMU    LIKELY", mode)
-            expect(rows, "MATCH  PYBOY", mode)
+            expect(rows, "NAME   PYBOY", mode)
             expect(rows, "HOST   CGB-LIKE", mode)
             expect(rows, "72 5A>5A A5>A5  OK", mode)
             expect(rows, "73 3C>3C C3>C3  OK", mode)
@@ -68,7 +68,7 @@ def main() -> int:
         print(f"FAIL: {exc}")
         return 1
 
-    print(f"PASS: CGB screen reads EMU LIKELY, MATCH PYBOY; restored FF72={cgb72:02X} FF73={cgb73:02X}")
+    print(f"PASS: CGB screen reads EMU LIKELY, NAME PYBOY; restored FF72={cgb72:02X} FF73={cgb73:02X}")
     print(f"PASS: DMG screen reads HW DMG, CGB ONLY; CGB-only reads FF72={dmg72:02X} FF73={dmg73:02X}")
     return 0
 

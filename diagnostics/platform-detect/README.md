@@ -16,7 +16,7 @@ This is the screen in mGBA:
  PLATFORM DETECT
 
  EMU    LIKELY
- MATCH  MGBA
+ NAME   MGBA
 
 -- SYSTEM ----------
  HW     CGB
@@ -30,11 +30,11 @@ This is the screen in mGBA:
 -- TELLS -----------
  5 OF 12 FAILED
  72 74 75 6C 56
-               V1.3
+               V1.4
 ```
 
 `EMU` is `LIKELY` when any tell fails or a known emulator's signature matches,
-and `NO TELLS` otherwise. `MATCH` names the signature, or reads `UNKNOWN` (tells
+and `NO TELLS` otherwise. `NAME` names the signature, or reads `UNKNOWN` (tells
 failed, no known signature), `MISTER FPGA` or `NONE`. On CGB the verdicts are
 also colored: green for what a Game Boy Color does, red for what it doesn't.
 
@@ -79,7 +79,7 @@ the emulators that differ, measured with each one's default CGB setup.
 
 RP reads 02 on the MiSTer Game Boy core, which the ModRetro Chromatic's FPGA
 core is built from. That value counts as hardware, so it passes the 56 tell and
-shows `MATCH MISTER FPGA` when every other check passes. It comes from the
+shows `NAME MISTER FPGA` when every other check passes. It comes from the
 published FPGA source and has not been run here.
 
 The ROM leaves OPRI at 00 after its check, not at the value read first. VBA-M
@@ -88,7 +88,7 @@ switch to the DMG palette.
 
 ## Signatures
 
-`MATCH` checks these in order:
+`NAME` checks these in order:
 
 | Match | Signature |
 |---|---|
@@ -126,7 +126,7 @@ python3 tests/smoke.py
 The smoke test cold-boots the ROM in forced CGB and DMG modes, renders 240
 frames in each, checks the text contrasts with the background, and reads the
 screen back from the tile map. In CGB mode it expects `EMU LIKELY`,
-`MATCH PYBOY` and both FF72/FF73 rows `OK`, and the 1.2 ROM fails it. In DMG
+`NAME PYBOY` and both FF72/FF73 rows `OK`, and the 1.2 ROM fails it. In DMG
 mode it expects `HW DMG` and `CGB ONLY`.
 
 The tells and signatures were measured by running a register dump ROM and this
@@ -135,13 +135,13 @@ binjgb 1662111, VBA-M f95b39e and Gearboy 4975fa5 through their libretro cores
 or C APIs, and in PyBoy 2.8.1. GameBoy-Online values come from reading its
 source. None of this has run on a Game Boy Color or a Chromatic.
 
-Verified build v1.3:
+Verified build v1.4:
 
 - Size: 32 KiB
 - Header title: `PLATDETECT`
 - CGB flag: CGB compatible (`80`)
-- MD5: `06c750fd9607c8285a99cc4135d52c6c`
-- SHA-256: `fd03ee5baa5224a149fe84eacb28e918c8d3dfeb81b88cda45f4990293aefb16`
+- MD5: `517a8dbdbf48d0a45dcc262e9913a959`
+- SHA-256: `c9541fa74a1b9a38a7f93cfbf6bbeb6a68235797359e1c823519cee483531b19`
 
 ## References
 

@@ -156,7 +156,7 @@ static void title(void) {
     printf("PLATFORM DETECT");
     paint(0u, 0u, 20u, PAL_TITLE);
     gotoxy(15u, 17u);
-    printf("V1.3");
+    printf("V1.4");
     paint(15u, 17u, 4u, PAL_RULE);
 }
 
@@ -279,7 +279,7 @@ void main(void) {
     /* A named emulator counts even when every tell passes. */
     likely = tells || emulator;
     field(2u, "EMU", likely ? "LIKELY" : "NO TELLS", likely ? PAL_BAD : PAL_GOOD);
-    field(3u, "MATCH", match, PAL_TEXT);
+    field(3u, "NAME", match, PAL_TEXT);
 
     rule(5u, "SYSTEM");
     field(6u, "HW", hardware_name(sgb_answered), PAL_TEXT);

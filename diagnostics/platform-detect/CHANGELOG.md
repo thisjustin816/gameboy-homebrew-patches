@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.4
+
+- Rename the `MATCH` row to `NAME`. The font draws M one pixel further left
+  than every other first letter, so the row stuck out of the left edge.
+
 ## v1.3
 
 - Fix the FF72/FF73 probe, which reported `CGB-LIKE` on every host: SDCC
