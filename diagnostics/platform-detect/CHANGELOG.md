@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0 - 2026-10-15
+## v1.0
 
 - Add DMG, MGB, SGB, CGB, and GBA/CGB hardware reporting.
 - Add reversible FF72 and FF73 CGB register probes.

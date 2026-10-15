@@ -4,7 +4,8 @@ Patches for Game Boy and Game Boy Color homebrew games: save systems the games
 shipped without, and fixes for bugs that never got patched.
 
 > The patches and their tools were developed with Claude. Link Sustain was
-> developed with Codex, and its screens were redesigned with Claude. Each README says how it was tested.
+> developed with Codex, and its screens were redesigned with Claude. Platform
+> Detect was developed with Codex and reviewed with Claude. Each README says how it was tested.
 
 Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **Commercial game ROMs are not included.** Bring your
@@ -34,8 +35,8 @@ Its source and tests are included; building it requires GBDK-2020.
 [Platform Detect](diagnostics/platform-detect/) is a standalone Game Boy / Game
 Boy Color runtime diagnostic. It reports the hardware class and, in CGB mode,
 uses reversible FF72/FF73 register probes to distinguish current binjgb-like
-behavior from CGB-compatible implementations. Its source, verified ROM, and
-handoff are included; building it requires GBDK-2020 4.5.0.
+behavior from CGB-compatible implementations. Its source and verified ROM
+are included; building it requires GBDK-2020 4.5.0.
 
 ## Applying a patch
 
