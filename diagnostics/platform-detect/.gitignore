@@ -1,0 +1,5 @@
+*.map
+*.noi
+*.sym
+build/
+__pycache__/

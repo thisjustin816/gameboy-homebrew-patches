@@ -7,11 +7,12 @@ shipped without, and fixes for bugs that never got patched.
 > developed with Codex, and its screens were redesigned with Claude. Each README says how it was tested.
 
 Each patch comes as an IPS file for a specific release of a game, plus the
-source it's built from. **There are no ROMs here.** Bring your own copy of the
-game, and check its md5 against the patch's README first. Each patch is made
-for one exact release, and the build script refuses any other. The Disney
-Afternoon Collection is the exception: it combines four ROMs into one, so it
-comes as a build script instead of an IPS file.
+source it's built from. **Commercial game ROMs are not included.** Bring your
+own copy of the game, and check its md5 against the patch's README first. Each
+patch is made for one exact release, and the build script refuses any other.
+Original standalone diagnostic ROMs are included with their matching source.
+The Disney Afternoon Collection is another exception: it combines four ROMs
+into one, so it comes as a build script instead of an IPS file.
 
 | Game | Folder | What the patch does |
 |---|---|---|
@@ -29,6 +30,12 @@ comes as a build script instead of an IPS file.
 link-cable test. It continuously exchanges packets in both directions, checks
 CRCs and sequence numbers, and keeps the first failure after sync recovers.
 Its source and tests are included; building it requires GBDK-2020.
+
+[Platform Detect](diagnostics/platform-detect/) is a standalone Game Boy / Game
+Boy Color runtime diagnostic. It reports the hardware class and, in CGB mode,
+uses reversible FF72/FF73 register probes to distinguish current binjgb-like
+behavior from CGB-compatible implementations. Its source, verified ROM, and
+handoff are included; building it requires GBDK-2020 4.5.0.
 
 ## Applying a patch
 
