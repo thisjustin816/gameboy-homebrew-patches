@@ -1,0 +1,15 @@
+Native enemy initialization versus hosted candidate before the lifetime/velocity fixes.
+native
+ANIMWRITE pc=2E11 a=15 hl=C67A de=2FEF bc=006C sp=DF8E cc=340715844
+ANIMWRITE pc=2E11 a=15 hl=C67A de=2FEF bc=006C sp=DF8E cc=340715844
+A pc=2E0B sp=DF8E op=3E a=EF hl=C67A bc=006C de=C6EF bank=00 log=00 top=299C cc=340715812
+A pc=2E0D sp=DF8E op=CE a=2F hl=C67A bc=006C de=C6EF bank=00 log=00 top=299C cc=340715820
+A pc=2E10 sp=DF8E op=1A a=2F hl=C67A bc=006C de=2FEF bank=00 log=00 top=299C cc=340715832
+A pc=2E11 sp=DF8E op=77 a=15 hl=C67A bc=006C de=2FEF bank=00 log=00 top=299C cc=340715840
+host
+ANIMWRITE pc=6E11 a=00 hl=C67A de=2FEF bc=006C sp=DF8E cc=340732040
+ANIMWRITE pc=6E11 a=00 hl=C67A de=2FEF bc=006C sp=DF8E cc=340732040
+A pc=6E0B sp=DF8E op=3E a=EF hl=C67A bc=006C de=C6EF bank=40 log=01 top=699C cc=340732008
+A pc=6E0D sp=DF8E op=CE a=2F hl=C67A bc=006C de=C6EF bank=40 log=01 top=699C cc=340732016
+A pc=6E10 sp=DF8E op=1A a=2F hl=C67A bc=006C de=2FEF bank=40 log=01 top=699C cc=340732028
+A pc=6E11 sp=DF8E op=77 a=00 hl=C67A bc=006C de=2FEF bank=40 log=01 top=699C cc=340732036

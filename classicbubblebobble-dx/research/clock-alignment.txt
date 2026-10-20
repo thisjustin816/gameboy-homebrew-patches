@@ -1,0 +1,6 @@
+Emulator-frame clock alignment; current candidate and native CGB reference
+frame native_FF93 hosted_FF93 native_C405 hosted_C405
+6036 122 121 9 9
+6037 123 122 10 9
+6038 124 123 10 10
+6100 182 181 9 9

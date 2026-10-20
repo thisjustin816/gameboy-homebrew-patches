@@ -1,0 +1,6 @@
+bank0 decoded 7753 mapper 92 upper edges 63 targets 56 jp hl ['0xcb7', '0x3f6f', '0x29e2', '0x2c7e', '0x80b']
+banked back edges 236 targets 38 rsts []
+palette sites fixed/banked 19 22
+host 0x1665 - 0x2376 3346 bytes
+wrote /workspace/scratch/classic-bubble-bobble-dx/local-output/round-entry.gbc md5 f4d6e6156cb0e35fab406ca3a90f6a21
+variant=graphics-experiment

@@ -40,64 +40,72 @@ and VLL1 password-prefill routines all pass on `control-fix`.
 
 ## Graphics checkpoint
 
-The unpromoted `graphics-experiment` variant fixes banked enemy-record reads,
-background descriptors, queue sources, death-animation pointers, and round-object
-coordinates. It also relocates the fixed object-description table at `$31AA`.
-The bank-1 cooperative task at `$4669` enters with its bank mapped; executing
-relocated fixed `$0669` there ran the timer twice per frame. `control-fix` stays
-available as the earlier control-flow comparison.
+The unpromoted `graphics-experiment` variant includes the banked graphics,
+background, object-coordinate, queue-upload, death-animation, and cooperative
+task fixes. It also relocates the enemy-chain score table, bonus-graphics table,
+and trapped-enemy lifetime/velocity tables. The round-clear VBlank entry `$1743`
+is included in fixed-bank code discovery.
 
-The current full build has MD5 `b230db90e4551f605c44e614eb685d89` and SHA-256
-`620a735d6d0aba793f53d6a80d42681846760040c37a00f46f8d8f616ccf221c`.
-The restored Classic input matches MD5 `2c4c0b9cc0c106051fb195e4ed3365d9`.
-Before further changes, the full build reproduced the preceding incremental
-candidate's MD5 `823dad4303d4e83e20cd1fd2522688c2` byte for byte. All three exact
-patched inputs are available again outside Git.
+The full build has MD5 `f4d6e6156cb0e35fab406ca3a90f6a21` and SHA-256
+`7cd6adb8b31930b16829467652f1c61343543db8ce52d81584d2b9f80f225662`. The three patched input hashes are listed in
+[README.md](README.md); generated ROMs and states remain outside Git.
 
-## Text and HUD corrections
+## Replay clocks
 
-The queue uploader at fixed `$0310` can reach mode 3 after LCD enable. The host
-worker waits for accessible VRAM before each byte in that case. For blocks of
-at most 64 bytes at LY 144-147, six VBlank lines remain and the original copy
-loop fits without per-byte polling. The worker retains the native carry and
-register postconditions. Emulator tracing confirms the ROUND tile `$18` reaches
-`$9967` in mode 0; the preceding candidate attempted the write in mode 3.
+The emulator-frame replay first diverges at frame 6037, where native player
+animation advances before the hosted animation. At emulator frame 6036, native
+`$FF93` is 122 and hosted `$FF93` is 121. At frame 6037 they are 123 and 122.
+LCD-off work and subsequent LCD enable shift the relation between emulator
+frame returns and the game's VBlank counter. This difference predates the most
+recent graphics fixes and remains visible in the original replay mode.
 
-Round-object setup at `$1977` and `$198A` reads coordinates after the selected
-bank's eight-byte layout header. Those reads execute in host ROM0 with the
-logical bank visible. Reading V0 there placed the object at the wrong position;
-a later pickup added an invalid `$40` score and changed the HUD. The object's
-description at `$19C8` also needs the relocated fixed table at `$71AA`.
+`test_gameplay_parity.py --clock game` drives input by the `$FF93` counter and
+compares snapshots at matching accumulated ticks. Both workers must start at the
+same counter value and sample the same tick labels. The latest snapshot is kept
+when emulator stepping returns twice within one game tick. A step can also span
+two game ticks; omitted labels are reported, and differing omissions fail the
+test. Emulator-frame mode remains the default for the preserved replay.
 
-## Verification and limits
+The active game-clock replay through tick 12000 compares 9695 snapshots with
+zero mismatches in LCD state, round index, timer, actors, objects, score,
+sprite-stream pointers, collision data, tile patterns, and displayed maps.
+Six tick labels are unobserved in both workers. Idle through tick 12000 compares
+9700 snapshots with zero mismatches and one shared unobserved label. The active
+run visits round indices 0, 1, and 2. This is sampled game-state parity, not a
+proof of exact wall-time or audio equivalence.
 
-KLL1 round state, title VRAM, menu transition, SRAM isolation/power cycle, and
-password prefill regressions pass on the current full build. The gameplay test
-compares LCD state, round index, timer, player/enemy records, all 15 object
-records, score, sprite-stream pointers, collision WRAM, bank-0 tile patterns,
-and both tile maps. Known descriptor pointers are normalized for relocation.
+## Enemy tables and round clears
 
-Idle input matches native from frame 2300 through 12000. Scripted movement,
-jumping, and firing match through frame 6000. The preceding checkpoint fails
-this expanded comparison from frame 2300 because its object coordinates differ.
+The game-clock input schedule exposes real data faults in the preceding ROM:
 
-Maps are compared whenever either LCD is enabled. While both displays are off,
-partial map clears can differ within a sampled frame. The strict
-`--include-lcd-off-maps` active run through 6000 preserves three such failures,
-at frames 3730, 3940, and 5876. Both LCDC values are `$67` at each failure; every
-map byte matches again before the LCD is enabled. No actor, object, score,
-timer, collision, or tile-pattern mismatch is suppressed.
+- `$2AA4` computes the enemy-chain score-table address at `$2A7C`; its high byte
+  must use the relocated `$6A` window. `$2AB3` similarly needs `$6FF6` for bonus
+  graphics. The old replay loses a native score award of 100 points.
+- Trapped-enemy initialization at `$2E0B` reads lifetime data at `$2FEF`, and
+  `$2E36` reads velocity pairs at `$2DEA`. Both need the relocated fixed window.
+  The old enemy record receives zero lifetime/velocity values where native
+  writes `$15`, `$06`, and `$FE` in the traced case.
+- Round completion selects VBlank entry `$1743` through `$FFAB`. Discovering
+  this entry relocates its `CALL $1755` and `JP $0CB8`. Without that discovery,
+  forcing a clear returns the hosted game to startup at `$41B1`, and the round
+  index never advances from 2 to 3.
 
-The longer active run through 12000 still fails, first at frame 6037. Native
-player animation advances from state 9 to 10 one frame before the hosted game;
-its animation countdown then leads by one. Later repeated continue/death cycles
-diverge further. The preceding checkpoint has the same first actor failure, and
-removing the queue guard leaves it unchanged. Trace the player animation/state
-update and its cooperative task around frames 6036-6038 before assuming a cause.
-`test_gameplay_parity.py --active --end 6200 --frames-dir /tmp/replay` retains
-those states and screenshots outside Git.
+The game-clock regression fails on the preceding ROM from tick 4844 and passes
+on the current build. The round-progress regression forces `$FFC3=0` and checks
+that rounds 4-9 start and their indices persist for another 300 emulator frames.
+Native and hosted builds pass; the build without `$1743` discovery fails to
+start round 4. These forced clears verify loader progress, not normal victories
+or frame-for-frame graphics in those later rounds.
 
-The logs, identities, screenshots, and current review are in
-[research/](research/) and [REVIEW-RENDERING.md](REVIEW-RENDERING.md). BB1 v0.14
-remains promoted; BB2 v0.22 remains frozen. Full audio, later rounds, and physical
-hardware behavior remain unverified.
+## Current verification and next work
+
+KLL1, title VRAM, menu transition, SRAM isolation/power cycle, password prefill,
+and the original active emulator-frame replay through 6000 all pass. LCD-off
+partial map clears are reported separately; strict raw-map mode remains
+available with `--include-lcd-off-maps`.
+
+The logs and compact traces are in [research/](research/), with the current
+review in [REVIEW-CLOCK.md](REVIEW-CLOCK.md). Next work is dedicated multi-enemy
+chain coverage and normal play/graphics checks in the later rounds reached by
+the forced-clear test. Audio and physical hardware remain unverified. BB1 v0.14
+stays promoted; BB2 v0.22 stays frozen. No selector or player-facing UI was added.

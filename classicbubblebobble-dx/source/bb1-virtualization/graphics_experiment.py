@@ -38,9 +38,9 @@ EXPECTED={
 # discovery before rewriting absolute references inside them.
 OBSERVED_INDIRECT_LOW_TARGETS={
  # PyBoy title/menu/password observations on the exact patched BB1 ROM.
- # $0260 is reached through RST $00 during boot. $170D/$174C/$17CF are VBlank
+ # $0260 is reached through RST $00 during boot. $170D/$1743/$174C/$17CF are VBlank
  # dispatch leaves reached through the HRAM pointer at $FFAB.
- 0x0260,0x170D,0x174C,0x17CF,
+ 0x0260,0x170D,0x1743,0x174C,0x17CF,
  # Fixed-bank entries from the object-state dispatcher table at $2C7F.
  0x2DFA,0x2D86,0x2C45,0x2BD4,0x2BA0,0x2E57,0x2E72,
  0x2BBB,0x2D78,0x2CF6,0x2D0D,0x2D20,0x2D61,0x2C9D,
@@ -1751,6 +1751,17 @@ def main():
  # Its computed base must reference the relocated table while V0 is mapped.
  assert bytes(v[0x2C76:0x2C78])==bytes.fromhex('3e2c')
  v[0x2C77]=0x6C
+
+ # Enemy-chain awards and bonus graphics use fixed-ROM tables.
+ assert bytes(v[0x2AA4:0x2AA6])==bytes.fromhex('3e2a')
+ v[0x2AA5]=0x6A
+ assert bytes(v[0x2AB3:0x2AB6])==bytes.fromhex('21f62f')
+ v[0x2AB5]=0x6F
+
+ # Trapped-enemy state reads fixed lifetime and velocity tables.
+ for pc,old,new in [(0x2E0B,0x2F,0x6F),(0x2E36,0x2D,0x6D)]:
+  assert bytes(v[pc:pc+2])==bytes([0x3E,old])
+  v[pc+1]=new
 
  # Tile-pair transfers run outside V0 so their upper-ROM sources remain visible.
  assert bytes(v[0x1755:0x1758])==bytes.fromhex('21abff')

@@ -87,5 +87,25 @@ writes and score clearing.
 `rendering-active-12000.txt` fails at frame 6037, first in player animation/state.
 The preceding checkpoint's focused actor comparison has the same first failure
 in `rendering-old-long-actors.txt`. `rendering-without-guard-long.txt` shows that
-removing the queue guard leaves that failure in place. This is an unpromoted
-checkpoint; the longer active divergence still needs investigation.
+removing the queue guard leaves that failure in place. That checkpoint is unpromoted; the clock analysis below supersedes its
+unexplained longer-replay failure.
+
+## Game clocks, enemy tables, and round progress
+
+`clock-alignment.txt` records the one-tick `$FF93` difference at the original
+frame-6037 failure. `clock-emulator-6200.txt` preserves that replay on the current
+ROM; emulator-frame mode is still available. `clock-active-12000.txt` and
+`clock-idle-12000.txt` use game-counter input timing, report omitted tick labels,
+and compare all observed fields exactly apart from LCD-off map clears.
+
+`clock-old-active-12000.txt` fails on `ba36320` with incorrect score and trapped
+enemy fields. `clock-enemy-trace.txt` shows the native lifetime read returning
+`$15` and the preceding hosted read returning zero. The full instruction trace
+also identifies the fixed score and bonus-graphics tables. Current input and
+output identities are in `build-identities.json` and `clock-build.txt`.
+
+`clock-round-progress-old.txt` fails without fixed entry `$1743`, while
+`clock-round-progress-new.txt` reaches round indices 3-8 in both emulators and
+checks persistence after each forced clear. The `clock-test_*` logs cover the
+inherited regressions. No normal victory, later-round graphics, audio, or
+hardware result is implied by the forced-clear test.

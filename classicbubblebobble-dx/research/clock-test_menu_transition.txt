@@ -1,0 +1,4 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+frame=715 pc=$429E sp=$DFFB
+screen_rgb_md5=e34db805a4d155f0da472d410fe3e77a
+expected_screen_rgb_md5=e34db805a4d155f0da472d410fe3e77a

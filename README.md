@@ -34,7 +34,7 @@ Its source and tests are included; building it requires GBDK-2020.
 
 [Classic Bubble Bobble DX](classicbubblebobble-dx/) includes the edgeprobe18b
 handoff and editable diagnostic sources. BB1 round-start relocation fixes are
-under test; longer active replays still have state differences.
+under test; sampled game-clock parity and forced round-clear progress pass.
 
 ## Applying a patch
 
