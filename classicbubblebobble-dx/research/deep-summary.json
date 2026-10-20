@@ -1,0 +1,39 @@
+{
+  "md5": "e6dfd165860657dc4457dacfa519d47d",
+  "sha256": "2217443f7f631cdeaa5f23c308654648ebad24f893508b45d360af31db44e369",
+  "round_count": 100,
+  "ticks_per_round": 1200,
+  "observed_samples": 120079,
+  "shared_omitted_labels": 21,
+  "lcd_off_map_mismatches": 22,
+  "mismatch_samples": 0,
+  "inline_dispatch_tables": [
+    {
+      "bank": 2,
+      "instruction": "4005",
+      "handlers": 14
+    },
+    {
+      "bank": 2,
+      "instruction": "5644",
+      "handlers": 5
+    },
+    {
+      "bank": 2,
+      "instruction": "5D87",
+      "handlers": 15
+    },
+    {
+      "bank": 2,
+      "instruction": "654A",
+      "handlers": 4
+    },
+    {
+      "bank": 2,
+      "instruction": "745F",
+      "handlers": 9
+    }
+  ],
+  "fixed_data_bank": "58",
+  "fixed_data_matches_input": true
+}

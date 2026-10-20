@@ -7,6 +7,7 @@ import hashlib, subprocess, re, sys
 BANK=0x4000
 BASE=0x40
 V0_PHYS=BASE
+FIXED_DATA_PHYS=0x58
 HOST_ORG=0x1665
 HOST_LIMIT=0x3E00
 SHADOW_6FD1=0x7E00
@@ -32,7 +33,7 @@ EXPECTED={
  'bb2':'f2ef3b62b6859cc89bbb8494bb4057b2',
 }
 
-# Low (<$4000) JP-HL targets observed on the exact patched BB2 ROM while
+# Low (<$4000) JP-HL targets observed on the exact patched BB1 ROM while
 # exercising title idle, new-game and password flows. collect_indirect_targets.py
 # regenerates the evidence. These are code entry points, so seed recursive CFG
 # discovery before rewriting absolute references inside them.
@@ -40,7 +41,7 @@ OBSERVED_INDIRECT_LOW_TARGETS={
  # PyBoy title/menu/password observations on the exact patched BB1 ROM.
  # $0260 is reached through RST $00 during boot. $170D/$1743/$174C/$17CF are VBlank
  # dispatch leaves reached through the HRAM pointer at $FFAB.
- 0x0260,0x170D,0x1743,0x174C,0x17CF,
+ 0x0260,0x02B8,0x170D,0x1743,0x174C,0x17CF,
  # Fixed-bank entries from the object-state dispatcher table at $2C7F.
  0x2DFA,0x2D86,0x2C45,0x2BD4,0x2BA0,0x2E57,0x2E72,
  0x2BBB,0x2D78,0x2CF6,0x2D0D,0x2D20,0x2D61,0x2C9D,
@@ -49,17 +50,13 @@ OBSERVED_INDIRECT_LOW_TARGETS={
 # Cooperative task entry PCs initialized by fixed-bank scheduler setup. These
 # are resumed from saved stacks rather than reached by a normal CALL/JP, so
 # seed them explicitly to discover their fixed->upper edges.
-TASK_FIXED_ENTRY_SEEDS={0x054A,0x0D27,0x1C92,0x298A,0x21A1}
+TASK_FIXED_ENTRY_SEEDS={0x054A,0x0D27,0x1C92,0x298A,0x21A1,0x3BBE,0x3C16}
 
 
 
-# Banked routines reached through BB2's two-level $2E6E dispatcher are not
-# visible to a direct-call-only CFG seed pass. These entry points were observed
-# from the exact patched ROM's bank-7 title/menu dispatch tables ($7308 root)
-# while exercising title idle and the Start/Password transition. Seeding them
-# lets banked_edges() discover and rewrite their calls back into fixed bank 0
-# (for example $7367 -> $2C53), instead of accidentally calling Classic's
-# physical MBC5 bank 0.
+# Computed banked calls need explicit roots for recursive discovery. These
+# supported-ROM entries cover title/menu, save helpers, cooperative tasks,
+# enemies, and bonus rooms. Their fixed-bank calls use host trampolines.
 OBSERVED_BANKED_ENTRY_POINTS={
  # Direct fixed->upper calls whose preceding mapper selection is statically
  # immediate on the exact patched BB1 ROM. These seed recursive upper-bank CFG.
@@ -75,8 +72,12 @@ OBSERVED_BANKED_ENTRY_POINTS={
  (3,0x7800),
  # Cooperative task initialized at bank-1 $4669.
  (1,0x4669),
+ # Bonus-room task entries from fixed-ROM table $3CD6, selected in bank 6.
+ (6,0x45B8),(6,0x493F),(6,0x4C1D),(6,0x494C),
  # Bank-1 special-object and projectile dispatchers used in later rounds.
- (1,0x5CCF),(1,0x55A0),
+ (1,0x5CCF),(1,0x55A0),(1,0x5868),
+ # Game-over continuation used after a failed final bonus-room retry.
+ (1,0x6077),
  # Bank-1 enemy-state handlers from the fixed-ROM table at $29E3.
  (1,0x5278),(1,0x54D7),(1,0x5473),(1,0x48DD),
  (1,0x5356),(1,0x4FD0),(1,0x4D2E),(1,0x4983),
@@ -152,6 +153,25 @@ def decode_bank(b,bank,addr):
   d=b[off+1];d=d-256 if d>=128 else d;arg=(addr+2+d)&0xffff
  return op,l,arg
 
+def inline_dispatch_targets(b,bank,pc):
+ # Adjacent word tables follow LD HL,table / ADD A,L / LD L,A / carry /
+ # LD A,[HL+] / LD H,[HL] / LD L,A / JP HL. The first handler starts after
+ # the table, giving its checked extent without decoding its data as code.
+ off=bank*BANK+pc-0x4000
+ if b[off:off+1]!=b'\x21' or b[off+3:off+12]!=bytes.fromhex('856f3001242a666fe9'):
+  return ()
+ table=int.from_bytes(b[off+1:off+3],'little')
+ if table!=pc+12:return ()
+ start=off+12
+ end=int.from_bytes(b[start:start+2],'little')
+ if not table+2<=end<=min(table+0x100,0x8000) or (end-table)%2:
+  raise ValueError(f'invalid inline dispatch table at {bank}:${table:04X}')
+ targets=tuple(int.from_bytes(b[i:i+2],'little') for i in range(start,start+end-table,2))
+ if not all(end<=target<0x8000 for target in targets):
+  raise ValueError(f'invalid inline dispatch target at {bank}:${table:04X}')
+ return targets
+
+
 def banked_edges(b):
  seeds=set(OBSERVED_BANKED_ENTRY_POINTS)
  # Add upper entry points that occur soon after an immediate mapper selection.
@@ -178,6 +198,7 @@ def banked_edges(b):
    if not 0x4000<=pc<0x8000:continue
    while 0x4000<=pc<0x8000 and pc not in seen:
     op,l,arg=decode_bank(b,bank,pc); seen.add(pc); nxt=pc+l
+    if op==0x21:q.extend(inline_dispatch_targets(b,bank,pc))
     if op in UNDEF:break
     if op in CALLS:
      if arg<0x4000:edges.append((bank,pc,op,arg))
@@ -207,6 +228,7 @@ DEF H_LOG    EQU $FFD6
 DEF H_IRQ    EQU $FFF5
 DEF H_TMP    EQU $FFF6
 DEF V0       EQU $40
+DEF D0       EQU @FIXED_DATA_BANK@
 
 SECTION "rst00", ROM0[$0000]
     jp host_rst00
@@ -243,12 +265,11 @@ host_launcher::
     xor a
     ld [MBC5_HI],a
     ; Collection SRAM partition: Classic=0, BB1=1, BB2=2, bank 3 spare.
-    ; BB2's own save patch only toggles SRAM enable at $0000 and never writes
-    ; the MBC1 RAM-bank range, so selecting MBC5 RAM bank 2 here isolates all
+    ; BB1's save patch only toggles SRAM enable at $0000 and never writes
+    ; the MBC1 RAM-bank range, so selecting MBC5 RAM bank 1 here isolates all
     ; of its $A000 accesses without changing the save code.
     ld a,$01
     ld [MBC5_RAM],a
-    ; Recreate the launcher's previous A/F state before entering BB2.
     xor a
     inc a
     ldh [H_LOG],a
@@ -271,7 +292,9 @@ host_rst38::
     ld a,[hl+]
     ld h,[hl]
     ld l,a
-    jp host_indirect_jp
+    ; RST $38 owns a real continuation; RST $08 contributes the discardable
+    ; dispatch frame consumed by host_indirect_jp.
+    rst $08
 
 host_after_hram_clear::
     ; BB1 clears $FF8A-$FFFC during startup, which includes the host mapper
@@ -334,10 +357,7 @@ host_irq_return::
     pop af
     reti
 
-; A is the value written to the emulated MBC1 ROM-bank register. Keep this
-; separate from BB2's own $CE73 bookkeeping: the game makes temporary mapper
-; switches (notably in VBlank) without changing $CE73, then uses $CE73 to restore.
-; LDH and RET preserve flags.
+; A is the emulated MBC1 ROM-bank value; LDH and RET preserve native flags.
 host_set_bank::
     ldh [H_LOG],a
     ret
@@ -352,8 +372,8 @@ host_map_physical_a::
 ; Convert logical MBC1 bank A to the BB1 physical MBC5 bank and map it.
 ; Caller saves AF when flags/A matter.
 host_map_logical_a::
-    ; BB2 is a 256 KiB / 16-bank MBC1 image: only the low four ROM-bank
-    ; bits are physically decoded. Preserve MBC1's bank-0 -> bank-1 alias.
+    ; BB1 has eight ROM banks, so only the low three bank bits are decoded.
+    ; Preserve MBC1's bank-0 -> bank-1 alias.
     and $07
     jr nz,.nonzero
     inc a
@@ -434,7 +454,7 @@ host_jp_hl:
     jp hl
 
 ; Map the currently emulated MBC1 upper ROM bank while host code is executing
-; from real MBC5 bank 0. Unlike relocated BB2 fixed code, host code can safely
+; from real MBC5 bank 0. Unlike relocated BB1 fixed code, host code can safely
 ; see the $4000-$7FFF data window while doing so.
 host_map_current_logical::
     ldh a,[H_LOG]
@@ -1372,7 +1392,7 @@ host_bb1_sprite_pair::
     jp $4CB8
 ''')
  lines.append(r'''
-; The two 64-byte transfer paths consume bank-3 graphics and descriptors.
+; The 64-byte transfers use bank-3 graphics and fixed or banked descriptors.
 host_bb1_graphics64::
     ld a,$03
     ldh [H_LOG],a
@@ -1398,12 +1418,7 @@ host_bb1_graphics64_stream::
     ld c,[hl]
     inc l
     ld b,[hl]
-    ld a,[bc]
-    ld e,a
-    inc bc
-    ld a,[bc]
-    ld d,a
-    inc bc
+    call host_bb1_graphics_descriptor_bc
     ld [hl],b
     dec l
     ld [hl],c
@@ -1420,6 +1435,27 @@ host_bb1_graphics64_stream::
     ld l,c
     ld h,b
 host_bb1_graphics64_copy::
+    bit 7,d
+    jr nz,.direct
+    bit 6,d
+    jr nz,.direct
+    set 6,d
+    ld a,D0
+    call host_map_physical_a
+    call .block
+    res 6,d
+    jr .done
+.direct:
+    call .block
+.done:
+    ld a,$01
+    ldh [H_LOG],a
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    jp $4CB8
+.block:
     ld b,$40
 .wait:
     ldh a,[$FF44]
@@ -1431,13 +1467,27 @@ host_bb1_graphics64_copy::
     inc de
     dec b
     jr nz,.copy
-    ld a,$01
-    ldh [H_LOG],a
-    push af
-    ld a,V0
+    ret
+host_bb1_graphics_descriptor_bc::
+    bit 7,b
+    jr nz,.read
+    bit 6,b
+    jr nz,.read
+    set 6,b
+    ld a,D0
     call host_map_physical_a
-    pop af
-    jp $4CB8
+    call .read
+    res 6,b
+    ld a,$03
+    jp host_map_logical_a
+.read:
+    ld a,[bc]
+    ld e,a
+    inc bc
+    ld a,[bc]
+    ld d,a
+    inc bc
+    ret
 ''')
  lines.append(r'''
 ; Read the enemy pointer table and records while bank 3 is physically visible.
@@ -1531,6 +1581,9 @@ host_bb1_background_swap::
     call host_bb1_background_read_bc
     swap a
     ret
+host_bb1_background_emit_low::
+    call host_bb1_background_read_bc
+    jp $7846
 host_bb1_background_low::
     call host_bb1_background_read_bc
     and $0F
@@ -1555,6 +1608,35 @@ host_bb1_background_read_bc::
     ret
 ''')
  lines.append(r'''
+; Multirow queue sources may be fixed ROM, selected-upper ROM, or RAM.
+host_bb1_multirow_byte::
+    push af
+    bit 7,d
+    jr nz,.ram
+    bit 6,d
+    jr z,.fixed
+    call host_map_current_logical
+    pop af
+    ld a,[de]
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    jr .store
+.fixed:
+    set 6,d
+    pop af
+    ld a,[de]
+    res 6,d
+    jr .store
+.ram:
+    pop af
+    ld a,[de]
+.store:
+    ld [hl+],a
+    inc de
+    ret
+
 ; Fixed queue callers can also enqueue selected-upper-ROM graphics.
 host_bb1_queue_copy::
     ldh a,[$FF8F]
@@ -1663,7 +1745,7 @@ host_bb1_object_coordinates::
     ret
 ''')
  lines.append('\nhost_end::\n')
- return ''.join(lines)
+ return ''.join(lines).replace('@FIXED_DATA_BANK@',f'${FIXED_DATA_PHYS:02X}')
 
 def parse_sym(p):
  out={}
@@ -1696,7 +1778,7 @@ def main():
  assert mapper==mapper0
  palette_regs={0x47:0xE7,0x48:0xEF,0x49:0xF7}  # RST $20/$28/$30
  fixed_palette_sites=[(pc,bb1[pc+1]) for pc in sorted(seen)
-                      if bb1[pc]==0xE0 and pc+1<len(bb2) and bb1[pc+1] in palette_regs]
+                      if bb1[pc]==0xE0 and pc+1<len(bb1) and bb1[pc+1] in palette_regs]
  banked_palette_sites=[]
  for bank,pcs in seen_b.items():
   for pc in sorted(pcs):
@@ -1718,6 +1800,11 @@ def main():
  out[:len(classic)]=classic
  out[0x40*BANK:0x48*BANK]=bb1
  out[0x48*BANK:0x58*BANK]=bb2
+ # Graphics descriptors can consume original instruction bytes as data.
+ # Keep that read-only view separate from relocated executable fixed ROM.
+ data_start=FIXED_DATA_PHYS*BANK
+ assert bytes(out[data_start:data_start+BANK])==bytes([0xFF])*BANK
+ out[data_start:data_start+BANK]=bb1[:BANK]
  out[0x148]=0x06
  out[0x149]=0x03
 
@@ -1841,7 +1928,8 @@ def main():
  assert bytes(bb1[0x2ECC:0x2ED1])==bytes.fromhex('3e03ea0021')
  w=sym['host_bb1_enemy_records']; v[0x2ECC:0x2ED1]=bytes([0xC3,w&255,w>>8,0,0])
 
- for pc,label,original in [(0x14AB,'host_bb1_background_swap','0acb37'),(0x14BA,'host_bb1_background_low','0ae60f')]:
+ for pc,label,original in [(0x14AB,'host_bb1_background_swap','0acb37'),(0x14BA,'host_bb1_background_low','0ae60f'),
+                           (0x383B,'host_bb1_background_swap','0acb37')]:
   assert bytes(v[pc:pc+3])==bytes.fromhex(original)
   w=sym[label]; v[pc:pc+3]=bytes([0xCD,w&255,w>>8])
 
@@ -1882,6 +1970,21 @@ def main():
  assert bytes(v[0x1725:0x172D])==bytes.fromhex('0e201a13220d20fa'),v[0x1725:0x172D].hex()
  w=sym['host_bb1_copy_vram32']
  v[0x1725:0x172D]=bytes([0xCD,w&255,w>>8,0,0,0,0,0])
+
+ # Bonus-room transition rows share the banked background reader.
+ assert bytes(v[0x382E:0x3832])==bytes.fromhex('0acd4678')
+ w=sym['host_bb1_background_emit_low']
+ v[0x382E:0x3832]=bytes([0xCD,w&255,w>>8,0])
+
+ # Multirow queue source reads run with the caller's logical bank visible.
+ assert bytes(v[0x0361:0x0364])==bytes.fromhex('1a2213')
+ w=sym['host_bb1_multirow_byte']
+ v[0x0361:0x0364]=bytes([0xCD,w&255,w>>8])
+
+ # Bonus-room setup reads fixed-ROM transfer, task, and position tables.
+ for pc,expected in [(0x3B55,'21de3c'),(0x3B94,'21d63c'),(0x3C5F,'21b63c')]:
+  assert bytes(v[pc:pc+3])==bytes.fromhex(expected)
+  v[pc+2]=0x7C
 
  # Round-intro pointer reads at $134E use the selected upper bank.
  assert bytes(v[0x134E:0x1351])==bytes.fromhex('5e2356')

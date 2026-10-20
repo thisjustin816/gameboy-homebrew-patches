@@ -1,0 +1,3 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{"case": 0, "samples": 5998, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [4401], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [99, 1925, 4402], "prior_bonus_wins": 0, "div_seed": 90, "round_indices": [99], "ending_state_count": 6, "final_ending_state": "0000b0"}
+{"case": 7, "samples": 5997, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [3892], "lcd_off_tile_mismatches": [98], "include_lcd_off_vram": false, "missed_ticks": [99, 1507, 1512, 3893], "prior_bonus_wins": 7, "div_seed": 90, "round_indices": [99], "ending_state_count": 132, "final_ending_state": "000000"}

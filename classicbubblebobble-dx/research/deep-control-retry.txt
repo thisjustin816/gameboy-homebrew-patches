@@ -1,0 +1,18 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 252, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 210, in main
+    raise RuntimeError(f'{name} case {case} failed:\n{result.stderr}')
+RuntimeError: host case 0 failed:
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 252, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 186, in main
+    return worker(args)
+           ^^^^^^^^^^^^
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 134, in worker
+    clock.step(held)
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 57, in step
+    raise RuntimeError(f'VBlank counter {self.previous}->{current} at tick {self.tick}, '
+RuntimeError: VBlank counter 165->0 at tick 7864, frame 7888, PC=41f8, round=0

@@ -132,3 +132,30 @@ The `combo-test-*` logs cover the inherited suite on this build. Generated ROMs
 and the captured failing emulator states remain outside Git. Historical clock
 logs retain the earlier term "trapped enemy" for the post-pop fruit
 initialization path; current status calls it defeated-enemy initialization.
+
+## Full round catalog and endings
+
+`deep-final-build.txt` records the full build. Four `deep-rounds-*` logs cover
+zero-based round indices 0-99, each entered through its native password and
+played for 1200 game ticks. `ending-final.txt` covers both controlled final
+bonus-room outcomes for 6000 ticks each. The ending fixtures use matching
+constant divider inputs in temporary copies; their PNGs show that controlled
+run. `deep-test-*` and `deep-suite-summary.txt` record the inherited regressions.
+
+`deep-control-bonus.txt`, `deep-control-object.txt`, and
+`deep-control-graphics.txt` fail on `2488645`. The data-view and retry controls
+fail on intermediate build MD5 `8c9c0b755130456382810ae7a6b06d07`, which has the
+initial bonus-room and ending fixes but lacks the untouched fixed-bank view and
+game-over entry. `deep-control-lcd-off.txt` deliberately requires raw VRAM parity
+and exposes the ending's intermediate LCD-off clears. These controls retain
+nonzero test exits rather than treating a failed worker as a passing comparison.
+
+The password fixture generator calls the existing native routine harness in
+`bubblebobble/verify.py`. It checks the exact patched input, runs bank-3 `$7650`
+for all 100 indices with zero flags, checks stack balance, and records the four
+letter tiles. Regeneration matches the committed JSON byte for byte.
+
+`deep-trace.txt` summarizes the raw control edges and banked data reads behind
+the fixes. Physical bank `$58` is reserved for the untouched fixed-bank data
+view; the executable fixed-bank view remains at `$40`. ROMs, SRAM, assembler
+outputs, and captured emulator states remain outside Git.

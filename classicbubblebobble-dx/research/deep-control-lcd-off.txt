@@ -1,0 +1,9 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{"case": 7, "samples": 5997, "first_mismatches": [{"tick": 98, "fields": ["tiles"]}, {"tick": 3892, "fields": ["maps"]}], "mismatch_samples": 2, "lcd_off_map_mismatches": [3892], "lcd_off_tile_mismatches": [98], "include_lcd_off_vram": true, "missed_ticks": [99, 1507, 1512, 3893], "prior_bonus_wins": 7, "div_seed": 90, "round_indices": [99], "ending_state_count": 132, "final_ending_state": "000000"}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 265, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 261, in main
+    assert not any(report['mismatch_samples'] for report in reports), 'native/host scene mismatch'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: native/host scene mismatch

@@ -1,0 +1,17 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 252, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 210, in main
+    raise RuntimeError(f'{name} case {case} failed:\n{result.stderr}')
+RuntimeError: host case 24 failed:
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 252, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 186, in main
+    return worker(args)
+           ^^^^^^^^^^^^
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_scene_parity.py", line 92, in worker
+    assert replay.read(0xc200) == index, 'password entered wrong round'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: password entered wrong round

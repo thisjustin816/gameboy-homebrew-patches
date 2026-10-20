@@ -1,0 +1,55 @@
+Input BB1 MD5: b093fd9aa903453c1b30703738159a49
+Starting feature checkpoint: 2488645, MD5 c5c974dfe6bf0f2784a1aaec049b09a5
+
+Bonus-room entry, round 25, password 4LL1:
+At emulator frame 2085 native FFAD/FFAE is $3D01; the old host reads $0003.
+Three fixed table bases in setup need the relocated view:
+$3B55: LD HL,$3CDE (transfer descriptors)
+$3B94: LD HL,$3CD6 (bank-6 task entries)
+$3C5F: LD HL,$3CB6 (positions)
+
+After correcting the tables:
+Reverse transition $383B reads layout byte through BC=$5FC8 with V0 mapped.
+It emits collision byte $07 at D83A; native emits $02.
+The $382E/$383B row readers need the selected layout bank.
+
+After correcting row reads:
+The bonus loop selects fixed $02B8 through FFA9/FFAA.
+Its unrelocated CALL $02E1 enters poisoned host ROM0.
+Discovering $02B8 rewrites that edge.
+
+RST $38:
+Native preserves the instruction-after-RST continuation, including $3C24.
+The JP-HL wrapper consumes its own synthetic RST $08 frame.
+Jumping directly from host_rst38 into that wrapper discards the genuine frame.
+Contributing RST $08 preserves $3C24 and the repeated bonus task.
+
+Bonus-object metatiles:
+Native bank-6 $48F0 contains 80 82 81 83.
+The multirow queue at logical $0361 reads it with V0 mapped and uploads fixed
+$08F0 bytes FB CD F4 72 instead. Source reads now expose the selected bank.
+
+Round 37, game tick 3105:
+Bank-1 $5B41: CALL $0324, stack return $5B44.
+Raw $0324 is host poison. Discovering entry $5868 reaches this call.
+
+Ending states:
+Bank-2 $5EA2 is selected by the word table at $5D93.
+$5EBD: CALL NZ,$0C68, stack return $5EC0, enters host poison.
+Later table-selected states at $6582 and $74B5 expose the same raw edge.
+The scanner recognizes the adjacent, bounded word tables and discovers their
+handlers recursively. Tables observed at bank-2 $4011, $5650, $5D93, $6556,
+and $746B use this layout.
+
+Missing-win ending retry, relative tick 4352:
+Bank-1 $607E: CALL $0456, stack return $6081, enters host poison.
+Entry $6077 now participates in bank-1 discovery.
+
+Graphics source classes:
+Rounds 56 and 76 upload vectors from host ROM0 at VRAM $86A0, while native
+reads graphics at bank-3 $4A00 and $49C0. Their descriptor stream is fixed ROM.
+Round 26 then exposes executable bytes used as descriptor and pixel data:
+native uploads original fixed-bank $3384 at VRAM $87A0. The relocated code
+view changes embedded operands, yielding a different pointer and pixel bytes.
+An untouched fixed-bank copy at physical $58 supplies these data reads. Logical
+source pointers retain their original values; executable code still uses $40.

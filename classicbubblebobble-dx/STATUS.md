@@ -46,8 +46,8 @@ task fixes. It also relocates the enemy-chain score table, bonus-graphics table,
 and defeated-enemy lifetime/velocity tables. The round-clear VBlank entry `$1743`
 is included in fixed-bank code discovery.
 
-The full build has MD5 `c5c974dfe6bf0f2784a1aaec049b09a5` and SHA-256
-`1f9c6912eee0dae937f3394bd71f482f6649fb83fb55f8e2f2869fd3e46efa93`. The three patched input hashes are listed in
+The full build has MD5 `e6dfd165860657dc4457dacfa519d47d` and SHA-256
+`2217443f7f631cdeaa5f23c308654648ebad24f893508b45d360af31db44e369`. The three patched input hashes are listed in
 [README.md](README.md); generated ROMs and states remain outside Git.
 
 ## Replay clocks
@@ -121,6 +121,49 @@ bank 1 mapped, and recursive discovery rewrites the dispatchers' calls into
 fixed ROM. Without these fixes, round 5 starts with incorrect transfer data,
 and later special-object/projectile paths enter poisoned host ROM0 and reset.
 
+## Full-round and ending coverage
+
+Password fixtures come from the native bank-3 encoder at `$7650`, with zero
+flags, and can be regenerated from the exact patched input. Each of the 100
+round entries is followed by 1200 ticks of scripted movement, jumps, and bubbles.
+The native and hosted workers compare 120079 snapshots with no displayed-state
+mismatches in game counters, actors, objects, score, collision data, tile
+patterns, maps, and OAM. They share 21 omitted labels and 22 LCD-off map
+differences, listed by round in the logs. This checks each round's opening
+play; it does not establish 100 natural victories or complete level coverage.
+
+The bonus-room paths required three fixed-table bases at `$3B55`, `$3B94`, and
+`$3C5F`, the fixed main-loop entry `$02B8`, and four bank-6 task entries.
+Reverse-transition rows and the multirow graphics queue now read selected-upper
+ROM through host wrappers. `RST $38` also preserves its genuine continuation
+by contributing a separate dispatch frame for the `JP HL` wrapper.
+
+The code scanner discovers checked inline jump tables in banked code, including
+the ending dispatchers. Explicit bank-1 entries cover the special-object path
+at `$5868` and the game-over continuation at `$6077`. Without these discoveries,
+later gameplay and ending states call raw fixed-ROM addresses and reset.
+
+The 64-byte graphics path handles fixed-ROM descriptor and pixel sources as
+well as banked data. Physical bank `$58` holds an untouched copy of BB1's fixed
+bank for these data reads; the builder checks that the destination is free.
+This preserves instruction bytes that the original game also consumes as data.
+The executable view remains in physical `$40`. Round 26 exposes the overlap;
+rounds 56 and 76 expose fixed descriptor sources.
+
+Ending fixtures start round 100 by password, force the bonus-room goal, and
+set prior bonus-win flags to zero or seven. Both paths match through 6000 ticks,
+including the missing-win retry and the completed ending. Eight bank-2 divider
+reads are replaced with matching constants in temporary test ROMs so decorative
+randomness is comparable. The production build retains the original reads.
+The fixture changes their instruction timing and does not prove audio or
+cycle equivalence.
+
+The ending comparison reports two partial-map differences and one partial-tile
+difference while both LCDs are off. Displayed VRAM must match. Use
+`test_scene_parity.py --include-lcd-off-vram` for strict raw-VRAM comparison;
+that mode exposes the reported intermediate clears. Both workers must observe
+the same tick labels; omitted labels remain listed in the logs.
+
 ## Current verification and next work
 
 KLL1, title VRAM, menu transition, SRAM isolation/power cycle, password prefill,
@@ -129,6 +172,7 @@ partial map clears are reported separately; strict raw-map mode remains
 available with `--include-lcd-off-maps`.
 
 The logs and compact traces are in [research/](research/), with the current
-review in [REVIEW-COMBO.md](REVIEW-COMBO.md). Next work is sustained natural
-play, later-round and ending coverage, and collection integration. Audio and physical hardware remain unverified. BB1 v0.14
+review in [REVIEW-DEEP.md](REVIEW-DEEP.md). Next work is sustained natural
+play, broader input and save-state coverage, audio verification, and collection
+integration. Audio and physical hardware remain unverified. BB1 v0.14
 stays promoted; BB2 v0.22 stays frozen. No selector or player-facing UI was added.

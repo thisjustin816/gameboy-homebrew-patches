@@ -15,8 +15,8 @@
     "size": 2097152
   },
   "graphics-experiment": {
-    "md5": "c5c974dfe6bf0f2784a1aaec049b09a5",
-    "sha256": "1f9c6912eee0dae937f3394bd71f482f6649fb83fb55f8e2f2869fd3e46efa93",
+    "md5": "e6dfd165860657dc4457dacfa519d47d",
+    "sha256": "2217443f7f631cdeaa5f23c308654648ebad24f893508b45d360af31db44e369",
     "size": 2097152,
     "build_method": "full build from the three exact patched inputs"
   },
@@ -45,6 +45,12 @@
   "graphics-experiment-a76e5c8": {
     "md5": "f4d6e6156cb0e35fab406ca3a90f6a21",
     "sha256": "7cd6adb8b31930b16829467652f1c61343543db8ce52d81584d2b9f80f225662",
+    "size": 2097152,
+    "build_method": "full build from the three exact patched inputs"
+  },
+  "graphics-experiment-2488645": {
+    "md5": "c5c974dfe6bf0f2784a1aaec049b09a5",
+    "sha256": "1f9c6912eee0dae937f3394bd71f482f6649fb83fb55f8e2f2869fd3e46efa93",
     "size": 2097152,
     "build_method": "full build from the three exact patched inputs"
   }

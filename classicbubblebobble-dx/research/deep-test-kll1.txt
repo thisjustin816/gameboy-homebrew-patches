@@ -1,0 +1,124 @@
+{
+  "rom": "deep-final.gbc",
+  "first_failure": null,
+  "scheduler_states": 5,
+  "samples": [
+    {
+      "frame": 2100,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        30,
+        30
+      ]
+    },
+    {
+      "frame": 2200,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        30,
+        30
+      ]
+    },
+    {
+      "frame": 2300,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2400,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2500,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2600,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2700,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2800,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 2900,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 3000,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 3100,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 3200,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    },
+    {
+      "frame": 3243,
+      "round_index": 2,
+      "marker": 0,
+      "scheduler": [
+        34,
+        214
+      ]
+    }
+  ]
+}

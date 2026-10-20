@@ -1,0 +1,7 @@
+{"case": 3, "samples": 1201, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [], "round": 4, "round_indices": [3]}
+{"case": 4, "samples": 1201, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [], "round": 5, "round_indices": [4]}
+{"case": 5, "samples": 1200, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [1154], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [1155], "round": 6, "round_indices": [5]}
+{"case": 6, "samples": 1201, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [], "round": 7, "round_indices": [6]}
+{"case": 7, "samples": 1201, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [], "round": 8, "round_indices": [7]}
+{"case": 8, "samples": 1201, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "lcd_off_tile_mismatches": [], "include_lcd_off_vram": false, "missed_ticks": [], "round": 9, "round_indices": [8]}
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10

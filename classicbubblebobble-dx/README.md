@@ -1,10 +1,9 @@
 # Classic Bubble Bobble DX
 
 The graphics candidate matches native in the sampled game-clock replay through
-tick 12000, controlled one-to-seven-enemy combos, and active play after forced
-entry into rounds 4-9. BB1 v0.14
-stays the promoted baseline and BB2 v0.22 stays frozen. Read
-[STATUS.md](STATUS.md) for the replay-clock distinction and verification limits.
+tick 12000, controlled combos, opening play in all 100 rounds, and controlled
+ending paths. BB1 v0.14 stays promoted and BB2 v0.22 stays frozen. Read
+[STATUS.md](STATUS.md) for fixture details and verification limits.
 
 The complete original handoff is preserved byte for byte in [handoff/](handoff/).
 Its [review](REVIEW.md) records historical inconsistencies. The source files in
@@ -99,9 +98,33 @@ and displayed-map comparisons. These fixtures establish neither unassisted setup
 nor normal victories. Use `--frames-dir /tmp/scenes` for sampled PNGs or `--cases`
 for selected enemy counts (combo) or zero-based round indices (later).
 
+Passwords allow direct checks of later rounds and bonus rooms:
+
+```sh
+python3 test_scene_parity.py /tmp/graphics-experiment.gbc --source BB1.gb --scene password
+python3 test_scene_parity.py /tmp/graphics-experiment.gbc --source BB1.gb --scene password --all-rounds
+python3 test_scene_parity.py /tmp/graphics-experiment.gbc --source BB1.gb --scene ending
+```
+
+Password mode defaults to rounds 10, 15, 20, 25, 50, 75, 99, and 100.
+`--all-rounds` checks 1200 ticks after each of the 100 password entries.
+Ending mode forces the final bonus-room goal with prior win flags zero and
+seven, then compares 6000 ticks per path. It seeds divider reads only in temporary
+ROM copies to compare decorative randomness; the build's random behavior is
+unchanged. These checks do not establish natural victories, complete level
+coverage, or audio equivalence. Ending mode reports intermediate LCD-off tile
+and map clears separately; `--include-lcd-off-vram` requires their raw parity.
+
+Regenerate the password fixtures with the original game's encoder:
+
+```sh
+python3 generate_password_fixtures.py BB1.gb /tmp/password-fixtures.json
+```
+
 Map bytes must match whenever either LCD is enabled. Add
 `--include-lcd-off-maps` to compare partial clears while both LCDs are off.
-The native reference changes only the CGB header and checksums; it provides a
+The native reference normally changes only the CGB header and checksums;
+ending fixtures also seed divider reads as described above. It provides a
 memory/timing reference, and its palette output is not a visual reference.
 
 The [research folder](research/) contains old/new evidence, native and candidate
