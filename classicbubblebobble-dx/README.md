@@ -1,7 +1,8 @@
 # Classic Bubble Bobble DX
 
 The graphics candidate matches native in the sampled game-clock replay through
-tick 12000 and passes forced-clear progress checks through round 9. BB1 v0.14
+tick 12000, controlled one-to-seven-enemy combos, and active play after forced
+entry into rounds 4-9. BB1 v0.14
 stays the promoted baseline and BB2 v0.22 stays frozen. Read
 [STATUS.md](STATUS.md) for the replay-clock distinction and verification limits.
 
@@ -83,6 +84,20 @@ between emulator steps. Active and idle runs pass with 9695 and 9700 samples,
 respectively. The round-progress test forces the enemy counter to zero, reaches
 rounds 4-9, and checks that each index persists for 300 more frames. It does not
 establish normal victories or later-round graphics parity.
+
+Dedicated scene checks:
+
+```sh
+python3 test_scene_parity.py /tmp/graphics-experiment.gbc --source BB1.gb --scene combo
+python3 test_scene_parity.py /tmp/graphics-experiment.gbc --source BB1.gb --scene later
+```
+
+Combos clone a naturally reached trapped-enemy record before ordinary engine
+processing. Later scenes force round entry, then play 1200 ticks with movement,
+jumps, and bubbles. All seven combos and rounds 4-9 pass native state, OAM, tile,
+and displayed-map comparisons. These fixtures establish neither unassisted setup
+nor normal victories. Use `--frames-dir /tmp/scenes` for sampled PNGs or `--cases`
+for selected enemy counts (combo) or zero-based round indices (later).
 
 Map bytes must match whenever either LCD is enabled. Add
 `--include-lcd-off-maps` to compare partial clears while both LCDs are off.

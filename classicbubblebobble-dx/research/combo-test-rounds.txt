@@ -1,0 +1,71 @@
+{
+  "worker": "native",
+  "forced_clear_progress": [
+    {
+      "round_index": 3,
+      "entered_frame": 2867,
+      "stable_through_frame": 3167
+    },
+    {
+      "round_index": 4,
+      "entered_frame": 3740,
+      "stable_through_frame": 4040
+    },
+    {
+      "round_index": 5,
+      "entered_frame": 4616,
+      "stable_through_frame": 4916
+    },
+    {
+      "round_index": 6,
+      "entered_frame": 5489,
+      "stable_through_frame": 5789
+    },
+    {
+      "round_index": 7,
+      "entered_frame": 6362,
+      "stable_through_frame": 6662
+    },
+    {
+      "round_index": 8,
+      "entered_frame": 7235,
+      "stable_through_frame": 7535
+    }
+  ]
+}
+{
+  "worker": "host",
+  "forced_clear_progress": [
+    {
+      "round_index": 3,
+      "entered_frame": 2867,
+      "stable_through_frame": 3167
+    },
+    {
+      "round_index": 4,
+      "entered_frame": 3740,
+      "stable_through_frame": 4040
+    },
+    {
+      "round_index": 5,
+      "entered_frame": 4616,
+      "stable_through_frame": 4916
+    },
+    {
+      "round_index": 6,
+      "entered_frame": 5489,
+      "stable_through_frame": 5789
+    },
+    {
+      "round_index": 7,
+      "entered_frame": 6362,
+      "stable_through_frame": 6662
+    },
+    {
+      "round_index": 8,
+      "entered_frame": 7235,
+      "stable_through_frame": 7535
+    }
+  ]
+}
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10

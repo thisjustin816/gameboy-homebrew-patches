@@ -43,11 +43,11 @@ and VLL1 password-prefill routines all pass on `control-fix`.
 The unpromoted `graphics-experiment` variant includes the banked graphics,
 background, object-coordinate, queue-upload, death-animation, and cooperative
 task fixes. It also relocates the enemy-chain score table, bonus-graphics table,
-and trapped-enemy lifetime/velocity tables. The round-clear VBlank entry `$1743`
+and defeated-enemy lifetime/velocity tables. The round-clear VBlank entry `$1743`
 is included in fixed-bank code discovery.
 
-The full build has MD5 `f4d6e6156cb0e35fab406ca3a90f6a21` and SHA-256
-`7cd6adb8b31930b16829467652f1c61343543db8ce52d81584d2b9f80f225662`. The three patched input hashes are listed in
+The full build has MD5 `c5c974dfe6bf0f2784a1aaec049b09a5` and SHA-256
+`1f9c6912eee0dae937f3394bd71f482f6649fb83fb55f8e2f2869fd3e46efa93`. The three patched input hashes are listed in
 [README.md](README.md); generated ROMs and states remain outside Git.
 
 ## Replay clocks
@@ -81,7 +81,7 @@ The game-clock input schedule exposes real data faults in the preceding ROM:
 - `$2AA4` computes the enemy-chain score-table address at `$2A7C`; its high byte
   must use the relocated `$6A` window. `$2AB3` similarly needs `$6FF6` for bonus
   graphics. The old replay loses a native score award of 100 points.
-- Trapped-enemy initialization at `$2E0B` reads lifetime data at `$2FEF`, and
+- Defeated-enemy initialization at `$2E0B` reads lifetime data at `$2FEF`, and
   `$2E36` reads velocity pairs at `$2DEA`. Both need the relocated fixed window.
   The old enemy record receives zero lifetime/velocity values where native
   writes `$15`, `$06`, and `$FE` in the traced case.
@@ -97,6 +97,30 @@ Native and hosted builds pass; the build without `$1743` discovery fails to
 start round 4. These forced clears verify loader progress, not normal victories
 or frame-for-frame graphics in those later rounds.
 
+## Combo and later-round coverage
+
+Controlled combo scenes clone a naturally reached trapped enemy and let the
+engine pop one through seven enemies. All seven cases match native across 181
+observed ticks each, including the first awards of 100, 200, 400, 800, 1600,
+3200, and 6400 points, bonus objects, OAM, tile patterns, and displayed maps.
+The preceding build first differs in tile data two ticks after a two-enemy pop.
+The VBlank tile-pair helper now maps each source independently: one pair combines
+bank-1 `$652F` with fixed-ROM `$304A`. Fixed second pointers retain their logical
+HL value on return.
+
+Later-round scenes enter rounds 4-9 by forced clears, then apply ordinary
+movement, jump, and bubble input for 1200 game ticks per round. They compare
+7205 observed snapshots with zero gameplay or displayed-graphics mismatches.
+Round 6 has one shared omitted tick and one partial-map difference while both
+LCDs are off. The fixture verifies active play after controlled entry; it does
+not establish normal victories.
+
+These checks also exposed a bank-1 round-intro pointer read at `$134E` and
+undiscovered bank-1 dispatchers `$5CCF` and `$55A0`. The pointer read runs with
+bank 1 mapped, and recursive discovery rewrites the dispatchers' calls into
+fixed ROM. Without these fixes, round 5 starts with incorrect transfer data,
+and later special-object/projectile paths enter poisoned host ROM0 and reset.
+
 ## Current verification and next work
 
 KLL1, title VRAM, menu transition, SRAM isolation/power cycle, password prefill,
@@ -105,7 +129,6 @@ partial map clears are reported separately; strict raw-map mode remains
 available with `--include-lcd-off-maps`.
 
 The logs and compact traces are in [research/](research/), with the current
-review in [REVIEW-CLOCK.md](REVIEW-CLOCK.md). Next work is dedicated multi-enemy
-chain coverage and normal play/graphics checks in the later rounds reached by
-the forced-clear test. Audio and physical hardware remain unverified. BB1 v0.14
+review in [REVIEW-COMBO.md](REVIEW-COMBO.md). Next work is sustained natural
+play, later-round and ending coverage, and collection integration. Audio and physical hardware remain unverified. BB1 v0.14
 stays promoted; BB2 v0.22 stays frozen. No selector or player-facing UI was added.

@@ -75,6 +75,8 @@ OBSERVED_BANKED_ENTRY_POINTS={
  (3,0x7800),
  # Cooperative task initialized at bank-1 $4669.
  (1,0x4669),
+ # Bank-1 special-object and projectile dispatchers used in later rounds.
+ (1,0x5CCF),(1,0x55A0),
  # Bank-1 enemy-state handlers from the fixed-ROM table at $29E3.
  (1,0x5278),(1,0x54D7),(1,0x5473),(1,0x48DD),
  (1,0x5356),(1,0x4FD0),(1,0x4D2E),(1,0x4983),
@@ -1211,6 +1213,18 @@ host_low_{t:04x}::
     ret
 ''')
  lines.append(r'''
+; Read a bank-1 round-intro transfer pointer with the native HL/AF result.
+host_bb1_intro_pointer::
+    push af
+    call host_map_current_logical
+    ld e,[hl]
+    inc hl
+    ld d,[hl]
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    ret
+
 ; Experimental BB1 round-start ROM-data virtualization.
 ; Original logical $1870-$1889 indexes a word table in H_LOG and copies the
 ; selected eight-byte round payload to HRAM $FFB5-$FFBC. Execute that block
@@ -1243,7 +1257,7 @@ host_bb1_round_payload::
     ret
 ''')
  lines.append(r'''
-; VBlank tile-pair transfer reads the logical upper bank while running in ROM0.
+; Each VBlank tile-pair source can address fixed or selected-upper ROM.
 host_bb1_tile_pair::
     ld hl,$FFAB
     ld [hl],$CF
@@ -1255,7 +1269,7 @@ host_bb1_tile_pair::
     ld l,a
     ld b,$20
     push af
-    call host_map_current_logical
+    call host_bb1_tile_source_hl
     pop af
 .wait:
     ldh a,[$FF44]
@@ -1272,6 +1286,9 @@ host_bb1_tile_pair::
     ld h,[hl]
     ld l,a
     ld b,$20
+    push af
+    call host_bb1_tile_source_hl
+    pop af
 .second:
     ld a,[hl+]
     ld [de],a
@@ -1279,10 +1296,21 @@ host_bb1_tile_pair::
     dec b
     jr nz,.second
     push af
+    ldh a,[$FFB0]
+    bit 6,a
+    jr nz,.keep_high
+    res 6,h
+.keep_high:
     ld a,V0
     call host_map_physical_a
     pop af
     jp $4CB8
+host_bb1_tile_source_hl::
+    bit 6,h
+    jp nz,host_map_current_logical
+    set 6,h
+    ld a,V0
+    jp host_map_physical_a
 ''')
  lines.append(r'''
 ; Copy the fixed-ROM layout header while preserving its logical continuation.
@@ -1854,6 +1882,11 @@ def main():
  assert bytes(v[0x1725:0x172D])==bytes.fromhex('0e201a13220d20fa'),v[0x1725:0x172D].hex()
  w=sym['host_bb1_copy_vram32']
  v[0x1725:0x172D]=bytes([0xCD,w&255,w>>8,0,0,0,0,0])
+
+ # Round-intro pointer reads at $134E use the selected upper bank.
+ assert bytes(v[0x134E:0x1351])==bytes.fromhex('5e2356')
+ w=sym['host_bb1_intro_pointer']
+ v[0x134E:0x1351]=bytes([0xCD,w&255,w>>8])
 
  # Round-start transfer setup $168F indexes a pointer table embedded in fixed
  # BB1 ROM at logical $1A60. Relocated V0 code cannot read that table at the

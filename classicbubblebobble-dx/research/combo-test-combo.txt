@@ -1,0 +1,8 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{"case": 1, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "000100"}
+{"case": 2, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "000200"}
+{"case": 3, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "000400"}
+{"case": 4, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "000800"}
+{"case": 5, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "001600"}
+{"case": 6, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "003200"}
+{"case": 7, "samples": 181, "first_mismatches": [], "mismatch_samples": 0, "lcd_off_map_mismatches": [], "missed_ticks": [], "first_score_bcd": "006400"}

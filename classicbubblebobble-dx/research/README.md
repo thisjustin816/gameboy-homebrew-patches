@@ -109,3 +109,26 @@ output identities are in `build-identities.json` and `clock-build.txt`.
 checks persistence after each forced clear. The `clock-test_*` logs cover the
 inherited regressions. No normal victory, later-round graphics, audio, or
 hardware result is implied by the forced-clear test.
+
+## Combo sources and later-round play
+
+`combo-intro-build.txt` identifies the full build with independent tile-pair
+source mapping, the round-intro pointer wrapper, and both later-round dispatcher
+seeds. `combo-regression-old.txt` fails on `a76e5c8` at combo tick 2, with 179
+tile mismatches. `combo-test-combo.txt` passes all seven enemy counts and their
+first BCD score awards. Each scene starts with cloned trapped-enemy records;
+the pop and subsequent object processing run through the game's own code.
+
+`later-regression-old.txt` fails on the preceding round-5 scene.
+`combo-later-trace.txt` records the incorrect transfer pointer and the two raw
+calls that reset the hosted game. `later-regression-new.txt` compares active
+play for 1200 ticks after forced entry into each of rounds 4-9. It reports one
+shared omitted label and a partial-map difference with both displays off in
+round 6; all other compared data matches. The round-6 and round-9 PNGs show
+sampled hosted gameplay, not a full playthrough. Native CGB palette output is
+unsuitable for RGB comparison.
+
+The `combo-test-*` logs cover the inherited suite on this build. Generated ROMs
+and the captured failing emulator states remain outside Git. Historical clock
+logs retain the earlier term "trapped enemy" for the post-pop fruit
+initialization path; current status calls it defeated-enemy initialization.

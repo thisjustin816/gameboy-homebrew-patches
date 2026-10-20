@@ -1,0 +1,3 @@
+pf_init shown=1f151501 slot=0 pending=1
+pf_step buffer=1f151501 slot=3 pending=0 menu=24 hand=(68,124)
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10

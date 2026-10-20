@@ -1,0 +1,33 @@
+Exact BB1 input MD5: b093fd9aa903453c1b30703738159a49
+Preceding hosted build: a76e5c8, MD5 f4d6e6156cb0e35fab406ca3a90f6a21
+
+Two-enemy pop, relative tick 1:
+Native and preceding host FFAB-FFB0: CF 17 2F 65 4A 30
+The first source is bank-1 $652F; the second is fixed-ROM $304A.
+At tick 2, native VRAM $8583 is $7C and the preceding host reads $00.
+The old helper mapped bank 1 once and read the second source from host ROM0.
+
+Round-5 entry, game tick 3753, before the intro-pointer fix:
+Native transfer pointer $FFAD/$FFAE: $5F5E
+Hosted transfer pointer: $8632
+Native $16B5 entry: HL=$5F52 DE=$5F5B BC=$85E0
+Hosted relocated $56B5 entry: HL=$5F52 DE=$862F BC=$85E0
+Logical $134E-$1350 reads the bank-1 pointer at $5F51 with V0 mapped.
+
+Round-5 play after fixing that pointer, before seeding bank-1 $5CCF:
+Intermediate build MD5: 2c73c9d9315965e4dfd10ed2411595ab
+Game tick 5118; logical bank 1, physical $41.
+$5D6D: LD H,$01
+$5D6F: CALL $0324
+$0324: host poison $D3, stack return $5D72.
+The dispatcher at $5CCF was absent from bank-1 recursive discovery.
+
+Round-6 play before seeding bank-1 $55A0:
+Intermediate build MD5: fed71cddd02e4d77cf1889b6a604a46c
+Game tick 5175; logical bank 1, physical $41.
+$5696: CALL $1637
+$1637: host poison $D3, stack return $5699.
+The projectile dispatcher at $55A0 was absent from bank-1 discovery.
+
+Both raw calls become host low-bank wrappers after adding the entry seeds.
+No emulator instruction cycles were added by this diagnostic logging.
