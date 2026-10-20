@@ -1,0 +1,122 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-6200",
+  "active": true,
+  "compared_fields": [
+    "actors"
+  ],
+  "mismatch_frames": 116,
+  "field_counts": {
+    "actors": 116
+  },
+  "state_mismatch_frames": 3901,
+  "include_lcd_off_maps": false,
+  "lcd_off_map_mismatch_frames": [],
+  "first_mismatches": [
+    {
+      "frame": 6037,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6038,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6039,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6040,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6041,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6042,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6043,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6044,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6045,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6046,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6047,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6048,
+      "fields": [
+        "actors"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 6193,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6195,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6197,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6199,
+      "fields": [
+        "actors"
+      ]
+    }
+  ]
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 162, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 158, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

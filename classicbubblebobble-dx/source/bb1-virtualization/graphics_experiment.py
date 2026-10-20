@@ -1583,6 +1583,57 @@ host_bb1_death_sprite_pointers::
     pop af
     ret
 ''')
+ lines.append(r'''
+; Queue uploads can reach the first visible line after LCD enable.
+; At LY 144-147 at least six VBlank lines remain: enough for 64 bytes at
+; 36 cycles each. Other phases wait for accessible VRAM before each byte.
+; The queue header's OR clears carry; AND preserves that loop postcondition.
+host_bb1_queue_vram::
+    ld a,b
+    cp $41
+    jr nc,.guard
+    ldh a,[$FF44]
+    cp $90
+    jr c,.guard
+    cp $94
+    jr nc,.guard
+    or a
+.fast:
+    ld a,[de]
+    ld [hl+],a
+    inc e
+    dec b
+    jr nz,.fast
+    ret
+.guard:
+    ldh a,[$FF41]
+    and $02
+    jr nz,.guard
+    ld a,[de]
+    ld [hl+],a
+    inc e
+    dec b
+    jr nz,.guard
+    ret
+''')
+ lines.append(r'''
+; Round-object coordinates are stored after the selected bank's layout header.
+host_bb1_object_coordinates::
+    push af
+    call host_map_current_logical
+    pop af
+    ld a,[de]
+    inc de
+    ld [hl+],a
+    ld a,[de]
+    inc de
+    ld [hl+],a
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    ret
+''')
  lines.append('\nhost_end::\n')
  return ''.join(lines)
 
@@ -1732,6 +1783,16 @@ def main():
  for pc,label in [(0x1780,'host_bb1_graphics64'),(0x1797,'host_bb1_graphics64_stream')]:
   assert bytes(bb1[pc:pc+5])==bytes.fromhex('3e03ea0021')
   w=sym[label]; v[pc:pc+5]=bytes([0xC3,w&255,w>>8,0,0])
+
+ assert bytes(v[0x0310:0x0316])==bytes.fromhex('1a221c0520fa')
+ w=sym['host_bb1_queue_vram']; v[0x0310:0x0316]=bytes([0xCD,w&255,w>>8,0,0,0])
+
+ # Both round-object coordinate pairs come from the selected layout bank.
+ for pc in (0x1977,0x198A):
+  assert bytes(v[pc:pc+6])==bytes.fromhex('1a13221a1322')
+  w=sym['host_bb1_object_coordinates']; v[pc:pc+6]=bytes([0xCD,w&255,w>>8,0,0,0])
+ assert bytes(v[0x19C8:0x19CB])==bytes.fromhex('21aa31')
+ v[0x19CA]=0x71
 
  # Death animation pointer tables live in the selected logical upper bank.
  assert bytes(v[0x1B49:0x1B4C])==bytes.fromhex('2ac600')

@@ -1,0 +1,75 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-6000",
+  "active": true,
+  "compared_fields": [
+    "lcd_enabled",
+    "round",
+    "timer",
+    "actors",
+    "objects",
+    "score",
+    "sprite_streams",
+    "collision",
+    "tiles",
+    "maps"
+  ],
+  "mismatch_frames": 3,
+  "field_counts": {
+    "maps": 3
+  },
+  "state_mismatch_frames": 0,
+  "include_lcd_off_maps": true,
+  "lcd_off_map_mismatch_frames": [
+    3730,
+    3940,
+    5876
+  ],
+  "first_mismatches": [
+    {
+      "frame": 3730,
+      "fields": [
+        "maps"
+      ]
+    },
+    {
+      "frame": 3940,
+      "fields": [
+        "maps"
+      ]
+    },
+    {
+      "frame": 5876,
+      "fields": [
+        "maps"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 3730,
+      "fields": [
+        "maps"
+      ]
+    },
+    {
+      "frame": 3940,
+      "fields": [
+        "maps"
+      ]
+    },
+    {
+      "frame": 5876,
+      "fields": [
+        "maps"
+      ]
+    }
+  ]
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 163, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 159, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

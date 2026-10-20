@@ -1,0 +1,143 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-6000",
+  "active": true,
+  "compared_fields": [
+    "lcd_enabled",
+    "round",
+    "timer",
+    "actors",
+    "objects",
+    "score",
+    "sprite_streams",
+    "collision",
+    "tiles",
+    "maps"
+  ],
+  "mismatch_frames": 3701,
+  "field_counts": {
+    "objects": 3701,
+    "maps": 1376,
+    "score": 1206
+  },
+  "state_mismatch_frames": 3701,
+  "include_lcd_off_maps": false,
+  "lcd_off_map_mismatch_frames": [
+    3730,
+    3938,
+    3939,
+    3940,
+    5876
+  ],
+  "first_mismatches": [
+    {
+      "frame": 2300,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2301,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2302,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2303,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2304,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2305,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2306,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2307,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2308,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2309,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2310,
+      "fields": [
+        "objects"
+      ]
+    },
+    {
+      "frame": 2311,
+      "fields": [
+        "objects"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 5997,
+      "fields": [
+        "objects",
+        "maps"
+      ]
+    },
+    {
+      "frame": 5998,
+      "fields": [
+        "objects",
+        "maps"
+      ]
+    },
+    {
+      "frame": 5999,
+      "fields": [
+        "objects",
+        "maps"
+      ]
+    },
+    {
+      "frame": 6000,
+      "fields": [
+        "objects",
+        "maps"
+      ]
+    }
+  ]
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 162, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 158, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

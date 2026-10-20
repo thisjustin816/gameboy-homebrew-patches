@@ -40,61 +40,64 @@ and VLL1 password-prefill routines all pass on `control-fix`.
 
 ## Graphics checkpoint
 
-The unpromoted `graphics-experiment` variant fixes bank-3 enemy-record reads,
-mixed fixed/banked background descriptors, and banked queue copies. The bank-1
-cooperative task at `$4669` enters through a host wrapper with bank 1 mapped.
-Executing relocated fixed `$0669` at that address ran the timer twice per frame.
-The `control-fix` variant remains available for comparison.
+The unpromoted `graphics-experiment` variant fixes banked enemy-record reads,
+background descriptors, queue sources, death-animation pointers, and round-object
+coordinates. It also relocates the fixed object-description table at `$31AA`.
+The bank-1 cooperative task at `$4669` enters with its bank mapped; executing
+relocated fixed `$0669` there ran the timer twice per frame. `control-fix` stays
+available as the earlier control-flow comparison.
 
-The current graphics build has MD5 `823dad4303d4e83e20cd1fd2522688c2` and SHA-256
-`b7987d9045e27dff30b2289ebf2163b730a8b88f9ff2a7c1dfa196f1e6945dbc`.
-Title VRAM parity, menu transition, SRAM bank isolation/power cycle, and password
-prefill regressions pass. Both idle and scripted movement/jump/fire runs match
-the native CGB reference at every sampled frame from 2300 through 3600. The
-comparison covers round index, timer, player and seven enemy records, sprite-stream pointers, collision
-WRAM, bank-0 tile patterns, and both tile maps. Descriptor pointers in actor
-records are normalized for their relocation; other compared bytes are exact.
-The preceding graphics build fails both runs.
+The current full build has MD5 `b230db90e4551f605c44e614eb685d89` and SHA-256
+`620a735d6d0aba793f53d6a80d42681846760040c37a00f46f8d8f616ccf221c`.
+The restored Classic input matches MD5 `2c4c0b9cc0c106051fb195e4ed3365d9`.
+Before further changes, the full build reproduced the preceding incremental
+candidate's MD5 `823dad4303d4e83e20cd1fd2522688c2` byte for byte. All three exact
+patched inputs are available again outside Git.
 
-Extended runs still fail. Active input through frame 6000 produces 1381 frames
-with differing maps, starting at frame 3730. Tile patterns and sprite-stream
-pointers match every frame through 6000. The preceding candidate also had 185
-frames with bad sprite pointers and tile patterns. Idle input on that preceding
-candidate through 4000 finds one differing map byte at frame 3962. The compared round, timer,
-actor, and collision fields remain equal in these runs. This does not establish
-parity for all WRAM, scoring, audio, or all transitions. Keep the extended test
-strict and leave the variant unpromoted.
+## Text and HUD corrections
 
-## Remaining rendering investigation
+The queue uploader at fixed `$0310` can reach mode 3 after LCD enable. The host
+worker waits for accessible VRAM before each byte in that case. For blocks of
+at most 64 bytes at LY 144-147, six VBlank lines remain and the original copy
+loop fits without per-byte polling. The worker retains the native carry and
+register postconditions. Emulator tracing confirms the ROUND tile `$18` reaches
+`$9967` in mode 0; the preceding candidate attempted the write in mode 3.
 
-Emulator-side tracing on October 20 separates timing failures from bad data:
+Round-object setup at `$1977` and `$198A` reads coordinates after the selected
+bank's eight-byte layout header. Those reads execute in host ROM0 with the
+logical bank visible. Reading V0 there placed the object at the wrong position;
+a later pickup added an invalid `$40` score and changed the HUD. The object's
+description at `$19C8` also needs the relocated fixed table at `$71AA`.
 
-- The ROUND text write to `$9967` has value `$18` in both ROMs. Native fixed
-  `$0311` writes with STAT `$CD` (mode 1); relocated `$4311` writes with STAT
-  `$CF` (mode 3). Both report LY 0 after LCD enable. The hosted write is blocked.
-- The death-animation setup at fixed `$1B49` reads four pointer bytes from
-  bank-1 `$5F5F` or `$5F63`. It must expose that logical bank while reading.
-  `host_bb1_death_sprite_pointers` performs those reads in host ROM0 and restores
-  V0. The focused sprite-stream regression fails on 185 frames before this fix
-  and passes afterward. The frame-4000 sprite also matches the native capture.
-- A later HUD redraw copies `$04` to `$9825` where native copies blank tile `$24`.
-  The source buffer `$C2EB` already differs: host `$4A56` writes `$04`, while
-  native `$0A41` writes `$24`. Trace the score formatter's input at `$C492` and
-  its callers; the current actor comparison does not include that address.
+## Verification and limits
 
-The replay, frame captures, build identities, and compact traces are in
-[research/](research/). The saved ROM and emulator states are outside Git.
-The original uploads disappeared from `/tmp` after the environment restarted.
-The exact patched BB1 input was recovered from the saved CGB reference by
-restoring the DMG header and checksums. BB2 was recovered from its unchanged
-embedded banks. Both MD5 hashes match the supported inputs. Full builds still
-require reattaching the patched Classic v1.0 ROM.
+KLL1 round state, title VRAM, menu transition, SRAM isolation/power cycle, and
+password prefill regressions pass on the current full build. The gameplay test
+compares LCD state, round index, timer, player/enemy records, all 15 object
+records, score, sprite-stream pointers, collision WRAM, bank-0 tile patterns,
+and both tile maps. Known descriptor pointers are normalized for relocation.
 
-The current ROM was rebuilt incrementally with
-`rebuild_graphics_checkpoint.py`, from the exact saved preceding graphics ROM
-and the recovered BB1 input. It checks the input hashes and existing host-service
-bytes before adding the death-animation worker. Full reconstruction with
-`build.py` remains unverified until the Classic input is restored.
+Idle input matches native from frame 2300 through 12000. Scripted movement,
+jumping, and firing match through frame 6000. The preceding checkpoint fails
+this expanded comparison from frame 2300 because its object coordinates differ.
 
-BB1 v0.14 remains the promoted baseline; BB2 v0.22 remains frozen. No physical
-hardware validation has been performed for these candidates.
+Maps are compared whenever either LCD is enabled. While both displays are off,
+partial map clears can differ within a sampled frame. The strict
+`--include-lcd-off-maps` active run through 6000 preserves three such failures,
+at frames 3730, 3940, and 5876. Both LCDC values are `$67` at each failure; every
+map byte matches again before the LCD is enabled. No actor, object, score,
+timer, collision, or tile-pattern mismatch is suppressed.
+
+The longer active run through 12000 still fails, first at frame 6037. Native
+player animation advances from state 9 to 10 one frame before the hosted game;
+its animation countdown then leads by one. Later repeated continue/death cycles
+diverge further. The preceding checkpoint has the same first actor failure, and
+removing the queue guard leaves it unchanged. Trace the player animation/state
+update and its cooperative task around frames 6036-6038 before assuming a cause.
+`test_gameplay_parity.py --active --end 6200 --frames-dir /tmp/replay` retains
+those states and screenshots outside Git.
+
+The logs, identities, screenshots, and current review are in
+[research/](research/) and [REVIEW-RENDERING.md](REVIEW-RENDERING.md). BB1 v0.14
+remains promoted; BB2 v0.22 remains frozen. Full audio, later rounds, and physical
+hardware behavior remain unverified.

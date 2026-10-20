@@ -1,0 +1,5 @@
+Current full build: queue write and score buffer trace excerpts
+VRAMWRITE dst=C492 pc=6410 value=00 hl=C492 de=C493 bc=0024 bank=41 log=01 stat=C8 ly=22 lcd=E7 cc=261961464
+VRAMWRITE dst=9967 pc=235E value=18 hl=9967 de=DD28 bc=0422 bank=40 log=01 stat=C8 ly=5 lcd=E7 cc=273420032
+VRAMWRITE dst=C492 pc=6410 value=00 hl=C492 de=C493 bc=0024 bank=41 log=01 stat=C8 ly=22 lcd=E7 cc=412700652
+VRAMWRITE dst=9967 pc=235E value=18 hl=9967 de=DD28 bc=0422 bank=40 log=01 stat=C8 ly=5 lcd=E7 cc=424159220

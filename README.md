@@ -34,7 +34,7 @@ Its source and tests are included; building it requires GBDK-2020.
 
 [Classic Bubble Bobble DX](classicbubblebobble-dx/) includes the edgeprobe18b
 handoff and editable diagnostic sources. BB1 round-start relocation fixes are
-under test; post-death text and HUD rendering remain incomplete.
+under test; longer active replays still have state differences.
 
 ## Applying a patch
 

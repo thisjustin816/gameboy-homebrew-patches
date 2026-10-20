@@ -1,0 +1,161 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-12000",
+  "active": true,
+  "compared_fields": [
+    "lcd_enabled",
+    "round",
+    "timer",
+    "actors",
+    "objects",
+    "score",
+    "sprite_streams",
+    "collision",
+    "tiles",
+    "maps"
+  ],
+  "mismatch_frames": 5662,
+  "field_counts": {
+    "actors": 5599,
+    "sprite_streams": 80,
+    "tiles": 142,
+    "maps": 1576,
+    "objects": 3796,
+    "collision": 53,
+    "timer": 1978,
+    "score": 1276,
+    "lcd_enabled": 2
+  },
+  "state_mismatch_frames": 5622,
+  "include_lcd_off_maps": false,
+  "lcd_off_map_mismatch_frames": [
+    3730,
+    3940,
+    5876,
+    6100,
+    8978,
+    8979,
+    8980,
+    10744,
+    11060
+  ],
+  "first_mismatches": [
+    {
+      "frame": 6037,
+      "fields": [
+        "actors",
+        "sprite_streams"
+      ]
+    },
+    {
+      "frame": 6038,
+      "fields": [
+        "actors",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 6039,
+      "fields": [
+        "actors",
+        "maps"
+      ]
+    },
+    {
+      "frame": 6040,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6041,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6042,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6043,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6044,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6045,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6046,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6047,
+      "fields": [
+        "actors"
+      ]
+    },
+    {
+      "frame": 6048,
+      "fields": [
+        "actors"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 11997,
+      "fields": [
+        "timer",
+        "actors",
+        "objects"
+      ]
+    },
+    {
+      "frame": 11998,
+      "fields": [
+        "timer",
+        "actors",
+        "objects"
+      ]
+    },
+    {
+      "frame": 11999,
+      "fields": [
+        "timer",
+        "actors",
+        "objects"
+      ]
+    },
+    {
+      "frame": 12000,
+      "fields": [
+        "timer",
+        "actors",
+        "objects"
+      ]
+    }
+  ]
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 162, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 158, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

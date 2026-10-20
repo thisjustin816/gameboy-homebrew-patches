@@ -47,11 +47,11 @@ the corrected candidate. Earlier `graphics-experiment-*` files refer to the
 preceding build, retained as `graphics-experiment-3ce8f90` in the identity file.
 `graphics-v2-trace-excerpts.txt` records the banked-task and background/queue
 investigation. `death-render-trace-excerpts.txt` records blocked text writes,
-different sprite sources, and a divergent score-format buffer on the current
-candidate. The full trace runs use the same KLL1 entry and active buttons as
+different sprite sources, and a divergent score-format buffer before the
+death-pointer correction. The full trace runs use the same KLL1 entry and active buttons as
 `test_gameplay_parity.py`, with no changes to the ROM under test.
 
-The current death-pointer candidate is identified separately from the preceding
+The death-pointer checkpoint at `cb14a55` is identified separately from the preceding
 `graphics-experiment-before-death-pointers` ROM. `death-pointers-build.txt` records
 its incremental assembly; `death-streams-old.txt` fails on 185 frames and
 `death-streams-new.txt` passes all 3701 compared frames. Default idle and active
@@ -68,3 +68,24 @@ set `$FFF9=$5A` and replay the active buttons through frame 6100. The logger
 reports PC, source/destination registers, mapping, STAT, LY, and attempted value.
 It preserves the original write and adds no emulated CPU cycles. This patch is
 an alternative to the earlier ring-trace patch, not an addition to it.
+
+## Text, objects, and full reconstruction
+
+`rendering-build.txt` records the current full build from the restored Classic
+input and the recovered BB1/BB2 inputs. The earlier full death-pointer build
+matches its incremental checkpoint byte for byte. The incremental helper was
+removed after restoring full builds; its source remains at commit `cb14a55`.
+
+`rendering-active-6000.txt` and `rendering-idle-12000.txt` pass with the expanded
+object/score comparison. `rendering-old-active.txt` fails on the preceding ROM.
+`rendering-lcd-off-maps.txt` retains three raw-map mismatches, all during LCD-off
+clears; visible maps and the other compared fields agree through frame 6000.
+`rendering-fixed-frame3892.png` shows the restored ROUND text, and the frame-6000
+capture shows the corrected HUD. `rendering-fixed-trace.txt` records safe text
+writes and score clearing.
+
+`rendering-active-12000.txt` fails at frame 6037, first in player animation/state.
+The preceding checkpoint's focused actor comparison has the same first failure
+in `rendering-old-long-actors.txt`. `rendering-without-guard-long.txt` shows that
+removing the queue guard leaves that failure in place. This is an unpromoted
+checkpoint; the longer active divergence still needs investigation.
