@@ -1,0 +1,18 @@
+=== host: banked-task candidate before death-pointer correction ===
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=6100 bank=40 log=01 stat=CB ly=13 lcd=E7 cc=148475152
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=8100 bank=40 log=01 stat=C8 ly=7 lcd=E7 cc=150930392
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=A100 bank=40 log=01 stat=C8 ly=11 lcd=E7 cc=153881700
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=C100 bank=40 log=01 stat=CB ly=13 lcd=E7 cc=156902056
+VRAMWRITE dst=9967 pc=4311 value=18 hl=9967 de=DD28 bc=0422 bank=40 log=01 stat=CF ly=0 lcd=E7 cc=273417528
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=8100 bank=40 log=01 stat=CB ly=13 lcd=E7 cc=280956112
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=A100 bank=40 log=01 stat=CB ly=13 lcd=E7 cc=283203260
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=C100 bank=40 log=01 stat=C8 ly=11 lcd=E7 cc=286081760
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=E100 bank=40 log=01 stat=CB ly=9 lcd=E7 cc=289100192
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=0100 bank=40 log=01 stat=CB ly=13 lcd=E7 cc=292051516
+VRAMWRITE dst=C2EB pc=4A56 value=04 hl=C2EB de=C492 bc=0124 bank=40 log=01 stat=CB ly=22 lcd=E7 cc=412700368
+VRAMWRITE dst=9825 pc=1EA5 value=04 hl=C2EC de=9825 bc=0003 bank=41 log=01 stat=C8 ly=0 lcd=67 cc=412849640
+VRAMWRITE dst=FF9F pc=5B4C value=C6 hl=5F60 de=FF9F bc=8100 bank=40 log=01 stat=CB ly=6 lcd=E7 cc=429801900
+=== native: banked-task candidate before death-pointer correction ===
+VRAMWRITE dst=9967 pc=0311 value=18 hl=9967 de=DD28 bc=0422 bank=00 log=00 stat=CD ly=0 lcd=E7 cc=273409520
+VRAMWRITE dst=C2EB pc=0A41 value=24 hl=C2EB de=C492 bc=0124 bank=00 log=00 stat=CA ly=18 lcd=E7 cc=412687600
+VRAMWRITE dst=9825 pc=021F value=24 hl=C2EC de=9825 bc=0003 bank=00 log=00 stat=C8 ly=0 lcd=67 cc=412838284

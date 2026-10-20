@@ -1,0 +1,28 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-6000",
+  "active": true,
+  "compared_fields": [
+    "sprite_streams"
+  ],
+  "mismatch_frames": 0,
+  "field_counts": {},
+  "state_mismatch_frames": 0,
+  "presentation_unmatched_within_one_frame": [
+    3730,
+    3892,
+    3893,
+    3894,
+    3895,
+    3896,
+    3897,
+    3898,
+    3899,
+    3900,
+    3901,
+    3902
+  ],
+  "presentation_unmatched_count": 1381,
+  "first_mismatches": [],
+  "last_mismatches": []
+}

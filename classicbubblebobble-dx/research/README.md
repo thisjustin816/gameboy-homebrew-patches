@@ -32,3 +32,39 @@ into a separate directory and set `_retro.core_path` to that directory before
 creating the replay emulator. Preserve the installed core for comparison.
 The trace distinguishes physical banks because `$4150` is also a valid address
 inside other guest banks.
+
+## Active gameplay and death transitions
+
+`graphics-v2-*` records the graphics candidate with banked enemy records,
+background reads, queue copies, and the cooperative task entry corrected.
+The `old-*-parity` logs show the new regression failing on the preceding
+`3ce8f90` graphics build. Idle and active parity logs pass through frame 3600;
+extended logs preserve failures through frames 4000 and 6000. The four
+`graphics-v2-test_*` logs cover the inherited regressions.
+
+`graphics-fixed-frame2600.png` and `graphics-fixed-active-frame3243.png` show
+the corrected candidate. Earlier `graphics-experiment-*` files refer to the
+preceding build, retained as `graphics-experiment-3ce8f90` in the identity file.
+`graphics-v2-trace-excerpts.txt` records the banked-task and background/queue
+investigation. `death-render-trace-excerpts.txt` records blocked text writes,
+different sprite sources, and a divergent score-format buffer on the current
+candidate. The full trace runs use the same KLL1 entry and active buttons as
+`test_gameplay_parity.py`, with no changes to the ROM under test.
+
+The current death-pointer candidate is identified separately from the preceding
+`graphics-experiment-before-death-pointers` ROM. `death-pointers-build.txt` records
+its incremental assembly; `death-streams-old.txt` fails on 185 frames and
+`death-streams-new.txt` passes all 3701 compared frames. Default idle and active
+runs pass, and `death-final-extended.txt` preserves the remaining map failure.
+The `death-test_*` logs cover KLL1 and the inherited regressions.
+`death-fixed-frame4000.png` and `death-native-frame4000.png` show the corrected
+sprite and the original DMG reference with the same active input.
+
+`gambatte-death-render-trace.patch` adds only the write logging used by this
+investigation. Apply it to the clean Gambatte revision above with
+`git apply --unidiff-zero`, build, and
+select the separate core directory before cold boot. After the KLL1 entry,
+set `$FFF9=$5A` and replay the active buttons through frame 6100. The logger
+reports PC, source/destination registers, mapping, STAT, LY, and attempted value.
+It preserves the original write and adds no emulated CPU cycles. This patch is
+an alternative to the earlier ring-trace patch, not an addition to it.

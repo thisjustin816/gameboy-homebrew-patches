@@ -1,0 +1,200 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-3600",
+  "active": false,
+  "mismatch_frames": 1301,
+  "field_counts": {
+    "timer": 1301,
+    "actors": 1301,
+    "collision": 1301,
+    "tiles": 1301,
+    "maps": 1301
+  },
+  "state_mismatch_frames": 1301,
+  "presentation_unmatched_within_one_frame": [
+    2300,
+    2301,
+    2302,
+    2303,
+    2304,
+    2305,
+    2306,
+    2307,
+    2308,
+    2309,
+    2310,
+    2311
+  ],
+  "presentation_unmatched_count": 1301,
+  "first_mismatches": [
+    {
+      "frame": 2300,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2301,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2302,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2303,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2304,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2305,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2306,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2307,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2308,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2309,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2310,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 2311,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 3597,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 3598,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 3599,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    },
+    {
+      "frame": 3600,
+      "fields": [
+        "timer",
+        "actors",
+        "collision",
+        "tiles",
+        "maps"
+      ]
+    }
+  ]
+}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 152, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 148, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

@@ -1,0 +1,136 @@
+FILE: new-timer-trace.txt
+T pc=5885 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5886 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5887 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5888 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5889 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588A sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588C sp=DF20 op=F0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588E sp=DF20 op=EA a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5891 sp=DF20 op=E6 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5893 sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5895 sp=DF20 op=3E a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5897 sp=DF20 op=E0 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5899 sp=DF20 op=00 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=589A sp=DF20 op=21 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=589D sp=DF20 op=FA a=01 hl=C20F bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=58A0 sp=DF20 op=5F a=02 hl=C20F bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=58A1 sp=DF20 op=E6 a=02 hl=C20F bc=0007 de=FF02 bank=40 log=01 top=532A
+T pc=58A3 sp=DF20 op=57 a=00 hl=C20F bc=0007 de=FF02 bank=40 log=01 top=532A
+T pc=58A4 sp=DF20 op=C6 a=00 hl=C20F bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A6 sp=DF20 op=22 a=7A hl=C20F bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A7 sp=DF20 op=36 a=7A hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A9 sp=DF20 op=7A a=7A hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AA sp=DF20 op=CB a=00 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AC sp=DF20 op=C6 a=00 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AE sp=DF20 op=4F a=A0 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AF sp=DF20 op=06 a=A0 hl=C210 bc=00A0 de=0002 bank=40 log=01 top=532A
+T pc=58B1 sp=DF20 op=FA a=A0 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B4 sp=DF20 op=B7 a=00 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B5 sp=DF20 op=7B a=00 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B6 sp=DF20 op=28 a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B9 sp=DF20 op=E6 a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BB sp=DF20 op=CB a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BD sp=DF20 op=C6 a=20 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BF sp=DF20 op=5F a=2F hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58C0 sp=DF20 op=3E a=2F hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C2 sp=DF20 op=CE a=72 hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C4 sp=DF20 op=57 a=72 hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C5 sp=DF20 op=26 a=72 hl=C210 bc=97A0 de=722F bank=40 log=01 top=532A
+T pc=58C7 sp=DF20 op=CD a=72 hl=1010 bc=97A0 de=722F bank=40 log=01 top=532A
+T pc=4324 sp=DF1E op=C3 a=72 hl=1010 bc=97A0 de=722F bank=40 log=01 top=58CA
+MAPWRITE dst=97A0 pc=4311 value=01 hl=97A0 de=DD03 bc=10A1 bank=40 log=01 cc=144110948
+TASKENTRY pc=21A1 sp=DFFD op=2C log=03 bytes=2C2A666F1824
+TASKENTRY pc=4669 sp=DFB4 op=4A log=01 bytes=4AF0C3B7C235
+TASKENTRY pc=61A1 sp=DFD8 op=3E log=01 bytes=3E01CD6544CD
+TIMERENTER pc=49B3 de=C1F8 sp=DF22 bank=40 log=01 w0=4667 w1=0000 w2=0000
+FILE: native-cgb-timer-trace.txt
+T pc=1883 sp=DF20 op=2A a=00 hl=4303 bc=0107 de=FFBC bank=00 log=00 top=132A
+T pc=1884 sp=DF20 op=12 a=A0 hl=4304 bc=0107 de=FFBC bank=00 log=00 top=132A
+T pc=1885 sp=DF20 op=1C a=A0 hl=4304 bc=0107 de=FFBC bank=00 log=00 top=132A
+T pc=1886 sp=DF20 op=05 a=A0 hl=4304 bc=0107 de=FFBD bank=00 log=00 top=132A
+T pc=1887 sp=DF20 op=20 a=A0 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=1889 sp=DF20 op=78 a=A0 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=188A sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=188C sp=DF20 op=F0 a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=188E sp=DF20 op=EA a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=1891 sp=DF20 op=E6 a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=1893 sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=1895 sp=DF20 op=3E a=00 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=1897 sp=DF20 op=EA a=01 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=189A sp=DF20 op=21 a=01 hl=4304 bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=189D sp=DF20 op=FA a=01 hl=C20F bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=18A0 sp=DF20 op=5F a=02 hl=C20F bc=0007 de=FFBD bank=00 log=00 top=132A
+T pc=18A1 sp=DF20 op=E6 a=02 hl=C20F bc=0007 de=FF02 bank=00 log=00 top=132A
+T pc=18A3 sp=DF20 op=57 a=00 hl=C20F bc=0007 de=FF02 bank=00 log=00 top=132A
+T pc=18A4 sp=DF20 op=C6 a=00 hl=C20F bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18A6 sp=DF20 op=22 a=7A hl=C20F bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18A7 sp=DF20 op=36 a=7A hl=C210 bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18A9 sp=DF20 op=7A a=7A hl=C210 bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18AA sp=DF20 op=CB a=00 hl=C210 bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18AC sp=DF20 op=C6 a=00 hl=C210 bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18AE sp=DF20 op=4F a=A0 hl=C210 bc=0007 de=0002 bank=00 log=00 top=132A
+T pc=18AF sp=DF20 op=06 a=A0 hl=C210 bc=00A0 de=0002 bank=00 log=00 top=132A
+T pc=18B1 sp=DF20 op=FA a=A0 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18B4 sp=DF20 op=B7 a=00 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18B5 sp=DF20 op=7B a=00 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18B6 sp=DF20 op=28 a=02 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18B9 sp=DF20 op=E6 a=02 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18BB sp=DF20 op=CB a=02 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18BD sp=DF20 op=C6 a=20 hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18BF sp=DF20 op=5F a=2F hl=C210 bc=97A0 de=0002 bank=00 log=00 top=132A
+T pc=18C0 sp=DF20 op=3E a=2F hl=C210 bc=97A0 de=002F bank=00 log=00 top=132A
+T pc=18C2 sp=DF20 op=CE a=72 hl=C210 bc=97A0 de=002F bank=00 log=00 top=132A
+T pc=18C4 sp=DF20 op=57 a=72 hl=C210 bc=97A0 de=002F bank=00 log=00 top=132A
+T pc=18C5 sp=DF20 op=26 a=72 hl=C210 bc=97A0 de=722F bank=00 log=00 top=132A
+T pc=18C7 sp=DF20 op=CD a=72 hl=1010 bc=97A0 de=722F bank=00 log=00 top=132A
+T pc=0324 sp=DF1E op=F0 a=72 hl=1010 bc=97A0 de=722F bank=00 log=00 top=18CA
+MAPWRITE dst=97A0 pc=0311 value=01 hl=97A0 de=DD03 bc=10A1 bank=00 log=00 cc=144103792
+TASKENTRY pc=4669 sp=DFB4 op=3E log=00 bytes=3E01CD650421
+TASKENTRY pc=21A1 sp=DFD8 op=3E log=00 bytes=3E01CD6504CD
+TIMERENTER pc=09B3 de=C1F8 sp=DF22 bank=00 log=00 w0=0667 w1=0000 w2=0000
+TASKENTRY pc=4669 sp=DFB4 op=3E log=00 bytes=3E01CD650421
+FILE: bg-map-trace.txt
+MAPWRITE dst=97A0 pc=4311 value=AB hl=97A0 de=DD03 bc=10A1 bank=40 log=01 cc=144110948
+FILE: queue-map-trace.txt
+T pc=5885 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5886 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5887 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5888 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5889 sp=DF20 op=00 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588A sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588C sp=DF20 op=F0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=588E sp=DF20 op=EA a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5891 sp=DF20 op=E6 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5893 sp=DF20 op=E0 a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5895 sp=DF20 op=3E a=00 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5897 sp=DF20 op=E0 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=04 top=532A
+T pc=5899 sp=DF20 op=00 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=589A sp=DF20 op=21 a=01 hl=4304 bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=589D sp=DF20 op=FA a=01 hl=C20F bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=58A0 sp=DF20 op=5F a=02 hl=C20F bc=0007 de=FFBD bank=40 log=01 top=532A
+T pc=58A1 sp=DF20 op=E6 a=02 hl=C20F bc=0007 de=FF02 bank=40 log=01 top=532A
+T pc=58A3 sp=DF20 op=57 a=00 hl=C20F bc=0007 de=FF02 bank=40 log=01 top=532A
+T pc=58A4 sp=DF20 op=C6 a=00 hl=C20F bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A6 sp=DF20 op=22 a=7A hl=C20F bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A7 sp=DF20 op=36 a=7A hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58A9 sp=DF20 op=7A a=7A hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AA sp=DF20 op=CB a=00 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AC sp=DF20 op=C6 a=00 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AE sp=DF20 op=4F a=A0 hl=C210 bc=0007 de=0002 bank=40 log=01 top=532A
+T pc=58AF sp=DF20 op=06 a=A0 hl=C210 bc=00A0 de=0002 bank=40 log=01 top=532A
+T pc=58B1 sp=DF20 op=FA a=A0 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B4 sp=DF20 op=B7 a=00 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B5 sp=DF20 op=7B a=00 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B6 sp=DF20 op=28 a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58B9 sp=DF20 op=E6 a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BB sp=DF20 op=CB a=02 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BD sp=DF20 op=C6 a=20 hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58BF sp=DF20 op=5F a=2F hl=C210 bc=97A0 de=0002 bank=40 log=01 top=532A
+T pc=58C0 sp=DF20 op=3E a=2F hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C2 sp=DF20 op=CE a=72 hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C4 sp=DF20 op=57 a=72 hl=C210 bc=97A0 de=002F bank=40 log=01 top=532A
+T pc=58C5 sp=DF20 op=26 a=72 hl=C210 bc=97A0 de=722F bank=40 log=01 top=532A
+T pc=58C7 sp=DF20 op=CD a=72 hl=1010 bc=97A0 de=722F bank=40 log=01 top=532A
+T pc=4324 sp=DF1E op=F0 a=72 hl=1010 bc=97A0 de=722F bank=40 log=01 top=58CA
+MAPWRITE dst=97A0 pc=4311 value=AB hl=97A0 de=DD03 bc=10A1 bank=40 log=01 cc=144110948

@@ -73,6 +73,8 @@ OBSERVED_BANKED_ENTRY_POINTS={
  (1,0x63F9),(1,0x640A),(1,0x6422),(6,0x56D4),(6,0x56FA),
  # Password-save patch code lives in bank 3 and calls fixed-bank SRAM helpers.
  (3,0x7800),
+ # Cooperative task initialized at bank-1 $4669.
+ (1,0x4669),
  # Bank-1 enemy-state handlers from the fixed-ROM table at $29E3.
  (1,0x5278),(1,0x54D7),(1,0x5473),(1,0x48DD),
  (1,0x5356),(1,0x4FD0),(1,0x4D2E),(1,0x4983),
@@ -285,7 +287,7 @@ host_context_ret::
     ; Replaces the scheduler RET at logical $0446. RST $10 contributed a
     ; temporary return address on the selected task stack; discard it. Relocate
     ; saved logical PCs while preserving the exact host_low_0465 continuation
-    ; in ROM0, where it restores the caller's logical upper-bank mapping.
+    ; and banked-task entry in ROM0, where they restore the upper-bank mapping.
     inc sp
     inc sp
     push af
@@ -295,10 +297,19 @@ host_context_ret::
     bit 6,a
     jr nz,.already_upper
     cp HIGH(host_low_0465_resume)
-    jr nz,.relocate_low
+    jr nz,.check_banked_task
     dec hl
     ld a,[hl]
     cp LOW(host_low_0465_resume)
+    jr z,.already_upper
+    inc hl
+    ld a,[hl]
+.check_banked_task:
+    cp HIGH(host_task_4669)
+    jr nz,.relocate_low
+    dec hl
+    ld a,[hl]
+    cp LOW(host_task_4669)
     jr z,.already_upper
     inc hl
     ld a,[hl]
@@ -1148,8 +1159,44 @@ host_low_0465_resume::
     pop af
     ret
 ''')
+ if 0x0324 in low_targets:
+  lines.append(r'''
+; Banked queue callers need their selected ROM window to remain visible.
+host_low_0324::
+    ldh a,[$FF8F]
+    or a
+    ret z
+    ldh a,[$FF8E]
+    ld l,a
+    ld a,h
+    ld h,$DD
+    ld [hl+],a
+    ld [hl],c
+    inc l
+    ld [hl],b
+    inc l
+    ld b,a
+    ldh a,[$FF8F]
+    ld c,a
+.copy:
+    ld a,[de]
+    ld [hl+],a
+    inc de
+    dec c
+    jr z,.done
+    dec b
+    jr nz,.copy
+.done:
+    ld [hl],$00
+    ld a,l
+    ld hl,$FF8E
+    ld [hl+],a
+    ld a,c
+    ld [hl],a
+    ret
+''')
  for t in sorted(low_targets):
-  if t in (0x021E,0x0465): continue
+  if t in (0x021E,0x0324,0x0465): continue
   lines.append(f'''
 host_low_{t:04x}::
     push af
@@ -1364,6 +1411,178 @@ host_bb1_graphics64_copy::
     pop af
     jp $4CB8
 ''')
+ lines.append(r'''
+; Read the enemy pointer table and records while bank 3 is physically visible.
+host_bb1_enemy_records::
+    ld a,$03
+    ldh [H_LOG],a
+    call host_map_logical_a
+    ld a,[$C200]
+    add a
+    ld e,a
+    ld d,$00
+    ld hl,$5FC0
+    add hl,de
+    ld e,[hl]
+    inc hl
+    ld d,[hl]
+    ld hl,$C600
+    ld c,l
+    xor a
+    ldh [$FFC3],a
+.next:
+    ld l,c
+    ld a,[de]
+    cp $FF
+    jr z,.done
+    inc de
+    ld [hl],$10
+    inc l
+    ld b,a
+    and $7F
+    ld [hl+],a
+    ld a,[de]
+    inc de
+    ld [hl+],a
+    ld [hl],$00
+    inc l
+    ld a,[de]
+    inc de
+    ld [hl+],a
+    ld [hl],$00
+    ld a,c
+    add $0C
+    ld l,a
+    ld a,b
+    and $80
+    ld b,a
+    ld [hl+],a
+    xor $80
+    ld [hl],a
+    ld a,c
+    add $10
+    ld l,a
+    xor a
+    ld [hl+],a
+    ld [hl],a
+    ld a,c
+    add $1B
+    ld l,a
+    ld a,b
+    or $20
+    ld [hl+],a
+    xor a
+    ld [hl+],a
+    ld [hl+],a
+    ld [hl+],a
+    ld [hl+],a
+    inc l
+    ld [hl+],a
+    dec a
+    ld [hl],a
+    ldh a,[$FFC3]
+    inc a
+    ldh [$FFC3],a
+    ld a,c
+    add $24
+    ld c,a
+    cp $FC
+    jr c,.next
+.done:
+    ld a,$01
+    ldh [H_LOG],a
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    jp $6F35
+''')
+ lines.append(r'''
+; Background rows can use either fixed-ROM descriptors or bank-4 streams.
+host_bb1_background_swap::
+    call host_bb1_background_read_bc
+    swap a
+    ret
+host_bb1_background_low::
+    call host_bb1_background_read_bc
+    and $0F
+    ret
+host_bb1_background_read_bc::
+    bit 6,b
+    jr nz,.upper
+    push hl
+    ld h,b
+    ld l,c
+    set 6,h
+    ld a,[hl]
+    pop hl
+    ret
+.upper:
+    call host_map_current_logical
+    ld a,[bc]
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    ret
+''')
+ lines.append(r'''
+; Fixed queue callers can also enqueue selected-upper-ROM graphics.
+host_bb1_queue_copy::
+    ldh a,[$FF8F]
+    or a
+    ret z
+    bit 7,d
+    jr nz,.ram
+    bit 6,d
+    jr z,.ram
+    push af
+    call host_map_current_logical
+    pop af
+    call host_low_0324
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    ret
+.ram:
+    jp $4328
+''')
+ lines.append(r'''
+; The banked cooperative task must enter its bank-1 code, not relocated $0669.
+host_task_4669::
+    push af
+    ld a,$01
+    ldh [H_LOG],a
+    call host_map_logical_a
+    pop af
+    jp $4669
+''')
+ lines.append(r'''
+; Death animation pointers at bank-1 $5F5F/$5F63 supply both sprite blocks.
+host_bb1_death_sprite_pointers::
+    call host_map_current_logical
+    ld a,[hl+]
+    add $00
+    ld [de],a
+    inc e
+    ld a,[hl+]
+    adc $40
+    ld [de],a
+    inc e
+    ld a,[hl+]
+    add $00
+    ld [de],a
+    inc e
+    ld a,[hl+]
+    adc $40
+    ld [de],a
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    ret
+''')
  lines.append('\nhost_end::\n')
  return ''.join(lines)
 
@@ -1507,16 +1726,31 @@ def main():
  for pc in [0x141E,0x1461]:
   assert bytes(v[pc:pc+2])==bytes.fromhex('3e1b')
   v[pc+1]=0x5B
- for off in range(0x1BF2,0x1C06,2):
-  ptr=int.from_bytes(bb1[off:off+2],'little')
-  assert 0x1C06<=ptr<0x1D00
-  v[off:off+2]=(ptr+0x4000).to_bytes(2,'little')
  assert bytes(v[0x0A04:0x0A07])==bytes.fromhex('212c0a')
  v[0x0A06]=0x4A
 
  for pc,label in [(0x1780,'host_bb1_graphics64'),(0x1797,'host_bb1_graphics64_stream')]:
   assert bytes(bb1[pc:pc+5])==bytes.fromhex('3e03ea0021')
   w=sym[label]; v[pc:pc+5]=bytes([0xC3,w&255,w>>8,0,0])
+
+ # Death animation pointer tables live in the selected logical upper bank.
+ assert bytes(v[0x1B49:0x1B4C])==bytes.fromhex('2ac600')
+ w=sym['host_bb1_death_sprite_pointers']; v[0x1B49:0x1B4C]=bytes([0xC3,w&255,w>>8])
+
+ # Enemy records must be consumed with their selected upper bank mapped.
+ assert bytes(bb1[0x2ECC:0x2ED1])==bytes.fromhex('3e03ea0021')
+ w=sym['host_bb1_enemy_records']; v[0x2ECC:0x2ED1]=bytes([0xC3,w&255,w>>8,0,0])
+
+ for pc,label,original in [(0x14AB,'host_bb1_background_swap','0acb37'),(0x14BA,'host_bb1_background_low','0ae60f')]:
+  assert bytes(v[pc:pc+3])==bytes.fromhex(original)
+  w=sym[label]; v[pc:pc+3]=bytes([0xCD,w&255,w>>8])
+
+ assert bytes(v[0x0324:0x0327])==bytes.fromhex('f08fb7')
+ w=sym['host_bb1_queue_copy']; v[0x0324:0x0327]=bytes([0xC3,w&255,w>>8])
+
+ # A raw upper-bank task PC cannot execute while V0 is physically mapped.
+ assert bytes(v[0x0489:0x048B])==bytes.fromhex('6946')
+ v[0x0489:0x048B]=sym['host_task_4669'].to_bytes(2,'little')
 
  # Startup $01B3 copies a 10-byte HRAM routine from fixed ROM $01C1. Because
  # relocated fixed code executes with BB1 V0 in the switchable window, point the

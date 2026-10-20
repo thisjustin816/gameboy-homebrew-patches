@@ -15,8 +15,19 @@
     "size": 2097152
   },
   "graphics-experiment": {
+    "md5": "823dad4303d4e83e20cd1fd2522688c2",
+    "sha256": "b7987d9045e27dff30b2289ebf2163b730a8b88f9ff2a7c1dfa196f1e6945dbc",
+    "size": 2097152,
+    "build_method": "incremental from graphics-experiment-before-death-pointers; full build awaits Classic input"
+  },
+  "graphics-experiment-3ce8f90": {
     "md5": "1838fe3b3ff265302efcf904ae1b493c",
     "sha256": "af45a5c06c5251079ebda9e0abbbad66f00062b55cb2a9e4b21590b7f1b20284",
+    "size": 2097152
+  },
+  "graphics-experiment-before-death-pointers": {
+    "md5": "617beb54814b87dff60e7b95d0068c09",
+    "sha256": "86209088c6243e3d8c5193a4e4352b40cf3b6f4ccaeab02010b0818cc060b1de",
     "size": 2097152
   }
 }

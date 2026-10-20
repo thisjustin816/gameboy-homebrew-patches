@@ -1,0 +1,13 @@
+--- a/libgambatte/src/cpu.cpp
++++ b/libgambatte/src/cpu.cpp
+@@ -21,0 +22 @@
++#include <cstdio>
+@@ -23,0 +25 @@
++static unsigned tracePc;
+@@ -146,2 +148,2 @@
+-#define WRITE(addr, data) do { mem_.write(addr, data, cycleCounter); cycleCounter += 4; } while (0)
+-#define FF_WRITE(addr, data) do { mem_.ff_write(addr, data, cycleCounter); cycleCounter += 4; } while (0)
++#define WRITE(addr, data) do { unsigned traceAddr = (addr); unsigned traceData = (data); if ((traceAddr == 0x9967 || traceAddr == 0x9825 || traceAddr == 0x8000 || traceAddr == 0x9E60 || traceAddr == 0xC2EB || traceAddr == 0xFF9F) && mem_.read(0xFFF9, cycleCounter) == 0x5A) fprintf(stderr,"VRAMWRITE dst=%04X pc=%04X value=%02X hl=%04X de=%04X bc=%04X bank=%02X log=%02X stat=%02X ly=%u lcd=%02X cc=%lu\n",traceAddr,tracePc,traceData,hl(),de(),bc(),mem_.read(0xFFD3,cycleCounter),mem_.read(0xFFD6,cycleCounter),mem_.read(0xFF41,cycleCounter),mem_.read(0xFF44,cycleCounter),mem_.read(0xFF40,cycleCounter),cycleCounter); mem_.write(traceAddr, traceData, cycleCounter); cycleCounter += 4; } while (0)
++#define FF_WRITE(addr, data) do { unsigned dst=(addr), val=(data); if ((dst & 0xff)==0x9F && mem_.read(0xFFF9,cycleCounter)==0x5A) fprintf(stderr,"POINTER pc=%04X val=%02X hl=%04X de=%04X bc=%04X cc=%lu\n",tracePc,val,hl(),de(),bc(),cycleCounter); mem_.ff_write(dst, val, cycleCounter); cycleCounter += 4; } while (0)
+@@ -518,0 +521 @@
++            tracePc = pc;

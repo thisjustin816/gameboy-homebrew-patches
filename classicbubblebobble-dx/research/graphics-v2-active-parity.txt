@@ -1,0 +1,12 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "frames": "2300-3600",
+  "active": true,
+  "mismatch_frames": 0,
+  "field_counts": {},
+  "state_mismatch_frames": 0,
+  "presentation_unmatched_within_one_frame": [],
+  "presentation_unmatched_count": 0,
+  "first_mismatches": [],
+  "last_mismatches": []
+}
