@@ -1,0 +1,156 @@
+{
+  "frames": "2300-6000",
+  "clock": "emulator",
+  "active": true,
+  "sample_count": 3701,
+  "missed_samples": [],
+  "worker_clocks": {
+    "native": {
+      "emulator_frames": 6001,
+      "clock_deltas": {},
+      "initial_game_tick": 233
+    },
+    "host": {
+      "emulator_frames": 6001,
+      "clock_deltas": {},
+      "initial_game_tick": 233
+    }
+  },
+  "round_indices": [
+    1,
+    2
+  ],
+  "compared_fields": [
+    "sound_registers",
+    "wave_ram",
+    "lcd_enabled",
+    "round",
+    "timer",
+    "actors",
+    "objects",
+    "score",
+    "sprite_streams",
+    "collision",
+    "tiles",
+    "maps"
+  ],
+  "mismatch_frames": 21,
+  "field_counts": {
+    "sound_registers": 21
+  },
+  "state_mismatch_frames": 0,
+  "include_lcd_off_maps": false,
+  "lcd_off_map_mismatch_frames": [
+    3730,
+    3940,
+    5876
+  ],
+  "first_mismatches": [
+    {
+      "frame": 5878,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5894,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5897,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5900,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5902,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5910,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5913,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5918,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5921,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5924,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5926,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5934,
+      "fields": [
+        "sound_registers"
+      ]
+    }
+  ],
+  "last_mismatches": [
+    {
+      "frame": 5958,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5966,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5974,
+      "fields": [
+        "sound_registers"
+      ]
+    },
+    {
+      "frame": 5977,
+      "fields": [
+        "sound_registers"
+      ]
+    }
+  ]
+}
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 187, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 183, in main
+    assert not failures, "hosted gameplay differs from native CGB reference"
+           ^^^^^^^^^^^^
+AssertionError: hosted gameplay differs from native CGB reference

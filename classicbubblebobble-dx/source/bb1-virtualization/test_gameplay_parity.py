@@ -109,12 +109,16 @@ def main():
                         help="drive inputs by emulator frames or the game's VBlank counter")
     fields = ("sound_registers", "wave_ram", "lcd_enabled", "round", "timer", "actors",
               "objects", "score", "sprite_streams", "collision", "tiles", "maps")
-    parser.add_argument("--fields", nargs="+", choices=fields, default=fields,
-                        help="fields to compare; default: all")
+    parser.add_argument("--fields", nargs="+", choices=fields,
+                        help="default: gameplay/graphics; game clock also includes sound state")
     parser.add_argument("--frames-dir", type=Path)
     parser.add_argument("--include-lcd-off-maps", action="store_true")
     parser.add_argument("--worker", choices=("native", "host"), help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.fields is None:
+        # Sound writes follow game ticks; wall-frame samples can straddle them.
+        args.fields = fields if args.clock == "game" else tuple(
+            field for field in fields if field not in ("sound_registers", "wave_ram"))
     if args.worker:
         return worker(args)
     if not args.source:

@@ -169,3 +169,8 @@ and attract cycles. It includes stored sound registers and wave RAM.
 actual prefill/END acceptance in five rounds. `resume-bank-control.txt` records
 the expected failure with the BB1 save in bank 0. `resume-ending.txt` rechecks
 both controlled ending paths. The current review is `../REVIEW-RESUME.md`.
+
+`resume-wall-audio-control.txt` preserves explicit sound-state comparison on the
+emulator-frame clock: 21 register differences and no gameplay-state differences.
+Game-clock defaults include sound state; emulator-frame defaults retain the
+original gameplay/graphics fields. Explicit `--fields` can compare either set.

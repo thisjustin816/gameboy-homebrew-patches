@@ -151,9 +151,13 @@ PyBoy battery-file power cycle. Prior-win flags are zero in these cases.
 `--cases` selects zero-based rounds; `--resume-bank 0` deliberately places the
 host save in the wrong bank and must fail.
 
-Gameplay comparisons include sound registers `$FF10-$FF25` and wave RAM.
+Game-clock comparisons include sound registers `$FF10-$FF25` and wave RAM.
 Their equality checks stored sound data at observed ticks; it does not establish
 PCM waveform equality, audible quality, channel timing, or physical audio.
+Emulator-frame mode retains gameplay/graphics defaults because sound writes can
+fall on opposite sides of its sample boundary. Explicit `--fields` can request
+sound state on either clock; the preserved wall-clock control reports 21 register
+differences through frame 6000.
 The longer active replay exercises deaths, game-over transitions, restarts, and
 attract play. It does not establish a natural full playthrough. `--frames-dir`
 preserves state and a frame when the game counter unexpectedly resets.
