@@ -174,3 +174,8 @@ both controlled ending paths. The current review is `../REVIEW-RESUME.md`.
 emulator-frame clock: 21 register differences and no gameplay-state differences.
 Game-clock defaults include sound state; emulator-frame defaults retain the
 original gameplay/graphics fields. Explicit `--fields` can compare either set.
+
+`resume-suite-summary.json` records all 14 candidate checks and the clock-selection
+follow-up. `resume-all-rounds.txt` rechecks all 100 round openings on the restart
+fix. All final exit codes are zero; the initial emulator-frame sound diagnostic
+remains identified separately.

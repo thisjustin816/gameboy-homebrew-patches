@@ -1,0 +1,149 @@
+{
+  "rom_md5": "e62437d87db1c10032521ae8daa5b69b",
+  "after_code_push": true,
+  "tests": [
+    {
+      "test": "combo",
+      "script": "test_scene_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--scene",
+        "combo"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "emulator-active",
+      "script": "test_gameplay_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--active"
+      ],
+      "exit_code": 0,
+      "first_run_exit_code": 1,
+      "validated_after_commit": "66a8b55"
+    },
+    {
+      "test": "ending",
+      "script": "test_scene_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--scene",
+        "ending"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "game-active",
+      "script": "test_gameplay_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--clock",
+        "game",
+        "--active",
+        "--end",
+        "60000"
+      ],
+      "exit_code": 0,
+      "first_run_exit_code": 0,
+      "validated_after_commit": "66a8b55"
+    },
+    {
+      "test": "game-idle",
+      "script": "test_gameplay_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--clock",
+        "game",
+        "--end",
+        "16000"
+      ],
+      "exit_code": 0,
+      "first_run_exit_code": 0,
+      "validated_after_commit": "66a8b55"
+    },
+    {
+      "test": "kll1",
+      "script": "test_kll1.py",
+      "args": [],
+      "exit_code": 0
+    },
+    {
+      "test": "later",
+      "script": "test_scene_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--scene",
+        "later"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "menu",
+      "script": "test_menu_transition.py",
+      "args": [],
+      "exit_code": 0
+    },
+    {
+      "test": "password-all",
+      "script": "test_scene_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb",
+        "--scene",
+        "password",
+        "--all-rounds"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "prefill",
+      "script": "test_password_prefill_routines.py",
+      "args": [],
+      "exit_code": 0
+    },
+    {
+      "test": "rounds",
+      "script": "test_round_progress.py",
+      "args": [
+        "--source",
+        "BB1.gb"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "save-ui",
+      "script": "test_save_resume_ui.py",
+      "args": [
+        "--source",
+        "BB1.gb"
+      ],
+      "exit_code": 0
+    },
+    {
+      "test": "sram",
+      "script": "test_sram_bank1_powercycle.py",
+      "args": [],
+      "exit_code": 0
+    },
+    {
+      "test": "title",
+      "script": "test_real_title_vram_parity.py",
+      "args": [
+        "--source",
+        "BB1.gb"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "rom_change_commit": "eba50f7",
+  "harness_commit": "66a8b55",
+  "all_pass": true,
+  "first_run_diagnostic": "resume-wall-audio-control.txt preserves 21 wall-frame sound-register differences; default game-clock sound comparison passes."
+}

@@ -32,7 +32,7 @@ control, not a production option.
 | Correctness and old-build control | Yes | Nonreturning game-over paths retain host frames and eventually resume an invalid stack | Three map-and-jump wrappers, checked source edges; old fails and new passes with the same input | Other gameplay policies remain outside this replay |
 | Registers, mapping, and stack | Yes | Generic returning wrappers cannot serve these nonreturning paths | Balanced mapper calls and AF save/restore; caller and exit edges traced | This does not qualify cartridge timing |
 | Coding standards and coherence | Yes | Menu navigation needed reuse; reset diagnostics lacked tick and capture | Extracted identical menu input sequence, reused native font decoder, added failure state/frame capture; touched modules read together | Historical variants remain unchanged |
-| Quick regressions | Yes | Longer run exposes the restart stack fault | 60000-tick comparison, five menu save/resume cases, both controlled endings, PyBoy SRAM and prefill checks pass; repeat build is identical | Post-push suite covers all 100 openings; wall-clock sound sampling required a harness follow-up |
+| Quick regressions | Yes | Longer run exposes the restart stack fault | 60000-tick comparison, five menu save/resume cases, both controlled endings, PyBoy SRAM and prefill checks pass; repeat build is identical | All 14 available candidate checks pass after the clock-selection follow-up; other games lack their original inputs |
 | Sound evidence | Yes | Frame/graphics checks alone do not inspect sound data | Added game-clock sound-register and wave-RAM comparisons; preserved 21 wall-frame differences as an explicit control | PCM equality, audible output, and hardware audio remain unverified |
 | Descriptions and prose | Yes | Current identity, replay extent, and save method needed documentation | README, status, identity ledger, evidence index, and limits agree; writing-style and remove-ai-tells passes complete | Existing logs retain their historical results |
 | Hygiene | Yes | No new release artifact is intended | Syntax, whitespace, ASCII, original handoff checksums, and staged file types checked | Other published games lack their original ROM inputs here |
@@ -52,3 +52,10 @@ therefore uses the game clock, which matches through tick 60000. Explicit
 `--fields` retains strict sound checks on either clock. The emulator-frame
 replay keeps its prior gameplay/graphics default; this distinction is documented
 and the failing full-field output is retained as a control.
+
+Final evidence review adds the suite summary and 100-round output, and updates
+this review and the evidence index. All 14 candidate checks pass on ROM MD5
+`e62437d87db1c10032521ae8daa5b69b`. The full suite ran after the ROM-code push;
+the three gameplay-clock variants were repeated after harness commit `66a8b55`.
+The summary retains the initial wall-frame failure and the corrected result.
+No ROM bytes changed in the harness or evidence follow-ups.
