@@ -1,7 +1,7 @@
 # Classic Bubble Bobble DX
 
 The graphics candidate matches native in the sampled game-clock replay through
-tick 12000, controlled combos, opening play in all 100 rounds, and controlled
+tick 60000, controlled combos, opening play in all 100 rounds, and controlled
 ending paths. BB1 v0.14 stays promoted and BB2 v0.22 stays frozen. Read
 [STATUS.md](STATUS.md) for fixture details and verification limits.
 
@@ -132,3 +132,28 @@ frames, and the emulator tracing patch. The patched inputs, generated ROMs, save
 and emulator states are excluded from Git.
 
 To verify the original handoff bytes, run `sha256sum -c SHA256SUMS` here.
+
+## Save resume and repeated restarts
+
+```sh
+python3 test_save_resume_ui.py /tmp/graphics-experiment.gbc --source BB1.gb
+python3 test_gameplay_parity.py /tmp/graphics-experiment.gbc --source BB1.gb \
+  --clock game --active --end 60000
+```
+
+The menu test enters rounds 1, 3, 25, 50, and 100 by password, checks the actual
+save record, and carries only SRAM through a temporary battery file into a
+fresh emulator process. It accepts the prefilled password through END and checks
+the resumed round and active player. Non-save banks carry fingerprints and must
+remain unchanged. Gambatte's API requires inserting the battery bytes into its
+untouched pre-boot state; CPU and other state are fresh. This complements the
+PyBoy battery-file power cycle. Prior-win flags are zero in these cases.
+`--cases` selects zero-based rounds; `--resume-bank 0` deliberately places the
+host save in the wrong bank and must fail.
+
+Gameplay comparisons include sound registers `$FF10-$FF25` and wave RAM.
+Their equality checks stored sound data at observed ticks; it does not establish
+PCM waveform equality, audible quality, channel timing, or physical audio.
+The longer active replay exercises deaths, game-over transitions, restarts, and
+attract play. It does not establish a natural full playthrough. `--frames-dir`
+preserves state and a frame when the game counter unexpectedly resets.

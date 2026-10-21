@@ -5,7 +5,9 @@ The native reference changes only the CGB header and checksums. RAM descriptor
 pointers are normalized for their documented relocation; gameplay fields,
 collision data, score, objects, and tile graphics must match exactly. Tile maps
 must match whenever the LCD is enabled; --include-lcd-off-maps also compares
-partial map clears while both displays are off. --clock game drives inputs by
+partial map clears while both displays are off. Sound registers and wave RAM
+are compared as stored state, without establishing waveform or audible parity.
+--clock game drives inputs by
 $FF93 VBlank ticks; emulator-frame mode preserves the original wall-time replay.
 """
 import argparse
@@ -40,12 +42,15 @@ def worker(args):
             raise RuntimeError(f"game clock stalled at tick {sample_frame}, emulator frame {replay.frame}, "
                                f"PC={state['pc'].hex()}, SP={state['sp'].hex()}")
         if sample_frame >= 2300:
-            state = chunks(replay.emulator.get_state())
+            raw_state = replay.emulator.get_state()
+            state = chunks(raw_state)
             ram, vram, hram = state["wram"], state["vram"], state["hram"]
             record = {
                 "frame": sample_frame,
                 "lcd_enabled": bool(hram[0x140] & 0x80),
                 "round": ram[0x200],
+                "sound_registers": hram[0x110:0x126].hex(),
+                "wave_ram": state["waveram"].hex(),
                 "timer": hram[0x1BE:0x1C0].hex(),
                 "actors": record_digest(ram, ((0x400, 1, 0x24), (0x600, 7, 0x24))),
                 "objects": record_digest(ram, ((0x500, 15, 0x10),)),
@@ -75,7 +80,16 @@ def worker(args):
             tick = replay.read(0xFF93)
             delta = (tick - previous_tick) & 255
             if delta > 2:
-                raise RuntimeError(f"game counter reset or jumped: {previous_tick}->{tick}")
+                if args.frames_dir:
+                    from PIL import Image
+                    args.frames_dir.mkdir(parents=True, exist_ok=True)
+                    prefix = args.frames_dir / f"{args.worker}-reset-tick{sample_frame}"
+                    prefix.with_suffix(".state").write_bytes(replay.emulator.get_state())
+                    Image.fromarray(replay.emulator.get_screen()).save(prefix.with_suffix(".png"))
+                    if sample_frame >= 2300:
+                        Path(str(prefix) + "-before.state").write_bytes(raw_state)
+                raise RuntimeError(f"game counter reset or jumped: {previous_tick}->{tick}, "
+                                   f"game tick {sample_frame}, emulator frame {replay.frame}")
             clock_deltas[delta] += 1
             sample_frame += delta
             previous_tick = tick
@@ -93,8 +107,8 @@ def main():
     parser.add_argument("--active", action="store_true")
     parser.add_argument("--clock", choices=("emulator", "game"), default="emulator",
                         help="drive inputs by emulator frames or the game's VBlank counter")
-    fields = ("lcd_enabled", "round", "timer", "actors", "objects", "score", "sprite_streams",
-              "collision", "tiles", "maps")
+    fields = ("sound_registers", "wave_ram", "lcd_enabled", "round", "timer", "actors",
+              "objects", "score", "sprite_streams", "collision", "tiles", "maps")
     parser.add_argument("--fields", nargs="+", choices=fields, default=fields,
                         help="fields to compare; default: all")
     parser.add_argument("--frames-dir", type=Path)

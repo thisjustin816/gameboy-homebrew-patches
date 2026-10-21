@@ -172,7 +172,31 @@ partial map clears are reported separately; strict raw-map mode remains
 available with `--include-lcd-off-maps`.
 
 The logs and compact traces are in [research/](research/), with the current
-review in [REVIEW-DEEP.md](REVIEW-DEEP.md). Next work is sustained natural
+review in [REVIEW-RESUME.md](REVIEW-RESUME.md). Next work is sustained natural
 play, broader input and save-state coverage, audio verification, and collection
-integration. Audio and physical hardware remain unverified. BB1 v0.14
+integration. Audible output and physical hardware remain unverified. BB1 v0.14
 stays promoted; BB2 v0.22 stays frozen. No selector or player-facing UI was added.
+
+## Repeated restarts and battery resume
+
+The graphics candidate has MD5 `e62437d87db1c10032521ae8daa5b69b` and SHA-256
+`56c25b98544d5476543509c72fae31b41d571b6cd185fc83a288b61ad85fe16f`.
+Nonreturning jumps into bank-1 game-over `$609A` and back to fixed main-loop
+`$05BA`/`$05CB` map and jump without retaining host return addresses. Fixed callers
+at `$07AF` and `$3A6A`, and bank-1 exits `$61EB` and `$61F1`, are checked against
+the supported input. AF and the other registers retain their native values.
+
+On the preceding build, each repeated game-over cycle retains four extra bytes
+on task 0's stack. The saved stack reaches `$DEFE`, but the native scheduler
+reconstructs its high byte as `$DF`. It resumes from `$DFFE` and resets at game
+tick 20487, emulator frame 20546. The corrected candidate matches the native
+reference through tick 60000 with no gameplay, graphics, sound-register, or
+wave-RAM mismatches at observed ticks. This replay includes attract play after
+game over, so it does not establish sustained human-controlled victories.
+
+Menu-driven saves for rounds 1, 3, 25, 50, and 100 match the native records.
+Separate fresh processes receive only the captured battery bytes, prefill the
+password, accept END, and start the expected round with a nonzero player state.
+All unrelated SRAM bytes remain unchanged. A valid host save placed in SRAM
+bank 0 fails the prefill check; BB1 owns bank 1. These checks use zero prior-win
+flags and do not qualify a physical cartridge's battery persistence.

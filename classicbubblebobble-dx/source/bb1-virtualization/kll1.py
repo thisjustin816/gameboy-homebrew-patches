@@ -38,7 +38,7 @@ class Replay:
     def start_round_three(self):
         self.start_password("KLL1")
 
-    def start_password(self, word):
+    def open_password_menu(self):
         for _ in range(11):
             self.step(frames=55)
             self.step("START", frames=5)
@@ -47,6 +47,9 @@ class Replay:
         self.step(frames=30)
         self.step("START", frames=5)
         self.step(frames=90)
+
+    def start_password(self, word):
+        self.open_password_menu()
         for character in word:
             row = next(i for i, line in enumerate(GRID) if character in line)
             column = GRID[row].index(character)

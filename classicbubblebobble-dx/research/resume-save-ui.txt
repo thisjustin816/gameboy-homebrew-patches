@@ -1,0 +1,141 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+{
+  "cases": [
+    {
+      "round_index": 0,
+      "native": {
+        "write": {
+          "save": "b0b10000a5",
+          "capacity": 8192,
+          "sha256": "1add22c0d5054294603af37233001d54cb1a33fbc34bbe59e0d6f610488aff56"
+        },
+        "read": {
+          "round_index": 0,
+          "prefill": "1f151501",
+          "menu_accepted": true
+        }
+      },
+      "host": {
+        "write": {
+          "save": "b0b10000a5",
+          "capacity": 32768,
+          "sha256": "c9ba9d2acf165f663d8400c8694ef45f0f6d4d6b4fa9935cd717ae9753a3ade1"
+        },
+        "read": {
+          "round_index": 0,
+          "prefill": "1f151501",
+          "menu_accepted": true
+        }
+      }
+    },
+    {
+      "round_index": 2,
+      "native": {
+        "write": {
+          "save": "b0b10200a7",
+          "capacity": 8192,
+          "sha256": "fea468ec92010ccb63dde40d61abe47ba5b9bbb82e3d0021d1650447d2838303"
+        },
+        "read": {
+          "round_index": 2,
+          "prefill": "14151501",
+          "menu_accepted": true
+        }
+      },
+      "host": {
+        "write": {
+          "save": "b0b10200a7",
+          "capacity": 32768,
+          "sha256": "4e3052b94c9b853442951d31c0a10dbc9bd74246c55b1f94cd5c158df8f2c7e5"
+        },
+        "read": {
+          "round_index": 2,
+          "prefill": "14151501",
+          "menu_accepted": true
+        }
+      }
+    },
+    {
+      "round_index": 24,
+      "native": {
+        "write": {
+          "save": "b0b11800bd",
+          "capacity": 8192,
+          "sha256": "b778d6d0669eb9e9ba305cda2d6f2e717192ff65421aa180d5bc5a992816a54e"
+        },
+        "read": {
+          "round_index": 24,
+          "prefill": "04151501",
+          "menu_accepted": true
+        }
+      },
+      "host": {
+        "write": {
+          "save": "b0b11800bd",
+          "capacity": 32768,
+          "sha256": "8ca28fdf0d64059d07e695c3294af3f7ff6694b5948e3097cb45c0d922f6c54c"
+        },
+        "read": {
+          "round_index": 24,
+          "prefill": "04151501",
+          "menu_accepted": true
+        }
+      }
+    },
+    {
+      "round_index": 49,
+      "native": {
+        "write": {
+          "save": "b0b1310094",
+          "capacity": 8192,
+          "sha256": "765ad6e8602937ba1635a8d5f0de15bf7081f20ba2e44538d16b6f06f7d99c25"
+        },
+        "read": {
+          "round_index": 49,
+          "prefill": "0110150f",
+          "menu_accepted": true
+        }
+      },
+      "host": {
+        "write": {
+          "save": "b0b1310094",
+          "capacity": 32768,
+          "sha256": "baf403594a71244f61c088d57cc03474b587eeb898fb82bf5dc06bb6bc0ab1f1"
+        },
+        "read": {
+          "round_index": 49,
+          "prefill": "0110150f",
+          "menu_accepted": true
+        }
+      }
+    },
+    {
+      "round_index": 99,
+      "native": {
+        "write": {
+          "save": "b0b16300c6",
+          "capacity": 8192,
+          "sha256": "473f3832606cb257299c129b99fb8e89d6f843a467e2981947ff99cde73cc635"
+        },
+        "read": {
+          "round_index": 99,
+          "prefill": "1410150d",
+          "menu_accepted": true
+        }
+      },
+      "host": {
+        "write": {
+          "save": "b0b16300c6",
+          "capacity": 32768,
+          "sha256": "7d4b5279bcec738f4c89a802c49fdc6465555c7d6414308ad093707774619aab"
+        },
+        "read": {
+          "round_index": 99,
+          "prefill": "1410150d",
+          "menu_accepted": true
+        }
+      }
+    }
+  ],
+  "method": "fresh processes, battery bytes only"
+}

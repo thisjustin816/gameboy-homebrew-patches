@@ -1,0 +1,17 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_save_resume_ui.py", line 125, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_save_resume_ui.py", line 116, in main
+    raise RuntimeError(f"round {index} {name}-{phase}:\n{result.stderr}")
+RuntimeError: round 2 host-read:
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_save_resume_ui.py", line 125, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_save_resume_ui.py", line 93, in main
+    return worker(args)
+           ^^^^^^^^^^^^
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_save_resume_ui.py", line 68, in worker
+    assert letters(actual) == args.password, f"prefill {actual.hex()} != {args.password}"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: prefill 00000000 != KLL1

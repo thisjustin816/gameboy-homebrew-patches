@@ -1,0 +1,16 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 185, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 140, in main
+    raise RuntimeError(f"{name} worker failed:\n{result.stderr}")
+RuntimeError: host worker failed:
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 185, in <module>
+    main()
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 117, in main
+    return worker(args)
+           ^^^^^^^^^^^^
+  File "/workspace/gameboy-homebrew-patches/classicbubblebobble-dx/source/bb1-virtualization/test_gameplay_parity.py", line 89, in worker
+    raise RuntimeError(f"game counter reset or jumped: {previous_tick}->{tick}, "
+RuntimeError: game counter reset or jumped: 244->0, game tick 20487, emulator frame 20546

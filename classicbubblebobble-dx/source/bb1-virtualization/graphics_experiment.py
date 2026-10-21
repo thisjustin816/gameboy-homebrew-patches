@@ -1148,6 +1148,17 @@ host_vblank::
     jp $4C6F
 ''']
  for t in sorted(upper_targets):
+  if t==0x609A:
+   # Game-over entry is reached by JP and exits through the main loop.
+   lines.append('''
+host_upper_609a::
+    push af
+    ldh a,[H_LOG]
+    call host_map_logical_a
+    pop af
+    jp $609A
+''')
+   continue
   dest=SHADOW_6FD1 if t==0x6FD1 else t
   lines.append(f'''\nhost_upper_{t:04x}::\n    push af\n    ldh a,[H_LOG]\n    call host_map_logical_a\n    pop af\n    call ${dest:04X}\n    push af\n    ld a,V0\n    call host_map_physical_a\n    pop af\n    ret\n''')
  # $021E is special: upper-bank callers rely on their current ROM bank as the
@@ -1218,6 +1229,17 @@ host_low_0324::
     ret
 ''')
  for t in sorted(low_targets):
+  if t in (0x05BA,0x05CB):
+   # These main-loop exits never return to the banked game-over caller.
+   lines.append(f'''
+host_low_{t:04x}::
+    push af
+    ld a,V0
+    call host_map_physical_a
+    pop af
+    jp ${t+0x4000:04X}
+''')
+   continue
   if t in (0x021E,0x0324,0x0465): continue
   lines.append(f'''
 host_low_{t:04x}::
@@ -1788,8 +1810,19 @@ def main():
  upper_targets={t for _,_,t in upper}
  print('bank0 decoded',len(seen),'mapper',len(mapper),'upper edges',len(upper),'targets',len(upper_targets),'jp hl',list(map(hex,jphl)))
  print('banked back edges',len(back),'targets',len(low_targets),'rsts',[(b,hex(a),hex(o)) for b,a,o in rsts_b]); print('palette sites fixed/banked',len(fixed_palette_sites),len(banked_palette_sites))
- # CALL/JP (including conditional forms) can share the same host_upper wrapper:
- # CALL returns to the next instruction; JP returns through the caller's existing frame.
+ # Nonreturning game-over tails must not acquire host return frames.
+ for pc,op,target in upper:
+  if target==0x609A:
+   assert op==0xC3 and pc in (0x07AF,0x3A6A),(hex(pc),hex(op))
+ for bank,pc,target in ((1,0x61EB,0x05CB),(1,0x61F1,0x05BA)):
+  off=bank*BANK+pc-0x4000
+  assert bb1[off:off+3]==bytes([0xC3,target&255,target>>8])
+  assert (bank,pc,0xC3,target) in back
+ assert {(bank,pc,op,target) for bank,pc,op,target in back
+         if target in (0x05BA,0x05CB)}=={
+          (1,0x61EB,0xC3,0x05CB),(1,0x61F1,0xC3,0x05BA)}
+ # Returning CALL/JP edges share a wrapper; nonreturning game-over tails
+ # map and jump without retaining a host continuation.
  asm=make_asm(upper_targets,low_targets)
  host,sym=assemble_host(asm)
  assert sym['host_end']<HOST_LIMIT,(hex(sym['host_end']),hex(HOST_LIMIT))

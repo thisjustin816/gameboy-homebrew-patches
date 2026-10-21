@@ -159,3 +159,13 @@ letter tiles. Regeneration matches the committed JSON byte for byte.
 the fixes. Physical bank `$58` is reserved for the untouched fixed-bank data
 view; the executable fixed-bank view remains at `$40`. ROMs, SRAM, assembler
 outputs, and captured emulator states remain outside Git.
+
+## Restart stack and menu resume
+
+`resume-soak.txt` compares active input through tick 60000, including game-over
+and attract cycles. It includes stored sound registers and wave RAM.
+`resume-old-control.txt` preserves the preceding build's reset at tick 20487.
+`resume-save-ui.txt` covers battery-only transfers between fresh processes and
+actual prefill/END acceptance in five rounds. `resume-bank-control.txt` records
+the expected failure with the BB1 save in bank 0. `resume-ending.txt` rechecks
+both controlled ending paths. The current review is `../REVIEW-RESUME.md`.
