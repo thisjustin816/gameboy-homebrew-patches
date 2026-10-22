@@ -3,7 +3,7 @@
 MAX_IPS_RECORD = 0xFFFF
 IPS_MERGE_GAP = 8              # bridge gaps this short: a new record costs 5 bytes of header
 IPS_RLE_MIN = 12               # shortest run of one byte that an RLE record beats
-IPS_EOF_OFFSET = 0x454F4F
+IPS_EOF_OFFSET = 0x454F46       # the bytes "EOF": a record offset here ends the patch
 
 
 def _run(data, start, end, limit):
@@ -36,9 +36,9 @@ def make_ips(original, patched, rle=True):
         return bytes([(offset >> 16) & 0xFF, (offset >> 8) & 0xFF, offset & 0xFF])
 
     for start, end in runs:
-        if start == IPS_EOF_OFFSET:
-            start -= 1
         while start < end:
+            if start == IPS_EOF_OFFSET:
+                start -= 1      # this record also rewrites the byte before, with its patched value
             same = _run(patched, start, end, MAX_IPS_RECORD) if rle else 1
             if same >= IPS_RLE_MIN:
                 out += header(start) + b"\x00\x00" + bytes([same >> 8, same & 0xFF, patched[start]])
@@ -46,7 +46,7 @@ def make_ips(original, patched, rle=True):
                 continue
             stop = start + 1
             while stop < end and stop - start < MAX_IPS_RECORD:
-                if rle and _run(patched, stop, end, IPS_RLE_MIN) >= IPS_RLE_MIN:
+                if rle and stop != IPS_EOF_OFFSET and _run(patched, stop, end, IPS_RLE_MIN) >= IPS_RLE_MIN:
                     break
                 stop += 1
             out += header(start) + bytes([(stop - start) >> 8, (stop - start) & 0xFF]) + patched[start:stop]

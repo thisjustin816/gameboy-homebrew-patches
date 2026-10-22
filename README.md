@@ -73,5 +73,5 @@ small LR35902 assembler; `ips.py`, which writes and applies IPS patches; and
 `checksum.py`, the header and global checksums. Each script that imports from
 `common/` adds it to its import path, so the commands above still run from
 inside a game's folder. A change to `common/` reaches every patch, so after one,
-rebuild each patch and check that its IPS comes out the same as the committed
-one.
+run `python3 common/test_ips.py`, then rebuild each patch and check that its
+IPS comes out the same as the committed one.
