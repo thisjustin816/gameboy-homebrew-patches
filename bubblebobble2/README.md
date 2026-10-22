@@ -1,4 +1,4 @@
-# Bubble Bobble Part 2: tearing fix and last-stage save
+# Bubble Bobble Part 2: tearing fix and saved password
 
 A patch for Bubble Bobble Part 2 (Game Boy) that stops the screen from tearing
 while the camera scrolls, and remembers the last stage started, offering its
@@ -9,12 +9,12 @@ password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `BubbleBobble2-tearfix-save.ips` | The tearing fix and the save. The ROM grows to 256 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `f2ef3b62b6859cc89bbb8494bb4057b2` |
+| `BubbleBobble2-tearfix-savedpassword.ips` | The tearing fix and the saved password: each stage is saved when it starts, and the PASSWORD screen opens with the saved stage's password filled in. The ROM grows to 256 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `f2ef3b62b6859cc89bbb8494bb4057b2` |
 
 ## Versions
 
-- **v1.1:** one patch, `BubbleBobble2-tearfix-save.ips`, with the tearing fix and the save. The IPS is byte for byte the one v1.0 shipped as the save patch, so a ROM made from it is unchanged. Only the tearing-only patch is gone.
-- **v1.0:** the first release, two patches: the tearing fix alone, and the tearing fix with the save.
+- **v1.1:** one patch with the tearing fix and the saved password. The IPS is byte for byte the one v1.0 shipped as the save patch, so a ROM made from it is unchanged. Only the tearing-only patch is gone.
+- **v1.0:** the first release, two patches: the tearing fix alone, and the tearing fix with the saved password.
 
 ## What was wrong
 
@@ -68,7 +68,7 @@ The one-time scroll resets at state changes (`$2BB6`, `$29D5`, `$2AF0`,
 as stock. Some of them read the register back in the same frame, so deferring
 them would change behavior.
 
-## Remembering the last stage
+## The saved password
 
 Every time a stage loads, the game's password for that stage is written to
 battery-backed SRAM. When the PASSWORD screen opens, those four symbols are
@@ -110,7 +110,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [Tearing fix & save patch by thisJUSTin816 v1.1].gb" --ips BubbleBobble2-tearfix-save.ips
+python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 2 (USA, Europe) [Tearing fix & save patch by thisJUSTin816 v1.1].gb" --ips BubbleBobble2-tearfix-savedpassword.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it

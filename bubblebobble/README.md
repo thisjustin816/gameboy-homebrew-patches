@@ -1,4 +1,4 @@
-# Bubble Bobble: last-round save
+# Bubble Bobble: saved password
 
 A patch for Bubble Bobble (Game Boy) that remembers the last round started and
 offers its password on the PASSWORD screen.
@@ -8,9 +8,9 @@ offers its password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `BubbleBobble-save.ips` | The save. The ROM stays 128 KB, and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `b093fd9aa903453c1b30703738159a49` |
+| `BubbleBobble-savedpassword.ips` | The saved password: each round is saved when it starts, and the PASSWORD screen opens with the saved round's password filled in. The ROM stays 128 KB, and the header says MBC1+RAM+BATTERY with 8 KB of RAM. | `b093fd9aa903453c1b30703738159a49` |
 
-## Remembering the last round
+## The saved password
 
 Every time a round loads, its number and the flags the game's password
 carries are written to battery-backed SRAM. When the PASSWORD screen opens,
@@ -70,7 +70,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Bubble Bobble (USA, Europe).gb" -o "Bubble Bobble (USA, Europe) [Password save patch by thisJUSTin816 v1.0].gb" --ips BubbleBobble-save.ips
+python3 patch.py "Bubble Bobble (USA, Europe).gb" -o "Bubble Bobble (USA, Europe) [Password save patch by thisJUSTin816 v1.0].gb" --ips BubbleBobble-savedpassword.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it

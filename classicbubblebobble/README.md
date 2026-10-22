@@ -1,4 +1,4 @@
-# Classic Bubble Bobble: Master System physics and last-round save
+# Classic Bubble Bobble: Master System physics and saved password
 
 A patch for Classic Bubble Bobble (Game Boy Color) that makes Bub jump, fall and
 shoot like he does in the Master System version, and remembers the last round
@@ -9,7 +9,7 @@ started, offering its password on the PASSWORD screen.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `ClassicBubbleBobble-physics-save.ips` | The physics and the save. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `2c4c0b9cc0c106051fb195e4ed3365d9` |
+| `ClassicBubbleBobble-physics-savedpassword.ips` | The physics and the saved password: each round is saved when it starts, and the PASSWORD screen opens with the saved round's password filled in. The ROM stays 1 MB, and the header says MBC5+RAM+BATTERY with 8 KB of RAM. | `2c4c0b9cc0c106051fb195e4ed3365d9` |
 
 ## What was wrong
 
@@ -113,7 +113,7 @@ jump rises 42 px and waits at the top for 10 frames, 2 px above standing
 height on the next ledge. The patch does the same, where stock reached the
 ledge's height exactly and left no margin.
 
-## Remembering the last round
+## The saved password
 
 Every time a round loads, its route and round are written to battery-backed
 SRAM. When the PASSWORD screen opens, that round's password is already in the
@@ -200,7 +200,7 @@ a new name. The patch only applies to the stock md5 above.
 Python 3 only:
 
 ```
-python3 patch.py "Classic Bubble Bobble (USA).gbc" -o "Classic Bubble Bobble (USA) [SMS physics & save patch by thisJUSTin816 v1.0].gbc" --ips ClassicBubbleBobble-physics-save.ips
+python3 patch.py "Classic Bubble Bobble (USA).gbc" -o "Classic Bubble Bobble (USA) [SMS physics & save patch by thisJUSTin816 v1.0].gbc" --ips ClassicBubbleBobble-physics-savedpassword.ips
 ```
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
