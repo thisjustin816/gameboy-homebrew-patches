@@ -38,12 +38,32 @@ checks twelve registers for behavior a Game Boy Color never shows, then says
 whether the host is likely an emulator and names it when the pattern is known.
 Its source and verified ROM are included; building it requires GBDK-2020 4.5.0.
 
+## Releases
+
+Each release holds one game's `.ips` files, a `checksums.txt` with their
+sha256, and notes with what the patch does and the supported stock md5s, both
+taken from the game's README, how to apply it, and a link to that README. A
+release never includes a ROM.
+
+To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
+on `main`, then pick the game and type its version. A patch for a classic game
+has a version of its own, two numbers such as `1.1`, separate from the game's.
+A patch for a modern game carries on the game's own version string, such as
+`1.000b`, in whatever form the game uses, so the workflow only checks that it
+holds characters that are safe in a tag name: letters, digits and `. _ + -`.
+The workflow keeps the list of which games are which, and refuses a version
+that does not fit the game's kind. Where the game's README names a
+version, in its Versions list, the ROM name in its build command or the title
+screen's mark, use the newest, without its `v`. The workflow creates the
+release and its tag, `<game>-v<version>`, for example `legionofevil-v1.2`, on
+the commit it ran from, and stops if that tag already exists.
+
 ## Applying a patch
 
 Use any IPS patcher, for example
 [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) in a browser, or
-Floating IPS. Pick your unmodified ROM and the patch's `.ips` file, then save
-the result under a new name.
+Floating IPS. Pick your unmodified ROM and the patch's `.ips` file, from the
+game's release or its folder, then save the result under a new name.
 
 To keep an existing save, rename your `.sav` to match the patched ROM's
 filename. Most emulators and flash carts look for a save with the same name as

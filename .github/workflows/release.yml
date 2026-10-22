@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Game folder to release
+        required: true
+        type: choice
+        options:
+          - bubblebobble
+          - bubblebobble2
+          - classicbubblebobble
+          - hermano
+          - legionofevil
+          - roguecraft
+      version:
+        description: Version. Classic game, two numbers such as 1.1; modern game, the game's own version such as 1.000b
+        required: true
+        type: string
+
+# A classic game's patch has a version of its own, separate from the game's.
+# A modern game's patch extends the game's own versioning. Every game in the
+# choice list above must be in one of these lists.
+env:
+  CLASSIC_GAMES: bubblebobble bubblebobble2 classicbubblebobble
+  MODERN_GAMES: hermano legionofevil roguecraft
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GAME: ${{ inputs.game }}
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Check inputs
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || fail "Run this workflow from main. This run is on $GITHUB_REF."
+          [[ "$GAME" =~ ^[a-z0-9]+$ ]] || fail "Game '$GAME' is not a folder name."
+          if [[ " $CLASSIC_GAMES " == *" $GAME "* ]]; then
+            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]] ||
+              fail "Version '$VERSION' does not fit $GAME, a classic game. Its patch takes a version of its own: two numbers and a dot, such as 1.0 or 1.1."
+          elif [[ " $MODERN_GAMES " == *" $GAME "* ]]; then
+            # Any scheme the game uses is allowed. The version only has to be safe as part of a
+            # tag name, a release title and a URL path. The character set rules out what git
+            # forbids in a ref (space, control characters, ~ ^ : ? * [ \ and "@{"), the tests
+            # below rule out ".." and a trailing "." or ".lock", and the first character keeps
+            # it from being read as a command-line option.
+            [[ ${#VERSION} -le 40 && "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ &&
+              "$VERSION" != *..* && "$VERSION" != *. && "$VERSION" != *.lock ]] ||
+              fail "Version '$VERSION' does not fit $GAME, a modern game. Its patch takes the game's own version, checked only for characters safe in a tag name: up to 40 of A-Z a-z 0-9 . _ + -, starting with a letter or digit, with no '..', and not ending in '.' or '.lock'."
+          else
+            fail "$GAME is in neither CLASSIC_GAMES nor MODERN_GAMES. Add it to one of them at the top of release.yml."
+          fi
+          compgen -G "$GAME/*.ips" > /dev/null || fail "$GAME/ has no IPS files."
+          [ -f "$GAME/README.md" ] || fail "$GAME/ has no README.md."
+          tag="$GAME-v$VERSION"
+          git check-ref-format "refs/tags/$tag" || fail "Tag $tag is not a valid git tag name."
+          found=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null || found=$?
+          [ "$found" -ne 0 ] || fail "Tag $tag already exists."
+          [ "$found" -eq 2 ] || fail "Could not read the tags on origin (git exit code $found)."
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Write notes and checksums
+        working-directory: ${{ inputs.game }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out"
+          cp ./*.ips "$out/"
+          (cd "$out" && sha256sum -- *.ips > checksums.txt && cat checksums.txt)
+          name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
+          [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name' title."
+          echo "TITLE=$name v$VERSION" >> "$GITHUB_ENV"
+          # shellcheck disable=SC2016 # the backticks in single quotes are Markdown code spans
+          ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
+          rows=$(awk -v ips="${ips% }" '
+            /^- Game: / { g = substr($0, 9); sub(/, [0-9]+ [KM]B.*/, "", g) }
+            /^- Stock md5: / { print "| " g " | " $4 " | " ips " |" }
+            /^## / { s = /^## Supported release/; next }
+            s && /^\| / && $0 ~ /\| `[0-9a-f]+` \|/ {
+              n = split($0, c, "|"); p = n >= 6 ? c[n - 1] : ips
+              gsub(/^ +| +$/, "", c[2]); gsub(/^ +| +$/, "", c[3]); gsub(/^ +| +$/, "", p)
+              print "| " c[2] " | " c[3] " | " p " |"
+            }' README.md)
+          [ -n "$rows" ] || fail "$GAME/README.md has no stock md5 the notes can list."
+          # shellcheck disable=SC2016
+          {
+            awk 'NR > 1 && NF { p = 1 } p && !NF { exit } p' README.md
+            printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n%s\n' "$rows"
+            printf '\n### Applying it\n\n'
+            echo 'Check the stock ROM'"'"'s md5 against the table above, then apply the `.ips` file to it with any IPS patcher, such as [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) or Floating IPS. Each patch only applies to the release in its row.'
+            echo
+            echo "The game's [README](https://github.com/$GH_REPO/blob/$TAG/$GAME/README.md) says what the patch changes, what it needs from a cartridge or emulator, and how it was tested."
+            echo
+            echo 'No ROM is included. `checksums.txt` lists the sha256 of each IPS file.'
+          } > "$out/notes.md"
+          cat "$out/notes.md"
+
+      - name: Tag and release
+        run: |
+          cd "$RUNNER_TEMP/release"
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file notes.md ./*.ips checksums.txt
