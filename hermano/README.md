@@ -266,12 +266,12 @@ unchanged frame costs a handful of instructions and no write.
 
 ## Files
 
-| File            | Purpose                                                |
-|-----------------|--------------------------------------------------------|
-| `patch.py`      | applies the patch; writes a ROM and optionally an IPS  |
-| `savepatch.asm` | the injected code, commented                           |
-| `asm.py`        | small LR35902 assembler (label resolution, two passes) |
-| `verify.py`     | emulator test harness (needs `pyboy`, `pillow`)        |
+| File               | Purpose                                                |
+|--------------------|--------------------------------------------------------|
+| `patch.py`         | applies the patch; writes a ROM and optionally an IPS  |
+| `savepatch.asm`    | the injected code, commented                           |
+| `../common/asm.py` | small LR35902 assembler (label resolution, two passes) |
+| `verify.py`        | emulator test harness (needs `pyboy`, `pillow`)        |
 
 ```
 python3 verify.py Hermano.gb Hermano-save.gb

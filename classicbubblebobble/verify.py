@@ -11,6 +11,7 @@ as the round loader reads it.
 import hashlib
 import io
 import os
+import pathlib
 import random
 import shutil
 import sys
@@ -21,7 +22,9 @@ warnings.filterwarnings("ignore")
 from pyboy import PyBoy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import patch as P
+from ips import apply_ips
 
 PROFILE = next(iter(P.ROM_PROFILES.values()))
 C = PROFILE["consts"]
@@ -196,27 +199,6 @@ def play(g, seed, frames, record=None):
 
 
 # ---------------------------------------------------------------- the ROM
-
-def apply_ips(original, ips):
-    """A plain IPS applier (data and RLE records), independent of make_ips."""
-    assert ips[:5] == b"PATCH"
-    out, i = bytearray(original), 5
-    while ips[i:i + 3] != b"EOF":
-        offset = int.from_bytes(ips[i:i + 3], "big")
-        size = int.from_bytes(ips[i + 3:i + 5], "big")
-        i += 5
-        if size == 0:
-            size = int.from_bytes(ips[i:i + 2], "big")
-            data = bytes([ips[i + 2]]) * size
-            i += 3
-        else:
-            data = ips[i:i + size]
-            i += size
-        if len(out) < offset + size:
-            out.extend(b"\x00" * (offset + size - len(out)))
-        out[offset:offset + size] = data
-    return bytes(out)
-
 
 def footprint(stock, patched):
     print("footprint")

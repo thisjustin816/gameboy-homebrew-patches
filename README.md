@@ -51,8 +51,8 @@ the ROM.
 
 ## Building a patch
 
-Each folder has the assembly source, a small assembler, the patch script and a
-test script. Only Python 3 is needed to build:
+Each folder has the assembly source, the patch script and a test script. Only
+Python 3 is needed to build:
 
 ```
 cd roguecraft
@@ -65,3 +65,13 @@ check each change against the stock game. Bubble Bobble crashes in PyBoy once a
 round starts, so its script plays the game in Gambatte through
 [stable-retro](https://github.com/Farama-Foundation/stable-retro) as well.
 Each folder's README explains what the patch changes and how it was tested.
+
+## Shared scripts
+
+The code every game's scripts use lives in [`common/`](common/): `asm.py`, the
+small LR35902 assembler; `ips.py`, which writes and applies IPS patches; and
+`checksum.py`, the header and global checksums. Each script that imports from
+`common/` adds it to its import path, so the commands above still run from
+inside a game's folder. A change to `common/` reaches every patch, so after one,
+rebuild each patch and check that its IPS comes out the same as the committed
+one.

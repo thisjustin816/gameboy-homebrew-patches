@@ -272,7 +272,8 @@ python3 patch.py "Legion of Evil (Rev 1).gb" -o "Legion of Evil (Rev 1) [Save, c
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
 replaces, and confirms nothing else jumps into the middle of a replaced
-instruction. The code is `loe.asm`, assembled by `asm.py`. The tests need
+instruction. The code is `loe.asm`, assembled by
+[`common/asm.py`](../common/asm.py). The tests need
 `pip install pyboy pillow`:
 
 ```

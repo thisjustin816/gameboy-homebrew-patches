@@ -15,13 +15,17 @@ speed on real hardware, and how the game feels to play.
 import hashlib
 import json
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import patch as patcher
+from checksum import header_checksum
+from ips import apply_ips
 
 from pyboy import PyBoy
 
@@ -126,34 +130,10 @@ def shades(img, palette):
 
 
 def fix_header(rom):
-    x = 0
-    for i in range(0x134, 0x14D):
-        x = (x - rom[i] - 1) & 0xFF
-    rom[0x14D] = x
+    rom[0x14D] = header_checksum(rom)
 
 
 # ---------------------------------------------------------------- ROMs
-def apply_ips(original, ips):
-    out = bytearray(original)
-    assert ips[:5] == b"PATCH"
-    i = 5
-    while ips[i:i + 3] != b"EOF":
-        off = int.from_bytes(ips[i:i + 3], "big")
-        size = int.from_bytes(ips[i + 3:i + 5], "big")
-        i += 5
-        if size:
-            data = ips[i:i + size]
-            i += size
-        else:
-            run = int.from_bytes(ips[i:i + 2], "big")
-            data = bytes([ips[i + 2]]) * run
-            i += 3
-        if off + len(data) > len(out):
-            out.extend(b"\xFF" * (off + len(data) - len(out)))
-        out[off:off + len(data)] = data
-    return bytes(out)
-
-
 def build_control(stock):
     """The stock game with only the music-bank fix."""
     rom = bytearray(stock)
@@ -176,7 +156,7 @@ def check_rom(stock, rom, ips_path, rumble):
     check("music player asks for bank 1 at all seven calls",
           all(rom[a - 7] == 1 and stock[a - 7] == 2 for a in patcher.ROM_PROFILES[STOCK_MD5]["music_bank_loads"]))
     if ips_path and os.path.exists(ips_path):
-        check("the committed IPS applied to the stock ROM gives this ROM", apply_ips(stock, open(ips_path, "rb").read()) == rom)
+        check("the committed IPS applied to the stock ROM gives this ROM", apply_ips(stock, open(ips_path, "rb").read(), fill=0xFF) == rom)
     check("patch.py is deterministic", patcher.patch(stock, verbose=False, rumble=rumble) == rom)
 
 

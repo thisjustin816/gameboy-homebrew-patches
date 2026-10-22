@@ -206,7 +206,7 @@ python3 patch.py "Classic Bubble Bobble (USA).gbc" -o "Classic Bubble Bobble (US
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
 replaces and that the padding it uses is empty, and rebuilds the same IPS. The
 physics are `cbbphysics.asm` and the save is `cbbsave.asm`, both assembled by
-`asm.py`.
+[`common/asm.py`](../common/asm.py).
 
 ## How it was tested
 

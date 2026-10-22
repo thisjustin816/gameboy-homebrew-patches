@@ -13,13 +13,15 @@ Inputs are the same, checked by md5, as for build.py:
 
     python3 chisflash.py DUCKTALES DUCKTALES2 TALESPIN DARKWING bundleMain.mbundle -o out.gb
 """
-import argparse, os, sys
+import argparse, os, pathlib, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import build, mbundle
 from asm import assemble
-from build import BANK, GAMES, consts, db_lines, src, header_checksum, global_checksum
+from build import BANK, GAMES, consts, db_lines, src
+from checksum import header_checksum, global_checksum
 
 MIB = 0x100000
 MENU_SIZE = 0x40000          # the menu ROM: 16 banks, 256 KiB

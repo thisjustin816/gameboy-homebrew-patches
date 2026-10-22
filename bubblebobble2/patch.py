@@ -31,20 +31,17 @@ before replacing it.
 import argparse
 import hashlib
 import os
+import pathlib
 import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import asm
+from checksum import OFF_GLOBAL_SUM, OFF_HDR_SUM, global_checksum, header_checksum
+from ips import make_ips
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-OFF_HDR_SUM = 0x14D
-OFF_GLOBAL_SUM = 0x14E
-MAX_IPS_RECORD = 0xFFFF
-IPS_MERGE_GAP = 8
-IPS_RLE_MIN = 12               # shortest run of one byte that an RLE record beats
-IPS_EOF_OFFSET = 0x454F4F
 
 OP_RST_08 = 0xCF
 OP_RST_10 = 0xD7
@@ -125,60 +122,6 @@ ROM_PROFILES = {
         ],
     },
 }
-
-
-def header_checksum(rom):
-    x = 0
-    for i in range(0x134, 0x14D):
-        x = (x - rom[i] - 1) & 0xFF
-    return x
-
-
-def global_checksum(rom):
-    return (sum(rom) - rom[OFF_GLOBAL_SUM] - rom[OFF_GLOBAL_SUM + 1]) & 0xFFFF
-
-
-def make_ips(original, patched):
-    """An IPS patch from original to patched. The patched image may be longer;
-    the extra bytes become records past the end of the original."""
-    if len(patched) < len(original):
-        raise SystemExit("IPS generation expects the patched image to be at least as long")
-    runs = []
-    for i in range(len(patched)):
-        if i < len(original) and patched[i] == original[i]:
-            continue
-        if runs and i - runs[-1][1] <= IPS_MERGE_GAP:
-            runs[-1][1] = i + 1
-        else:
-            runs.append([i, i + 1])
-    out = bytearray(b"PATCH")
-
-    def header(offset):
-        return bytes([(offset >> 16) & 0xFF, (offset >> 8) & 0xFF, offset & 0xFF])
-
-    for start, end in runs:
-        if start == IPS_EOF_OFFSET:
-            start -= 1
-        while start < end:
-            same = 1
-            while start + same < end and patched[start + same] == patched[start] and same < MAX_IPS_RECORD:
-                same += 1
-            if same >= IPS_RLE_MIN:
-                out += header(start) + b"\x00\x00" + bytes([same >> 8, same & 0xFF, patched[start]])
-                start += same
-                continue
-            stop = start + 1
-            while stop < end and stop - start < MAX_IPS_RECORD:
-                ahead = 1
-                while stop + ahead < end and patched[stop + ahead] == patched[stop] and ahead < IPS_RLE_MIN:
-                    ahead += 1
-                if ahead >= IPS_RLE_MIN:
-                    break
-                stop += 1
-            out += header(start) + bytes([(stop - start) >> 8, (stop - start) & 0xFF]) + patched[start:stop]
-            start = stop
-    out += b"EOF"
-    return bytes(out)
 
 
 def build_preamble(profile):

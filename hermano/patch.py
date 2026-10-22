@@ -19,10 +19,13 @@ Usage:
 import argparse
 import hashlib
 import os
+import pathlib
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import asm
+from checksum import OFF_GLOBAL_SUM, OFF_HDR_SUM, global_checksum, header_checksum
+from ips import make_ips
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,61 +100,10 @@ SRAM_DATA = 0xA008       # must match savepatch.asm
 # Cartridge header fields.
 OFF_CART_TYPE = 0x147
 OFF_RAM_SIZE = 0x149
-OFF_HDR_SUM = 0x14D
-OFF_GLOBAL_SUM = 0x14E
 CART_MBC5 = 0x19                 # MBC5
 CART_MBC5_RAM_BATTERY = 0x1B     # MBC5 + RAM + BATTERY
 RAM_NONE = 0x00
 RAM_8K = 0x02                    # one 8 KB bank
-
-
-def header_checksum(rom):
-    """Boot-ROM header check over $0134-$014C."""
-    x = 0
-    for i in range(0x134, 0x14D):
-        x = (x - rom[i] - 1) & 0xFF
-    return x
-
-
-def global_checksum(rom):
-    """16-bit sum of every byte except the two checksum bytes themselves."""
-    total = sum(rom) - rom[OFF_GLOBAL_SUM] - rom[OFF_GLOBAL_SUM + 1]
-    return total & 0xFFFF
-
-
-MAX_IPS_RECORD = 0xFFFF
-IPS_MERGE_GAP = 8            # bridge gaps this short rather than pay 5 bytes of header
-IPS_EOF_OFFSET = 0x454F4F    # a record starting here would read as the "EOF" marker
-
-
-def make_ips(original, patched):
-    """Build an IPS patch describing original -> patched."""
-    if len(patched) != len(original):
-        raise SystemExit("IPS generation expects same-sized images")
-
-    # Group differing bytes into runs, bridging short identical gaps so we do
-    # not pay a record header for every isolated byte.
-    runs = []
-    for i in range(len(patched)):
-        if patched[i] == original[i]:
-            continue
-        if runs and i - runs[-1][1] <= IPS_MERGE_GAP:
-            runs[-1][1] = i + 1
-        else:
-            runs.append([i, i + 1])
-
-    out = bytearray(b"PATCH")
-    for start, end in runs:
-        if start == IPS_EOF_OFFSET:
-            start -= 1       # back up one byte so the offset is encodable
-        while start < end:
-            size = min(end - start, MAX_IPS_RECORD)
-            out += bytes([(start >> 16) & 0xFF, (start >> 8) & 0xFF, start & 0xFF])
-            out += bytes([(size >> 8) & 0xFF, size & 0xFF])
-            out += patched[start:start + size]
-            start += size
-    out += b"EOF"
-    return bytes(out)
 
 
 def build_preamble(profile):
@@ -292,7 +244,7 @@ def main():
     print(f"wrote {out}  (md5 {hashlib.md5(patched).hexdigest()})")
 
     if args.ips:
-        ips = make_ips(original, patched)
+        ips = make_ips(original, patched, rle=False)
         with open(args.ips, "wb") as f:
             f.write(ips)
         print(f"wrote {args.ips}  ({len(ips)} bytes)")

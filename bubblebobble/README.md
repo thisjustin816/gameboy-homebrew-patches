@@ -75,7 +75,8 @@ python3 patch.py "Bubble Bobble (USA, Europe).gb" -o "Bubble Bobble (USA, Europe
 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
 replaces and that the space the code goes into is unused, and rebuilds the
-same IPS. The save is `bb1save.asm`, assembled by `asm.py`.
+same IPS. The save is `bb1save.asm`, assembled by
+[`common/asm.py`](../common/asm.py).
 
 ## How it was tested
 

@@ -35,6 +35,7 @@ Usage:
 """
 import hashlib
 import os
+import pathlib
 import sys
 
 import numpy as np
@@ -42,6 +43,7 @@ from pyboy import PyBoy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import asm
 import patch as P
 
