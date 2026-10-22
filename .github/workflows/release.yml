@@ -97,10 +97,31 @@ jobs:
               print "| " c[2] " | " c[3] " | " p " |"
             }' README.md)
           [ -n "$rows" ] || fail "$GAME/README.md has no stock md5 the notes can list."
+          # With more than one patch, the notes say which is which, from the README's table of
+          # patches above its first section: the file, the first sentence of what it does, and
+          # the md5 after patching. A game with one patch, or without that table, gets no Patches
+          # section.
+          patches=""
+          set -- *.ips
+          if [ $# -gt 1 ]; then
+            patches=$(awk '
+              /^## / { exit }
+              /^\| `[^`]+\.ips` \|/ {
+                split($0, c, "|")
+                gsub(/^ +| +$/, "", c[2]); gsub(/^ +| +$/, "", c[3]); gsub(/^ +| +$/, "", c[4])
+                if (i = index(c[3], ". ")) c[3] = substr(c[3], 1, i)
+                print "| " c[2] " | " c[3] " | " c[4] " |"
+              }' README.md)
+            for f in "$@"; do
+              [ -z "$patches" ] || [[ "$patches" == *"| \`$f\` |"* ]] ||
+                fail "$GAME/README.md has a table of patches with no row for $f."
+            done
+          fi
           # shellcheck disable=SC2016
           {
             awk 'NR > 1 && NF { p = 1 } p && !NF { exit } p' README.md
             printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n%s\n' "$rows"
+            [ -z "$patches" ] || printf '\n### Patches\n\n| Patch | What it does | md5 after patching |\n|---|---|---|\n%s\n' "$patches"
             printf '\n### Applying it\n\n'
             echo 'Check the stock ROM'"'"'s md5 against the table above, then apply the `.ips` file to it with any IPS patcher, such as [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) or Floating IPS. Each patch only applies to the release in its row.'
             echo
