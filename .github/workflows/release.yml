@@ -15,7 +15,7 @@ on:
           - legionofevil
           - roguecraft
       version:
-        description: Version, such as 1.0
+        description: Version, such as 1.2 or 1.000b
         required: true
         type: string
 
@@ -42,7 +42,7 @@ jobs:
           fail() { echo "::error::$1"; exit 1; }
           [ "$GITHUB_REF" = refs/heads/main ] || fail "Run this workflow from main. This run is on $GITHUB_REF."
           [[ "$GAME" =~ ^[a-z0-9]+$ ]] || fail "Game '$GAME' is not a folder name."
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || fail "Version '$VERSION' must look like 1.0 or 1.0.1."
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?[a-z]?$ ]] || fail "Version '$VERSION' must look like 1.0, 1.0.1 or 1.000b."
           compgen -G "$GAME/*.ips" > /dev/null || fail "$GAME/ has no IPS files."
           [ -f "$GAME/README.md" ] || fail "$GAME/ has no README.md."
           tag="$GAME-v$VERSION"

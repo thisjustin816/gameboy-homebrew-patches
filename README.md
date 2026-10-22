@@ -46,11 +46,13 @@ taken from the game's README, how to apply it, and a link to that README. A
 release never includes a ROM.
 
 To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
-on `main`, then pick the game and type its version, such as `1.2`. Where the
-game's README names a version, in its Versions list or the ROM name in its
-build command, use the newest. The workflow creates the release and its tag,
-`<game>-v<version>`, for example `legionofevil-v1.2`, on the commit it ran
-from, and stops if that tag already exists.
+on `main`, then pick the game and type its version, such as `1.2` or `1.000b`:
+two or three numbers separated by dots, then at most one lowercase letter.
+Where the game's README names a version, in its Versions list, the ROM name in
+its build command or the title screen's mark, use the newest, without its `v`.
+The workflow creates the release and its tag, `<game>-v<version>`, for example
+`legionofevil-v1.2`, on the commit it ran from, and stops if that tag already
+exists.
 
 ## Applying a patch
 
