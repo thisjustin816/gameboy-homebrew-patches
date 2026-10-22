@@ -24,7 +24,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 import patch as patcher
-from checksum import header_checksum
 from ips import apply_ips
 
 from pyboy import PyBoy
@@ -130,7 +129,7 @@ def shades(img, palette):
 
 
 def fix_header(rom):
-    rom[0x14D] = header_checksum(rom)
+    rom[0x14D] = patcher.header_checksum(rom)
 
 
 # ---------------------------------------------------------------- ROMs
