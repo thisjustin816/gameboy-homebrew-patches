@@ -41,20 +41,23 @@ Its source and verified ROM are included; building it requires GBDK-2020 4.5.0.
 ## Releases
 
 Each release holds one game's `.ips` files, a `checksums.txt` with their
-sha256, and notes taken from the game's README: what the patch does, the
-supported stock md5s, and how to apply it. A release never includes a ROM.
+sha256, and notes with what the patch does and the supported stock md5s, both
+taken from the game's README, how to apply it, and a link to that README. A
+release never includes a ROM.
 
 To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
-on `main`, then pick the game and type the version from its README, such as
-`1.2`. The workflow tags the commit as `<game>-v<version>`, for example
-`legionofevil-v1.2`, and stops if that tag already exists.
+on `main`, then pick the game and type its version, such as `1.2`. Where the
+game's README names a version, in its Versions list or the ROM name in its
+build command, use the newest. The workflow creates the release and its tag,
+`<game>-v<version>`, for example `legionofevil-v1.2`, on the commit it ran
+from, and stops if that tag already exists.
 
 ## Applying a patch
 
 Use any IPS patcher, for example
 [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) in a browser, or
-Floating IPS. Pick your unmodified ROM and the patch's `.ips` file, then save
-the result under a new name.
+Floating IPS. Pick your unmodified ROM and the patch's `.ips` file, from the
+game's release or its folder, then save the result under a new name.
 
 To keep an existing save, rename your `.sav` to match the patched ROM's
 filename. Most emulators and flash carts look for a save with the same name as

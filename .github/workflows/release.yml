@@ -46,35 +46,43 @@ jobs:
           compgen -G "$GAME/*.ips" > /dev/null || fail "$GAME/ has no IPS files."
           [ -f "$GAME/README.md" ] || fail "$GAME/ has no README.md."
           tag="$GAME-v$VERSION"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-            fail "Tag $tag already exists."
-          fi
+          found=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null || found=$?
+          [ "$found" -ne 0 ] || fail "Tag $tag already exists."
+          [ "$found" -eq 2 ] || fail "Could not read the tags on origin (git exit code $found)."
           echo "TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Write notes and checksums
         working-directory: ${{ inputs.game }}
         run: |
+          fail() { echo "::error::$1"; exit 1; }
           out="$RUNNER_TEMP/release"
           mkdir -p "$out"
           cp ./*.ips "$out/"
-          (cd "$out" && sha256sum ./*.ips | sed 's| \./| |' > checksums.txt && cat checksums.txt)
+          (cd "$out" && sha256sum -- *.ips > checksums.txt && cat checksums.txt)
           name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
+          [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name' title."
           echo "TITLE=$name v$VERSION" >> "$GITHUB_ENV"
+          # shellcheck disable=SC2016 # the backticks in single quotes are Markdown code spans
+          ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
+          rows=$(awk -v ips="${ips% }" '
+            /^- Game: / { g = substr($0, 9); sub(/, [0-9]+ [KM]B.*/, "", g) }
+            /^- Stock md5: / { print "| " g " | " $4 " | " ips " |" }
+            /^## / { s = /^## Supported release/; next }
+            s && /^\| / && $0 ~ /\| `[0-9a-f]+` \|/ {
+              n = split($0, c, "|"); p = n >= 6 ? c[n - 1] : ips
+              gsub(/^ +| +$/, "", c[2]); gsub(/^ +| +$/, "", c[3]); gsub(/^ +| +$/, "", p)
+              print "| " c[2] " | " c[3] " | " p " |"
+            }' README.md)
+          [ -n "$rows" ] || fail "$GAME/README.md has no stock md5 the notes can list."
+          # shellcheck disable=SC2016
           {
             awk 'NR > 1 && NF { p = 1 } p && !NF { exit } p' README.md
-            printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n'
-            ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
-            awk -v ips="${ips% }" '
-              /^- Game: / { g = substr($0, 9); sub(/, [0-9]+ [KM]B.*/, "", g) }
-              /^- Stock md5: / { print "| " g " | " $4 " | " ips " |" }
-              /^## / { s = /^## Supported release/; next }
-              s && /^\| / && $0 ~ /\| `[0-9a-f]+` \|/ {
-                n = split($0, c, "|"); p = n >= 6 ? c[n - 1] : ips
-                gsub(/^ +| +$/, "", c[2]); gsub(/^ +| +$/, "", c[3]); gsub(/^ +| +$/, "", p)
-                print "| " c[2] " | " c[3] " | " p " |"
-              }' README.md
+            printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n%s\n' "$rows"
             printf '\n### Applying it\n\n'
             echo 'Check the stock ROM'"'"'s md5 against the table above, then apply the `.ips` file to it with any IPS patcher, such as [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) or Floating IPS. Each patch only applies to the release in its row.'
+            echo
+            echo "The game's [README](https://github.com/$GH_REPO/blob/$TAG/$GAME/README.md) says what the patch changes, what it needs from a cartridge or emulator, and how it was tested."
             echo
             echo 'No ROM is included. `checksums.txt` lists the sha256 of each IPS file.'
           } > "$out/notes.md"
@@ -82,7 +90,5 @@ jobs:
 
       - name: Tag and release
         run: |
-          git tag "$TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$TAG"
           cd "$RUNNER_TEMP/release"
-          gh release create "$TAG" --verify-tag --title "$TITLE" --notes-file notes.md ./*.ips checksums.txt
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file notes.md ./*.ips checksums.txt
