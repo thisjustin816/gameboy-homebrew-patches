@@ -3,7 +3,7 @@
 MAX_IPS_RECORD = 0xFFFF
 IPS_MERGE_GAP = 8              # bridge gaps this short: a new record costs 5 bytes of header
 IPS_RLE_MIN = 12               # shortest run of one byte that an RLE record beats
-IPS_EOF_OFFSET = 0x454F46       # the bytes "EOF": a record offset here ends the patch
+IPS_EOF_OFFSET = 0x454F46      # the bytes "EOF": a record offset here ends the patch
 
 
 def _run(data, start, end, limit):
@@ -18,8 +18,8 @@ def make_ips(original, patched, rle=True):
     """An IPS patch from original to patched. The patched image may be longer;
     the extra bytes become records past the end of the original.
 
-    With rle=False every record is a plain data record. Hermano and Roguecraft
-    build that way, which keeps their committed IPS files as they are."""
+    With rle=False every record is a plain data record, the way Hermano's and
+    Roguecraft's IPS files have always been written."""
     if len(patched) < len(original):
         raise SystemExit("IPS generation expects the patched image to be at least as long")
     runs = []
