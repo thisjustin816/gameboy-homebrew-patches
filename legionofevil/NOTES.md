@@ -58,6 +58,7 @@ banks the run's money, so it is also a clean way to end a run in a test.
 | `$3A83` | camera and player sprites; writes the scroll registers four times |
 | `$51C4` | enemy loop (half the enemies each frame, `$C5B2` picks the half) |
 | `$4984` | weapon loop |
+| `$7A9A` | the tile routine's wait for STAT mode 0 or 1 before it writes video memory |
 | `$7AF8` | wait for VBlank |
 | `$7B08` | turn the LCD off (waits for line `$91` first) |
 | `$7BB2` | joypad read; E = buttons with START `$80`, SELECT `$40`, B `$20`, A `$10`, DOWN `$08`, UP `$04`, LEFT `$02`, RIGHT `$01` |
@@ -66,13 +67,16 @@ banks the run's money, so it is also a clean way to end a run in a test.
 | `$70F3` | music update; `$70E1` stop; `$7013` start a song |
 | `$7DB6` | defaults table copied to `$C5B2` at boot (`$7FEB`) |
 
+The patch fills bank 0's unused bytes with its stubs: 2 bytes are left at
+`$0048`, and none in the other stubs.
+
 ## Video
 
 - 8x8 sprites, LCDC `$E3` in a run: window map `$9C00`, BG map `$9800`, tile data
   at `$8800` with signed indices. The window (WY `$80`) carries the HUD rows.
 - The font for menus is in VRAM during a run: A-Z at tiles `$55`-`$6E`, 0 at `$6F`,
   1-9 at `$70`-`$78`, `:` `$79`, `-` `$7C`, `+` `$7D`, the diamond cursor `$7E`,
-  blank `$7F`. The patch adds `?` `!` `.` `,` `'` `&` as BG tiles `$F0`-`$F5` (VRAM `$8F00`). Tiles `$A8`-`$FF` are blank on every screen, including level-up, boss loot and the win screen.
+  blank `$7F`. The patch adds `?` `!` `.` `,` `'` `&` as BG tiles `$F0`-`$F5` (VRAM `$8F00`); the apostrophe is the comma raised. Tiles `$A8`-`$FF` are blank on every screen, including level-up, boss loot and the win screen.
 - Tile graphics never change during a run, so a snapshot does not need them.
 - The palettes are written once, at the title: BGP and OBP0 `$E1`, OBP1 `$6C`.
   Sprite attributes only use bits 4 (OBP1, the damage flash) and 5 (X flip).
@@ -82,6 +86,12 @@ banks the run's money, so it is also a clean way to end a run in a test.
 - The stock game writes its BG map while the picture is drawn, and scrolls with
   direct writes to SCX and SCY (`$3BA4`, `$3BBF`, `$3BD6`, `$3BF1`), a few of
   which land on visible lines.
+
+## Sound
+
+- The ROM has no sound effects, used or unused. The only sound write outside
+  gbt_player is the start-up's sound off.
+- A run has one song, started once. Bosses do not change it.
 
 ## Timing
 
@@ -93,6 +103,9 @@ game's OAM DMA wait counts CPU cycles, so it has to double when the CPU does.
 
 - HRAM: `$FF94`-`$FF98` shadows for SCX, SCY, BGP, OBP0 and OBP1; `$FF99` onward
   is the VBlank hook. The game uses `$FF80`-`$FF8B` (DMA routine) and `$FF90`-`$FF92`.
+- `$FF92` is the page the OAM DMA copies from: the game's `$C0`, or `$DA` with
+  the patch on color hardware. A restored snapshot brings HRAM back with it, so
+  on an original Game Boy `oam_build` sets `$FF92` to `$C0` every frame.
 - WRAM: everything from `$D000` up is free (a run never touches it). The patch
   keeps its variables at `$D000`-`$D01C`, the palette buffer at `$D020`, the
   window-map backup at `$D100`-`$D4FF`, the menu page buffer at `$D500` and its
@@ -102,3 +115,16 @@ game's OAM DMA wait counts CPU cycles, so it has to double when the CPU does.
   mistake; `verify.py` checks the LCD mode at each access instruction instead.
 - PyBoy stalls (emulation stops advancing) with hooks on two adjacent one-byte
   instructions, such as a load followed by a store. Hook one of them.
+
+## Testing
+
+- `verify.py` runs for about 25 minutes.
+- Find the player in OAM by position (y `$50`/`$58`, x `$48`/`$50`). Matching
+  by tile fails, because the shadow table's tiles lead the hardware's by a
+  frame on animation changes.
+- Enemies reach a player standing still after about 1200 frames of a fresh Easy
+  run. The hit tests start there.
+- A continued run's screens may differ from an uninterrupted run's inside one
+  tile edge on a few frames. The camera writes the background mid-frame, and
+  the music (left out of the comparison, since it keeps playing behind the
+  menu) shifts that write by a scanline.
