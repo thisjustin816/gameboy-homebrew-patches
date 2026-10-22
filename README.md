@@ -19,9 +19,9 @@ into one, so it comes as a build script instead of an IPS file.
 |---|---|---|
 | Hermano / Hermano (ModRetro) | [`hermano/`](hermano/) | Adds a battery save. The game saves during play, and **B** on the title screen resumes. Covers the original release and the ModRetro Chromatic release. |
 | Roguecraft GB | [`roguecraft/`](roguecraft/) | Saves a run to resume later: arriving on each floor saves it, and START GAME offers **RESUME GAME**. Also fixes the chest count on the end screen, chests that could be opened twice, and enemies that go invisible after the mini-map closes. The title screen reads `v1.000b`, and the RESUME GAME menu clears the title's menu away while it's up. |
-| Bubble Bobble | [`bubblebobble/`](bubblebobble/) | Adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
-| Classic Bubble Bobble | [`classicbubblebobble/`](classicbubblebobble/) | Makes Bub jump, fall and shoot like the Master System version: a faster, higher-arcing jump with more control in the air, quicker falls off ledges, and a shot that snaps out twice as fast over the same distance. Also adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
-| Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
+| Bubble Bobble | [`bubblebobble/`](bubblebobble/) | Adds a saved password: each round is saved when it starts, and the PASSWORD screen opens with the saved round's password filled in. |
+| Classic Bubble Bobble | [`classicbubblebobble/`](classicbubblebobble/) | Makes Bub jump, fall and shoot like the Master System version: a faster, higher-arcing jump with more control in the air, quicker falls off ledges, and a shot that snaps out twice as fast over the same distance. Also adds a saved password: each round is saved when it starts, and the PASSWORD screen opens with the saved round's password filled in. |
+| Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a saved password: each stage is saved when it starts, and the PASSWORD screen opens with the saved stage's password filled in. |
 | Legion of Evil | [`legionofevil/`](legionofevil/) | Adds a battery save for upgrades and money, a title menu (continue, new run, erase save), and a pause menu that can save a run partway through and continue it later. On a Game Boy Color or ModRetro Chromatic it runs in color at double speed with 16 selectable themes, which removes most slowdown, and keeps the player sprite from disappearing in crowds. Hits flash the player, and the rumble patch runs a rumble motor on hits and when a boss comes in. Also fixes a strip at the top of the screen that shifted when the camera scrolled. |
 | Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. Each game runs exactly as on its own cart. |
 
@@ -61,7 +61,7 @@ screen's mark, use the newest, without its `v`. The workflow creates the
 release and its tag, `<game>-v<version>`, for example `legionofevil-v1.2`, on
 the commit it ran from, and stops if that tag already exists. A classic game's
 release is named after its patch, from the README's title with its colon as a
-dash, such as `Bubble Bobble - last-round save`, and only its tag carries the
+dash, such as `Bubble Bobble - saved password`, and only its tag carries the
 version. A modern game's release is named with the game and its version, such
 as `Legion of Evil v1.2`.
 

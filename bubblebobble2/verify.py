@@ -3,7 +3,7 @@
 
 usage: verify.py STOCK.gb PATCHED.gb
 
-PATCHED is the patched ROM: the tearing fix and the save of the last stage.
+PATCHED is the patched ROM: the tearing fix and the saved password.
 
 Runs start from a cold boot and tap through the intro into the first level,
 then play with seeded random input. The comparisons that need the two ROMs in

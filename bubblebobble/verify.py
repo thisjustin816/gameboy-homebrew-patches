@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the Bubble Bobble save patch in emulation.
+"""Check the Bubble Bobble saved password patch in emulation.
 
 usage: verify.py STOCK.gb PATCHED.gb
 
