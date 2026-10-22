@@ -116,7 +116,7 @@ python3 patch.py "Bubble Bobble Part 2 (USA, Europe).gb" -o "Bubble Bobble Part 
 `patch.py` refuses any ROM whose md5 it doesn't know, checks every byte it
 replaces, confirms nothing else jumps into the retired scroll routine, and
 rebuilds the same IPS. The tearing fix is `bb2scroll.asm` and the save is
-`bb2save.asm`, both assembled by `asm.py`.
+`bb2save.asm`, both assembled by [`common/asm.py`](../common/asm.py).
 
 ## How it was tested
 

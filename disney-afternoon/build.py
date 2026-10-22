@@ -14,11 +14,13 @@ DuckTales' own, from its LAND SELECT screen.
 
     python3 build.py DUCKTALES DUCKTALES2 TALESPIN DARKWING bundleMain.mbundle -o out.gb
 """
-import argparse, hashlib, os, sys
+import argparse, hashlib, os, pathlib, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "common"))
 from asm import assemble
+from checksum import header_checksum, global_checksum
 import mbundle, pictures
 from pictures import SHADES
 
@@ -196,17 +198,6 @@ def build_code():
 
 
 # ---- layout -------------------------------------------------------------------
-
-def header_checksum(rom):
-    x = 0
-    for b in rom[0x134:0x14D]:
-        x = (x - b - 1) & 0xFF
-    return x
-
-
-def global_checksum(rom):
-    return (sum(rom) - rom[0x14E] - rom[0x14F]) & 0xFFFF
-
 
 def build(roms, art):
     for g, r in zip(GAMES, roms):
