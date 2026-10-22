@@ -60,10 +60,10 @@ version, in its Versions list, the ROM name in its build command or the title
 screen's mark, use the newest, without its `v`. The workflow creates the
 release and its tag, `<game>-v<version>`, for example `legionofevil-v1.2`, on
 the commit it ran from, and stops if that tag already exists. A classic game's
-release is named after its patch, from the README's title with its colon as a
-dash, such as `Bubble Bobble - saved password`, and only its tag carries the
-version. A modern game's release is named with the game and its version, such
-as `Legion of Evil v1.2`.
+release is named with the game and its patch, from the README's title with
+its colon as a dash, then the version, such as
+`Bubble Bobble - saved password v1.0`. A modern game's release is named with
+the game and its version, such as `Legion of Evil v1.2`.
 
 ## Applying a patch
 

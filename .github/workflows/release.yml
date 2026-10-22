@@ -83,16 +83,15 @@ jobs:
           cp ./*.ips "$out/"
           (cd "$out" && sha256sum -- *.ips > checksums.txt && cat checksums.txt)
           # A classic game's release is named after its patch, "# Game: patch" as "Game - patch",
-          # since its tag carries the patch's own version. A modern game's release carries the
-          # game's version.
+          # and a modern game's release after the game. Both titles end in the version.
           if [[ " $CLASSIC_GAMES " == *" $GAME "* ]]; then
-            title=$(sed -n '1s/^# \([^:]*\): \(..*\)/\1 - \2/p' README.md)
-            [ -n "$title" ] || fail "$GAME/README.md does not start with a '# Name: patch' title."
+            name=$(sed -n '1s/^# \([^:]*\): \(..*\)/\1 - \2/p' README.md)
+            [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name: patch' title."
           else
             name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
             [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name' title."
-            title="$name v$VERSION"
           fi
+          title="$name v$VERSION"
           echo "TITLE=$title" >> "$GITHUB_ENV"
           # shellcheck disable=SC2016 # the backticks in single quotes are Markdown code spans
           ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
