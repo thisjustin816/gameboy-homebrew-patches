@@ -22,7 +22,7 @@ into one, so it comes as a build script instead of an IPS file.
 | Bubble Bobble | [`bubblebobble/`](bubblebobble/) | Adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Classic Bubble Bobble | [`classicbubblebobble/`](classicbubblebobble/) | Makes Bub jump, fall and shoot like the Master System version: a faster, higher-arcing jump with more control in the air, quicker falls off ledges, and a shot that snaps out twice as fast over the same distance. Also adds a battery save: the last round started is remembered, and the PASSWORD screen opens with its password already filled in. |
 | Bubble Bobble Part 2 | [`bubblebobble2/`](bubblebobble2/) | Stops the screen from tearing while the camera scrolls. The game wrote the scroll registers partway down the picture; the patch makes those writes wait for VBlank. Also adds a battery save: the last stage started is remembered, and the PASSWORD screen opens with its password already filled in. |
-| Legion of Evil | [`legionofevil/`](legionofevil/) | Adds a battery save for upgrades and money, a title menu (continue, new run, erase save), and a pause menu that can save a run partway through and continue it later. On a Game Boy Color or ModRetro Chromatic it runs in color at double speed with 16 selectable themes, which removes most slowdown, and keeps the player sprite from disappearing in crowds. Hits flash the player and run a rumble motor where there is one. Also fixes a strip at the top of the screen that shifted when the camera scrolled. |
+| Legion of Evil | [`legionofevil/`](legionofevil/) | Adds a battery save for upgrades and money, a title menu (continue, new run, erase save), and a pause menu that can save a run partway through and continue it later. On a Game Boy Color or ModRetro Chromatic it runs in color at double speed with 16 selectable themes, which removes most slowdown, and keeps the player sprite from disappearing in crowds. Hits flash the player, and the rumble patch runs a rumble motor on hits and when a boss comes in. Also fixes a strip at the top of the screen that shifted when the camera scrolled. |
 | Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. Each game runs exactly as on its own cart. |
 
 ## Diagnostic tools
@@ -42,8 +42,11 @@ Its source and verified ROM are included; building it requires GBDK-2020 4.5.0.
 
 Each release holds one game's `.ips` files, a `checksums.txt` with their
 sha256, and notes with what the patch does and the supported stock md5s, both
-taken from the game's README, how to apply it, and a link to that README. A
-release never includes a ROM.
+taken from the game's README, how to apply it, and a link to that README. For a
+game with more than one patch, the notes also say which patch is which, from
+the table of patches at the top of its README, and the workflow stops if that
+table leaves out a patch, names a file that is not in the folder, or has a row
+without the md5 after patching. A release never includes a ROM.
 
 To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
 on `main`, then pick the game and type its version. A patch for a classic game
