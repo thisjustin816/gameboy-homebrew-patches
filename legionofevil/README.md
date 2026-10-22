@@ -11,10 +11,20 @@ when the camera scrolls.
 
 | Patch | What it does | ROM md5 after patching |
 |---|---|---|
-| `LegionOfEvil-save.ips` | Everything below except rumble. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible, for carts that only do MBC1. | `6c669473c4f351885b04139be7d33565` |
+| `LegionOfEvil-save.ips` | Every change except rumble, for carts that only do MBC1. The ROM grows to 64 KB and the header says MBC1+RAM+BATTERY with 8 KB of RAM and Game Boy Color compatible. | `6c669473c4f351885b04139be7d33565` |
 | `LegionOfEvil-rumble.ips` | The same patch with rumble: the header says MBC5+RUMBLE+RAM+BATTERY, for a rumble cart. | `d084ccadf47d9f6fdecde212cd587f7b` |
 
-The two differ only in the cartridge type in the header (and its checksum).
+The two differ only in the cartridge type in the header (and its checksum), so
+they run the same code: MBC1 and MBC5 take the game's bank writes to `$2000`
+the same way, and on MBC1 the motor writes to `$4000` leave the banks where
+they are.
+
+Both patched ROMs are 64 KB, so they need a mapper, and the save needs 8 KB of
+battery RAM. The stock cartridge is a plain 32 KB ROM with no mapper and no
+save RAM, so it can't run either patch. Put the patched ROM on a flash cart or
+another cartridge with a mapper and battery RAM, or run it in an emulator. Pick
+`LegionOfEvil-rumble.ips` for a cart or emulator that does MBC5 with a rumble
+motor, and `LegionOfEvil-save.ips` for one that only does MBC1.
 
 ## Versions
 

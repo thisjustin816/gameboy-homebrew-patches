@@ -82,9 +82,18 @@ jobs:
           mkdir -p "$out"
           cp ./*.ips "$out/"
           (cd "$out" && sha256sum -- *.ips > checksums.txt && cat checksums.txt)
-          name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
-          [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name' title."
-          echo "TITLE=$name v$VERSION" >> "$GITHUB_ENV"
+          # A classic game's release is named after its patch, "# Game: patch" as "Game - patch",
+          # since its tag carries the patch's own version. A modern game's release carries the
+          # game's version.
+          if [[ " $CLASSIC_GAMES " == *" $GAME "* ]]; then
+            title=$(sed -n '1s/^# \([^:]*\): \(..*\)/\1 - \2/p' README.md)
+            [ -n "$title" ] || fail "$GAME/README.md does not start with a '# Name: patch' title."
+          else
+            name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
+            [ -n "$name" ] || fail "$GAME/README.md does not start with a '# Name' title."
+            title="$name v$VERSION"
+          fi
+          echo "TITLE=$title" >> "$GITHUB_ENV"
           # shellcheck disable=SC2016 # the backticks in single quotes are Markdown code spans
           ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
           rows=$(awk -v ips="${ips% }" '
@@ -97,9 +106,42 @@ jobs:
               print "| " c[2] " | " c[3] " | " p " |"
             }' README.md)
           [ -n "$rows" ] || fail "$GAME/README.md has no stock md5 the notes can list."
+          # With more than one patch, the notes say which is which, from the README's table of
+          # patches above its first section: the file, the first sentence of what it does, and
+          # the md5 after patching. A game with one patch, or without that table, gets no Patches
+          # section. Once the table is there, it must have exactly one row per patch, each ending in
+          # an md5, or the step fails.
+          patches=""
+          set -- *.ips
+          if [ $# -gt 1 ]; then
+            # The md5 is the last cell and the description is everything between it and the file,
+            # so an escaped pipe in a description stays in it. The cut to the first sentence is
+            # skipped when it would end inside a code span.
+            patches=$(awk '
+              /^## / { exit }
+              /^\| `[^`]+\.ips` \|/ {
+                n = split($0, c, "|"); f = c[2]; d = c[3]; m = c[n - 1]
+                for (k = 4; k < n - 1; k++) d = d "|" c[k]
+                gsub(/^ +| +$/, "", f); gsub(/^ +| +$/, "", d); gsub(/^ +| +$/, "", m)
+                if (n < 5 || m !~ /^`[0-9a-f]+`$/ || length(m) != 34) { print > "/dev/stderr"; exit 1 }
+                s = substr(d, 1, index(d, ". "))
+                if (s != "" && gsub(/`/, "`", s) % 2 == 0) d = s
+                print "| " f " | " d " | " m " |"
+              }' README.md) ||
+              fail "$GAME/README.md has a row in its table of patches that is not | \`file.ips\` | description | \`md5\` |."
+            if [ -n "$patches" ]; then
+              for f in "$@"; do
+                [[ $'\n'"$patches" == *$'\n'"| \`$f\` |"* ]] ||
+                  fail "$GAME/README.md has a table of patches with no row for $f."
+              done
+              [ "$(wc -l <<< "$patches")" -eq $# ] ||
+                fail "$GAME/README.md has a table of patches that lists a file twice, or a file that is not in $GAME/."
+            fi
+          fi
           # shellcheck disable=SC2016
           {
             awk 'NR > 1 && NF { p = 1 } p && !NF { exit } p' README.md
+            [ -z "$patches" ] || printf '\n### Patches\n\n| Patch | What it does | md5 after patching |\n|---|---|---|\n%s\n' "$patches"
             printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n%s\n' "$rows"
             printf '\n### Applying it\n\n'
             echo 'Check the stock ROM'"'"'s md5 against the table above, then apply the `.ips` file to it with any IPS patcher, such as [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) or Floating IPS. Each patch only applies to the release in its row.'
