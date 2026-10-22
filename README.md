@@ -49,8 +49,10 @@ To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
 on `main`, then pick the game and type its version. A patch for a classic game
 has a version of its own, two numbers such as `1.1`, separate from the game's.
 A patch for a modern game carries on the game's own version string, such as
-`1.000b`. The workflow keeps the list of which games are which, and refuses a
-version that does not fit the game's kind. Where the game's README names a
+`1.000b`, in whatever form the game uses, so the workflow only checks that it
+holds characters that are safe in a tag name: letters, digits and `. _ + -`.
+The workflow keeps the list of which games are which, and refuses a version
+that does not fit the game's kind. Where the game's README names a
 version, in its Versions list, the ROM name in its build command or the title
 screen's mark, use the newest, without its `v`. The workflow creates the
 release and its tag, `<game>-v<version>`, for example `legionofevil-v1.2`, on

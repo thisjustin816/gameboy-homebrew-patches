@@ -15,7 +15,7 @@ on:
           - legionofevil
           - roguecraft
       version:
-        description: Version. Classic game, two numbers such as 1.1; modern game, the game's own scheme such as 1.000b
+        description: Version. Classic game, two numbers such as 1.1; modern game, the game's own version such as 1.000b
         required: true
         type: string
 
@@ -53,14 +53,21 @@ jobs:
             [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]] ||
               fail "Version '$VERSION' does not fit $GAME, a classic game. Its patch takes a version of its own: two numbers and a dot, such as 1.0 or 1.1."
           elif [[ " $MODERN_GAMES " == *" $GAME "* ]]; then
-            [[ "$VERSION" =~ ^[0-9][0-9a-z]*(\.[0-9][0-9a-z]*)*$ && ${#VERSION} -le 20 ]] ||
-              fail "Version '$VERSION' does not fit $GAME, a modern game. Its patch takes the game's own version: up to 20 digits, lowercase letters and dots, starting with a digit and with a digit after each dot, such as 1.2 or 1.000b."
+            # Any scheme the game uses is allowed. The version only has to be safe as part of a
+            # tag name, a release title and a URL path. The character set rules out what git
+            # forbids in a ref (space, control characters, ~ ^ : ? * [ \ and "@{"), the tests
+            # below rule out ".." and a trailing "." or ".lock", and the first character keeps
+            # it from being read as a command-line option.
+            [[ ${#VERSION} -le 40 && "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ &&
+              "$VERSION" != *..* && "$VERSION" != *. && "$VERSION" != *.lock ]] ||
+              fail "Version '$VERSION' does not fit $GAME, a modern game. Its patch takes the game's own version, checked only for characters safe in a tag name: up to 40 of A-Z a-z 0-9 . _ + -, starting with a letter or digit, with no '..', and not ending in '.' or '.lock'."
           else
             fail "$GAME is in neither CLASSIC_GAMES nor MODERN_GAMES. Add it to one of them at the top of release.yml."
           fi
           compgen -G "$GAME/*.ips" > /dev/null || fail "$GAME/ has no IPS files."
           [ -f "$GAME/README.md" ] || fail "$GAME/ has no README.md."
           tag="$GAME-v$VERSION"
+          git check-ref-format "refs/tags/$tag" || fail "Tag $tag is not a valid git tag name."
           found=0
           git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null || found=$?
           [ "$found" -ne 0 ] || fail "Tag $tag already exists."
