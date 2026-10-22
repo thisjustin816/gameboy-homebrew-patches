@@ -38,6 +38,17 @@ checks twelve registers for behavior a Game Boy Color never shows, then says
 whether the host is likely an emulator and names it when the pattern is known.
 Its source and verified ROM are included; building it requires GBDK-2020 4.5.0.
 
+## Releases
+
+Each release holds one game's `.ips` files, a `checksums.txt` with their
+sha256, and notes taken from the game's README: what the patch does, the
+supported stock md5s, and how to apply it. A release never includes a ROM.
+
+To cut one, open the **Actions** tab, pick **Release**, click **Run workflow**
+on `main`, then pick the game and type the version from its README, such as
+`1.2`. The workflow tags the commit as `<game>-v<version>`, for example
+`legionofevil-v1.2`, and stops if that tag already exists.
+
 ## Applying a patch
 
 Use any IPS patcher, for example

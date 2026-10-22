@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Game folder to release
+        required: true
+        type: choice
+        options:
+          - bubblebobble
+          - bubblebobble2
+          - classicbubblebobble
+          - hermano
+          - legionofevil
+          - roguecraft
+      version:
+        description: Version, such as 1.0
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GAME: ${{ inputs.game }}
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Check inputs
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || fail "Run this workflow from main. This run is on $GITHUB_REF."
+          [[ "$GAME" =~ ^[a-z0-9]+$ ]] || fail "Game '$GAME' is not a folder name."
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || fail "Version '$VERSION' must look like 1.0 or 1.0.1."
+          compgen -G "$GAME/*.ips" > /dev/null || fail "$GAME/ has no IPS files."
+          [ -f "$GAME/README.md" ] || fail "$GAME/ has no README.md."
+          tag="$GAME-v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            fail "Tag $tag already exists."
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Write notes and checksums
+        working-directory: ${{ inputs.game }}
+        run: |
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out"
+          cp ./*.ips "$out/"
+          (cd "$out" && sha256sum ./*.ips | sed 's| \./| |' > checksums.txt && cat checksums.txt)
+          name=$(sed -n '1s/^# \([^:]*\).*/\1/p' README.md)
+          echo "TITLE=$name v$VERSION" >> "$GITHUB_ENV"
+          {
+            awk 'NR > 1 && NF { p = 1 } p && !NF { exit } p' README.md
+            printf '\n### Supported stock ROMs\n\n| Release | md5 | Patch |\n|---|---|---|\n'
+            ips=$(for f in *.ips; do printf '`%s` ' "$f"; done)
+            awk -v ips="${ips% }" '
+              /^- Game: / { g = substr($0, 9); sub(/, [0-9]+ [KM]B.*/, "", g) }
+              /^- Stock md5: / { print "| " g " | " $4 " | " ips " |" }
+              /^## / { s = /^## Supported release/; next }
+              s && /^\| / && $0 ~ /\| `[0-9a-f]+` \|/ {
+                n = split($0, c, "|"); p = n >= 6 ? c[n - 1] : ips
+                gsub(/^ +| +$/, "", c[2]); gsub(/^ +| +$/, "", c[3]); gsub(/^ +| +$/, "", p)
+                print "| " c[2] " | " c[3] " | " p " |"
+              }' README.md
+            printf '\n### Applying it\n\n'
+            echo 'Check the stock ROM'"'"'s md5 against the table above, then apply the `.ips` file to it with any IPS patcher, such as [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) or Floating IPS. Each patch only applies to the release in its row.'
+            echo
+            echo 'No ROM is included. `checksums.txt` lists the sha256 of each IPS file.'
+          } > "$out/notes.md"
+          cat "$out/notes.md"
+
+      - name: Tag and release
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+          cd "$RUNNER_TEMP/release"
+          gh release create "$TAG" --verify-tag --title "$TITLE" --notes-file notes.md ./*.ips checksums.txt
