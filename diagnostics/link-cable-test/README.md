@@ -10,9 +10,9 @@ The [Link manual](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.m
 To repeat the standalone stress test:
 
 1. Open Link on both consoles. Set one to Peer and the other to Host.
-2. Set both profiles to **All load**, pacing to **Burst**, wire clock to
-   **Normal**, and CPU speed to **Normal**. These correspond to the old
-   ALL STRESS and 4 BYTE BURST settings.
+2. Set both profiles to **All load**, wire clock to **Normal**, and CPU speed
+   to **Normal**. Set the host's pacing to **Burst**; the peer follows it.
+   These correspond to the old ALL STRESS and 4 BYTE BURST settings.
 3. Press Start on the peer, then on the host within two seconds. Run for at
    least ten minutes and photograph both results.
 4. Repeat with both CPUs at **Double** on CGB hardware, then swap host and peer
