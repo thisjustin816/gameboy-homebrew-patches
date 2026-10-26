@@ -1,5 +1,21 @@
 # Platform Detect
 
+## Moved to Bacon Bit Bench
+
+Use the **Platform** instrument in [Bacon Bit Bench](https://github.com/thisjustin816/bacon-bits) for current
+testing. Download the [latest release](https://github.com/thisjustin816/bacon-bits/releases/latest) for your cartridge's mapper
+and open Platform. Both cartridge builds include it.
+
+A or Select opens the captured evidence. Left/Right chooses a probe, A switches
+between failed probes and all twelve, Select opens name evidence, and B returns
+to the overview. See the [Platform manual](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.md#platform).
+
+Add new probes, signatures, diagnostic fixes and test coverage in Bacon Bit
+Bench, and file [issues there](https://github.com/thisjustin816/bacon-bits/issues). The standalone v1.4 source,
+ROM, screens and measurements below remain for reproducing earlier results.
+
+## Historical standalone ROM
+
 A Game Boy Color diagnostic that reports the hardware class, then looks for
 behavior a Nintendo Game Boy Color never shows. When it finds some, it says the
 host is likely an emulator and, where the pattern is known, names it.

@@ -1,11 +1,37 @@
 # Link Sustain
 
+## Moved to Bacon Bit Bench
+
+Use the **Link** instrument in [Bacon Bit Bench](https://github.com/thisjustin816/bacon-bits) for current testing.
+Download the [latest release](https://github.com/thisjustin816/bacon-bits/releases/latest), choose the build that matches each
+cartridge's mapper, and use the same release on both consoles.
+The [Link manual](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.md#link) describes the current screens and controls.
+
+To repeat the standalone stress test:
+
+1. Open Link on both consoles. Set one to Peer and the other to Host.
+2. Set both profiles to **All load**, pacing to **Burst**, wire clock to
+   **Normal**, and CPU speed to **Normal**. These correspond to the old
+   ALL STRESS and 4 BYTE BURST settings.
+3. Press Start on the peer, then on the host within two seconds. Run for at
+   least ten minutes and photograph both results.
+4. Repeat with both CPUs at **Double** on CGB hardware, then swap host and peer
+   and repeat both CPU settings. Keep the wire clock at Normal throughout.
+5. Use **Sustain** for the simpler packet-only comparison.
+
+Send diagnostic improvements, new stress cases, fixes and test coverage to
+Bacon Bit Bench, and file [issues there](https://github.com/thisjustin816/bacon-bits/issues).
+The standalone v1.2 source, ROM and instructions below remain as historical
+evidence for reproducing earlier results.
+
+## Historical standalone ROM
+
 A 32 KiB Game Boy Color diagnostic for sustained link traffic, scene-ready
 barriers, uneven CPU workloads, and a shared ball simulation. Packet errors and
-the first failure remain visible after communication recovers. v1.2 is a
-test build. Download [link-sustain.gbc](link-sustain.gbc) for both consoles.
+the first failure remain visible after communication recovers. The retained
+v1.2 [link-sustain.gbc](link-sustain.gbc) is the historical test build.
 
-## Run a test
+## Historical standalone operation
 
 Load the same ROM on both consoles and connect them. The settings screen lists
 five rows: ROLE, TEST, RATE, LINK and CPU. Pick PEER on one console and HOST on

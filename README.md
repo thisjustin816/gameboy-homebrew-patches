@@ -11,7 +11,8 @@ Each patch comes as an IPS file for a specific release of a game, plus the
 source it's built from. **Commercial game ROMs are not included.** Bring your
 own copy of the game, and check its md5 against the patch's README first. Each
 patch is made for one exact release, and the build script refuses any other.
-Original standalone diagnostic ROMs are included with their matching source.
+Historical standalone diagnostic ROMs are retained with their matching source.
+Use Bacon Bit Bench for current diagnostic tests and development.
 The Disney Afternoon Collection is another exception: it combines four ROMs
 into one, so it comes as a build script instead of an IPS file.
 
@@ -27,16 +28,18 @@ into one, so it comes as a build script instead of an IPS file.
 
 ## Diagnostic tools
 
-[Link Sustain](diagnostics/link-cable-test/) is a standalone Game Boy Color
-link-cable test. It continuously exchanges packets in both directions, checks
-CRCs and sequence numbers, and keeps the first failure after sync recovers.
-Its source and tests are included; building it requires GBDK-2020.
+The diagnostics have moved to [Bacon Bit Bench](https://github.com/thisjustin816/bacon-bits). Use its
+[latest cartridge release](https://github.com/thisjustin816/bacon-bits/releases/latest) and [manual](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.md) for new tests.
 
-[Platform Detect](diagnostics/platform-detect/) is a standalone Game Boy / Game
-Boy Color runtime diagnostic. It reports the hardware class and, in CGB mode,
-checks twelve registers for behavior a Game Boy Color never shows, then says
-whether the host is likely an emulator and names it when the pattern is known.
-Its source and verified ROM are included; building it requires GBDK-2020 4.5.0.
+| Historical standalone | Current Bacon Bit Bench instrument |
+| --- | --- |
+| [Link Sustain](diagnostics/link-cable-test/) | [Link](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.md#link) |
+| [Platform Detect](diagnostics/platform-detect/) | [Platform](https://github.com/thisjustin816/bacon-bits/blob/main/MANUAL.md#platform) |
+
+The old ROMs, source and tests remain here to reproduce recorded results.
+Develop new diagnostic instruments, fixes, measurements and test coverage in
+Bacon Bit Bench, and file diagnostic [issues there](https://github.com/thisjustin816/bacon-bits/issues).
+Game patches and their game-specific tests remain in this repository.
 
 ## Releases
 
