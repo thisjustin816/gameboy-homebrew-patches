@@ -10,6 +10,7 @@ on:
         options:
           - bubblebobble
           - bubblebobble2
+          - chessmaster
           - classicbubblebobble
           - hermano
           - legionofevil
@@ -23,7 +24,7 @@ on:
 # A modern game's patch extends the game's own versioning. Every game in the
 # choice list above must be in one of these lists.
 env:
-  CLASSIC_GAMES: bubblebobble bubblebobble2 classicbubblebobble
+  CLASSIC_GAMES: bubblebobble bubblebobble2 chessmaster classicbubblebobble
   MODERN_GAMES: hermano legionofevil roguecraft
 
 concurrency:
