@@ -27,6 +27,12 @@ into one, so it comes as a build script instead of an IPS file.
 | Disney Afternoon Collection | [`disney-afternoon/`](disney-afternoon/) | Puts DuckTales, DuckTales 2, TaleSpin and Darkwing Duck on one cart, with a splash and a game menu drawn from the PC Disney Afternoon Collection's art. Each game runs exactly as on its own cart. |
 | The Chessmaster | [`chessmaster/`](chessmaster/) | Fixes two bugs that crash or freeze the game while the computer thinks, mostly on long searches such as the Infinite level: a thinking clock that adds one to a byte of the search's data instead of the clock, and a root move list left out of order after a re-search, which sends the search into a line it can't play. |
 
+## Experimental development
+
+[PachiPals experimental source](pachipals/) includes fixed checkpoint builders,
+physics regression tools, and HP-freeze development source. It requires private
+ROM inputs and states; the later physics experiments are still being recovered.
+
 ## Diagnostic tools
 
 The diagnostics have moved to [Bacon Bit Bench](https://github.com/thisjustin816/bacon-bits). Use its

@@ -1,0 +1,3 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+longest_visible_hold_with_velocity=4 frames range=3-7
+PASS

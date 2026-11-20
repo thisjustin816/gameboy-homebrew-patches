@@ -1,0 +1,8 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+old mask [(21770, 13, 1, 91, 139, 31, 33)] rows {516: (31, 33, 91, 139), 517: (-7, -44, 95, 141), 518: (-7, -44, 95, 141)}
+tipfit mask [(21770, 13, 1, 91, 139, 31, 33)] rows {516: (31, 33, 91, 139), 517: (-7, -44, 95, 141), 518: (-7, -44, 95, 141)}
+Traceback (most recent call last):
+  File "/workspace/gameboy-homebrew-patches/pachipals/checkpoint/flipper_tip_gap.py", line 50, in <module>
+    assert not any((x[1] == 13 and x[2] & 1 for x in new[0])), new
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ([(21770, 13, 1, 91, 139, 31, 33)], {516: (31, 33, 91, 139), 517: (-7, -44, 95, 141), 518: (-7, -44, 95, 141)})

@@ -1,0 +1,97 @@
+{
+  "pyboy": "2.8.1",
+  "roms": {
+    "pinball-tipfit": {
+      "sha256": "d4067a55e38bb7ecaf4317b3749db2794ae4c2746040c1c43218f5056c462478",
+      "md5": "a75d8d3bc88ca986975f94ba5737640f"
+    },
+    "pachinko-d": {
+      "sha256": "4d7d60efa66f125fbe55f05ed7a231df02b836e87837c35fc65835a19471a7df",
+      "md5": "3330d11d8e1e83b574b4e372ca1d989d"
+    },
+    "pachinko-e": {
+      "sha256": "e5b8c2bf8db1418ef3ec4da2264a4f3bdb3354408acc92d88c6b69ec93a5a4b2",
+      "md5": "6a7fb7be414e6fc92222db793698609a"
+    },
+    "pachinko-f": {
+      "sha256": "d0cae3b4df74d0f504c12a2904722eb5fa13f229975b606b0ff2fbb20b9dff4e",
+      "md5": "7d31558663e57ebe556fd52bd32d5871"
+    },
+    "pinball-pre-tipfit": {
+      "sha256": "9538bee03f7ea07ee45908783d76f56428d8a2be90e1b74a2f535035c08cdf56",
+      "md5": "53cde25523fac11e64c9fe3f6b228fba"
+    },
+    "capture-stock": {
+      "sha256": "b174eb295a47e666cb486d46cfe8138374f1983b6ebd6b6d1cd731e80de05e61",
+      "md5": "d70e3126a382e2dda0a1eca32f2d85e1"
+    }
+  },
+  "checks": [
+    {
+      "name": "direct-boot",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "battle-d",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "battle-e",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "battle-f",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "tip-old-fails",
+      "exit_code": 1,
+      "expected_failure": true,
+      "passed": true
+    },
+    {
+      "name": "tip-new-passes",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "capture-stall",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "capture-pulses",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    },
+    {
+      "name": "damping-trace",
+      "exit_code": 0,
+      "expected_failure": false,
+      "passed": true
+    }
+  ],
+  "damping_classification": {
+    "passive_hits": 48,
+    "object_hits": 41
+  },
+  "exact_pristine_restoration": [
+    "pinball-tipfit",
+    "pachinko-d",
+    "pachinko-e",
+    "pachinko-f"
+  ],
+  "scope": "October 27 checkpoint only; later experiments remain unavailable",
+  "passed": true
+}

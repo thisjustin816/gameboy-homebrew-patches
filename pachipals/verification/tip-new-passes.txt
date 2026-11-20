@@ -1,0 +1,4 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+old mask [(21770, 13, 1, 91, 139, 31, 33)] rows {516: (31, 33, 91, 139), 517: (-7, -44, 95, 141), 518: (-7, -44, 95, 141)}
+tipfit mask [(21770, 13, 0, 91, 139, 31, 33), (21778, 21, 1, 91, 139, 31, 33)] rows {516: (31, 33, 91, 139), 517: (-7, -44, 95, 142), 518: (-7, -44, 95, 142)}
+PASS old buffered tip -> TipFit deeper visual contact with identical bounce

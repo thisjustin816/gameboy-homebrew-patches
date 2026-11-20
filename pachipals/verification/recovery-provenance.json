@@ -1,0 +1,41 @@
+{
+  "scope": "Recovered October 27 source only; later experiments not recovered",
+  "archives": {
+    "1-PachiPals-Codex-Complete-Handoff-2026-10-27.zip": "f9ba0a3c437718f44c25b08296c99d09f5831d50be23a3555dc25b75009fdc38",
+    "2-PachiPals__GBC_.zip": "a069b7b5c30497c57a4b5542eba2d798fd2659076a824ddd22d1e202faa45fd7",
+    "3-PachiPals-Physics-Handoff-2026-10-26.zip": "f0ebbaa3ea8851a5d6e91bc9fd5a99f5780db94df7d9a0be000af5bbcc8a92e9",
+    "4-PachiPals-Pachinko-DEF-Source-Codex-Handoff.zip": "93e3e1a71072fd18f87df396a0ee57f922a48501fd0706b67371dac7b6f85035"
+  },
+  "archive_integrity_checks": 4,
+  "complete_archive_manifest_entries_verified": 68,
+  "current_source_manifest_entries_verified": 25,
+  "pinball_source_manifest_entries_verified": 16,
+  "fresh_source_rebuild_matches": [
+    "pinball-tipfit",
+    "pachinko-d",
+    "pachinko-e",
+    "pachinko-f"
+  ],
+  "corrupt_stock_refused": true,
+  "corrupt_outputs_refused": [
+    "pinball-tipfit",
+    "pachinko-d",
+    "pachinko-e",
+    "pachinko-f"
+  ],
+  "hp_contexts_match_pristine": true,
+  "hp_later_input_roms_available": false,
+  "hp_patch_safety_unit_tests_passed": 9,
+  "checkpoint_source_sha256": {
+    "pachipals/checkpoint/battle_sweep.py": "fefa22efd8e8ea5fd84c17c53733d0598b5de67ba835101219b05add43502153",
+    "pachipals/checkpoint/build.py": "d852037d995fe29acff5a7a19605f06de2bd2dc15a8893de7427d775d7ea9ab1",
+    "pachipals/checkpoint/capture_pulse_sweep.py": "1b631770e70ca5bd9e0875a00fb806d62279eb703af53ca060e5737693e06c88",
+    "pachipals/checkpoint/capture_stall.py": "0e30f3ba65b3f94b5525395843959d3deac6bf0eff027693f21abab61eb4abfe",
+    "pachipals/checkpoint/emulator.py": "2f654bcbb9d1c2ab9c7689a2a01073a599136670c55c3d167e50ddb84218956d",
+    "pachipals/checkpoint/flipper_tip_gap.py": "1eeffb6d5bb4e8fba43c9faf2712b0176d8042dd8e072e1e8941097f303c1d83",
+    "pachipals/checkpoint/profiles.json": "28eebe8553bf2a175be461decbd419e963839592ef7bbf24a0489b2a73212d62",
+    "pachipals/checkpoint/trace_damping_paths.py": "9e61dcaa980522bc35f3388d9bfc83512751303c42ca7ecb9c38f057eb7b9feb",
+    "pachipals/checkpoint/verify.py": "a5b2de9661f71357dfb9f157e2cb7b2a35d32f7fc676008b892aa43d0e4c8f2e",
+    "pachipals/checkpoint/verify_direct.py": "b7e845cff21469e960a2ffaed93e7f5aa4a6089d351386463cbd83c4e071a0a3"
+  }
+}

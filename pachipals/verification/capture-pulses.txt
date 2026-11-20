@@ -1,0 +1,5 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+base cases 80 worst_hold 39 a 1 range [142, 181] over60 0
+  hold_minmax 11 39 pos_changes_minmax 51 109
+candidate cases 80 worst_hold 8 left 1 range [3, 11] over60 0
+  hold_minmax 4 8 pos_changes_minmax 128 138

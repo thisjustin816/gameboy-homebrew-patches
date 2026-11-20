@@ -1,7 +1,8 @@
 # Recovered technical notes
 
-These addresses and identities come from the retained development record.
-They have not been re-derived against a ROM in this checkout.
+The HP and wall notes come from the retained development record. The HP byte
+contexts now also match the recovered pristine ROM. The later wall code and
+HP-freeze output identities still await verification against recovered builds.
 
 ## HP script edits
 
@@ -78,13 +79,18 @@ Its recorded outputs are:
 | Pachinko Guarded D+ Three Lanes Frozen HP | `999aee093dbb4a36af0d8d1777995d0780d29548faa54c94f5d26265091190b6` |
 
 These hashes identify missing artifacts; they are not evidence of a successful
-rebuild in this checkout. The original complete development archive is also
-missing. It was named `PachiPals-Codex-Complete-Handoff-2026-10-27.zip` and
-contained the pristine ROM with SHA-256:
+rebuild in this checkout. The original complete development archive,
+`PachiPals-Codex-Complete-Handoff-2026-10-27.zip`, has been restored privately.
+Its manifest verifies all 68 listed files. The pristine ROM has SHA-256:
 
 ```text
 f528d6757b314ecc40ab5195d167bf4c035b68c58cf8823f7c418a583722aca9
 ```
+
+The recovered `checkpoint/` source reproduces all four archived outputs and
+retains the original two state identities. The other supplied archives contain
+older source and stock distribution files, with no later wall implementation
+or three-lane state. Their full contents remain private outside Git.
 
 After restoring private inputs and source, rerun the native wall normal and
 unaffected-state comparisons, natural wall-loop fixtures, powered-flipper,

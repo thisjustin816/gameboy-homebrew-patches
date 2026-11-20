@@ -1,0 +1,29 @@
+UserWarning: Using SDL2 binaries from pysdl2-dll 2.32.10
+base cases 13 distinct_marker_x 8 no_reset 0
+  center mx 88 reset 166 bounds 12 116 28 157
+  left5 mx 80 reset 374 bounds 12 103 28 157
+  left10 mx 72 reset 179 bounds 12 78 28 158
+  left15 mx 60 reset 383 bounds 12 116 28 159
+  left20 mx 60 reset 303 bounds 12 95 28 157
+  left25 mx 60 reset 217 bounds 12 116 28 157
+  left30 mx 60 reset 361 bounds 12 104 28 158
+  right5 mx 96 reset 145 bounds 12 108 28 159
+  right10 mx 104 reset 191 bounds 12 116 28 159
+  right15 mx 112 reset 132 bounds 12 116 28 157
+  right20 mx 116 reset 132 bounds 12 116 28 157
+  right25 mx 116 reset 342 bounds 12 116 28 158
+  right30 mx 116 reset 174 bounds 12 116 28 158
+candidate cases 13 distinct_marker_x 8 no_reset 0
+  center mx 88 reset 263 bounds 12 101 28 157
+  left5 mx 80 reset 452 bounds 12 102 28 158
+  left10 mx 72 reset 350 bounds 12 108 28 158
+  left15 mx 60 reset 226 bounds 12 100 28 157
+  left20 mx 60 reset 119 bounds 12 90 28 157
+  left25 mx 60 reset 309 bounds 12 80 27 157
+  left30 mx 60 reset 237 bounds 12 103 27 157
+  right5 mx 96 reset 309 bounds 12 108 28 158
+  right10 mx 104 reset 407 bounds 12 116 28 157
+  right15 mx 112 reset 243 bounds 12 116 28 157
+  right20 mx 116 reset 185 bounds 12 116 28 159
+  right25 mx 116 reset 189 bounds 12 116 27 158
+  right30 mx 116 reset 314 bounds 12 116 28 157
