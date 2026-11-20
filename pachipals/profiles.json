@@ -1,0 +1,35 @@
+{
+  "inputs": [
+    {
+      "name": "pinball-wallfeed1",
+      "sha256": "ed7b979213153b98ebce12ecc62aa7e4f31181340f027143848315531f85204c",
+      "md5": "f377099af075fee47e5190a6d88026c6"
+    },
+    {
+      "name": "pachinko-guarded-dplus-three-lanes",
+      "sha256": "7e176440c0e0498c6a66ef413387508f15e5455c74eb6d176e5e4ac349932a29",
+      "md5": "f52590b357cbd649ff0b13531cbad368",
+      "expected_output_sha256": "999aee093dbb4a36af0d8d1777995d0780d29548faa54c94f5d26265091190b6"
+    }
+  ],
+  "sites": [
+    {
+      "name": "battle-damage-operand",
+      "bank": "15",
+      "address": "47BA",
+      "before": "FD0F00",
+      "after": "FE0000",
+      "context_address": "47B6",
+      "context_before": "15FCF3FFFD0F002DFE00004DFAF3FF00"
+    },
+    {
+      "name": "capture-damage-operand",
+      "bank": "2F",
+      "address": "6B51",
+      "before": "FD8600",
+      "after": "FE0000",
+      "context_address": "6B4D",
+      "context_before": "15FCF7FFFD86002DFAF7FF00"
+    }
+  ]
+}
